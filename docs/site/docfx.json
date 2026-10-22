@@ -1,0 +1,50 @@
+{
+  "$schema": "https://raw.githubusercontent.com/dotnet/docfx/main/schemas/docfx.schema.json",
+  "metadata": [
+    {
+      "src": [
+        {
+          "src": "../..",
+          "files": [
+            "src/DotNodeViewer.Core/DotNodeViewer.Core.csproj",
+            "src/DotNodeViewer.Layout/DotNodeViewer.Layout.csproj"
+          ]
+        }
+      ],
+      "dest": "api",
+      "noRestore": true,
+      "includePrivateMembers": false,
+      "disableGitFeatures": false
+    }
+  ],
+  "build": {
+    "content": [
+      {
+        "files": [
+          "api/**.yml",
+          "api/**.md"
+        ]
+      },
+      {
+        "files": [
+          "articles/**.md",
+          "articles/**/toc.yml",
+          "toc.yml",
+          "*.md"
+        ]
+      }
+    ],
+    "dest": "_site",
+    "globalMetadata": {
+      "_appTitle": "dot-node-viewer",
+      "_appName": "dot-node-viewer",
+      "_appFooter": "dot-node-viewer — .NET 10 Neural Network Graph Parser, Layout Engine & Avalonia Visualizer",
+      "_enableSearch": true,
+      "pdf": false
+    },
+    "template": [
+      "default",
+      "modern"
+    ]
+  }
+}

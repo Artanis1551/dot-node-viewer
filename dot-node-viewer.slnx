@@ -1,0 +1,18 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DotNodeViewer.Core/DotNodeViewer.Core.csproj" />
+    <Project Path="src/DotNodeViewer.Layout/DotNodeViewer.Layout.csproj" />
+    <Project Path="src/DotNodeViewer.App/DotNodeViewer.App.csproj" />
+    <Project Path="src/DotNodeViewer.Desktop/DotNodeViewer.Desktop.csproj" />
+    <Project Path="src/DotNodeViewer.Browser/DotNodeViewer.Browser.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/DotNodeViewer.Cli/DotNodeViewer.Cli.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DotNodeViewer.Core.Tests/DotNodeViewer.Core.Tests.csproj" />
+    <Project Path="tests/DotNodeViewer.Layout.Tests/DotNodeViewer.Layout.Tests.csproj" />
+    <Project Path="tests/DotNodeViewer.App.Tests/DotNodeViewer.App.Tests.csproj" />
+  </Folder>
+</Solution>
+

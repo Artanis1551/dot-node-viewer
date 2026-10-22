@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>DotNodeViewer.App</RootNamespace>
+    <AssemblyName>DotNodeViewer.App</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DotNodeViewer.Core\DotNodeViewer.Core.csproj" />
+    <ProjectReference Include="..\DotNodeViewer.Layout\DotNodeViewer.Layout.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="DotNodeViewer.App.Tests" />
+  </ItemGroup>
+</Project>
+
