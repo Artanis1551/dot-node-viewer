@@ -1,0 +1,45 @@
+{
+  "modelId": "onnx-tiny_cnn_dynamic_batch",
+  "format": "ONNX IR v9",
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "tiny_cnn_dynamic_batch",
+    "nodeCount": 4,
+    "operatorHistogram": {
+      "Conv": 1,
+      "BatchNormalization": 1,
+      "Relu": 1,
+      "GlobalAveragePool": 1
+    },
+    "inputs": [
+      {
+        "name": "input",
+        "dataType": "Float32",
+        "shape": [
+          "batch",
+          "3",
+          "8",
+          "8"
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "output",
+        "dataType": "Float32",
+        "shape": [
+          "batch",
+          "4",
+          "1",
+          "1"
+        ]
+      }
+    ],
+    "sampleWeightSlice": {
+      "tensorName": "conv_w",
+      "dataType": "Float32",
+      "streamOffset": 375,
+      "byteLength": 432
+    }
+  }
+}

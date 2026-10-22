@@ -150,8 +150,8 @@ public sealed class OnnxSyntheticTests
         await Assert.That(async () => await OnnxFormatReader.Instance.ReadAsync(truncatedPayload))
             .Throws<ModelParseException>();
 
-        // 3. Corrupted length prefix claiming 1 GB inside GraphProto
-        byte[] hugeLengthClaim = [0x08, 0x09, 0x42, 0xFF, 0xFF, 0xFF, 0xFF, 0x07, 0x01, 0x02];
+        // 3. Corrupted length prefix claiming 1 GB inside GraphProto (field 7, tag 0x3A)
+        byte[] hugeLengthClaim = [0x08, 0x09, 0x3A, 0xFF, 0xFF, 0xFF, 0xFF, 0x07, 0x01, 0x02];
         using MemoryStream corruptedLengthStream = new(hugeLengthClaim);
         await Assert.That(async () => await OnnxFormatReader.Instance.ReadAsync(corruptedLengthStream))
             .Throws<ModelParseException>();
@@ -235,18 +235,24 @@ public sealed class OnnxSyntheticTests
         WriteTag(model, 1, 0);
         WriteVarint(model, 3);
 
-        // Field 2: opset_import ("", 18)
+        // Field 2 & 3: producer_name & producer_version
+        WriteStringField(model, 2, "dnv-synth");
+        WriteStringField(model, 3, "1.0");
+
+        // Field 7: graph
+        WriteTag(model, 7, 2);
+        WriteVarint(model, (ulong)graphBytes.Length);
+        long graphStartInModel = model.Position;
+        model.Write(graphBytes);
+
+        // Field 8: opset_import ("", 18)
         using (MemoryStream opset = new())
         {
             WriteStringField(opset, 1, "");
             WriteTag(opset, 2, 0);
             WriteVarint(opset, 18);
-            WriteLengthDelimited(model, 2, opset.ToArray());
+            WriteLengthDelimited(model, 8, opset.ToArray());
         }
-
-        // Field 3 & 4: producer_name & producer_version
-        WriteStringField(model, 3, "dnv-synth");
-        WriteStringField(model, 4, "1.0");
 
         // Field 14: metadata_props ("model_author" = "dot-node-viewer")
         using (MemoryStream meta = new())
@@ -255,12 +261,6 @@ public sealed class OnnxSyntheticTests
             WriteStringField(meta, 2, "dot-node-viewer");
             WriteLengthDelimited(model, 14, meta.ToArray());
         }
-
-        // Field 8: graph
-        WriteTag(model, 8, 2);
-        WriteVarint(model, (ulong)graphBytes.Length);
-        long graphStartInModel = model.Position;
-        model.Write(graphBytes);
 
         // Field 25: functions
         WriteLengthDelimited(model, 25, funcBytes);

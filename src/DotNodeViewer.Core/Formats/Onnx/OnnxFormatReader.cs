@@ -90,43 +90,43 @@ internal sealed class OnnxFormatReader : IModelFormatReader
 
                     break;
 
-                case 2: // repeated OperatorSetIdProto opset_import
-                    reader.ExpectWireType(tag.WireType, ProtoWireType.LengthDelimited, "ModelProto.opset_import");
-                    (string opsetDomain, int opsetVersion) = ReadOperatorSetIdProto(reader);
-                    string normalizedDomain = NormalizeDomain(opsetDomain);
-                    opsetImports[normalizedDomain] = opsetVersion;
-                    break;
-
-                case 3: // string producer_name
+                case 2: // string producer_name
                     reader.ExpectWireType(tag.WireType, ProtoWireType.LengthDelimited, "ModelProto.producer_name");
                     producerName = reader.ReadString();
                     break;
 
-                case 4: // string producer_version
+                case 3: // string producer_version
                     reader.ExpectWireType(tag.WireType, ProtoWireType.LengthDelimited, "ModelProto.producer_version");
                     producerVersion = reader.ReadString();
                     break;
 
-                case 5: // string domain
+                case 4: // string domain
                     reader.ExpectWireType(tag.WireType, ProtoWireType.LengthDelimited, "ModelProto.domain");
                     domain = reader.ReadString();
                     break;
 
-                case 6: // int64 model_version
+                case 5: // int64 model_version
                     reader.ExpectWireType(tag.WireType, ProtoWireType.Varint, "ModelProto.model_version");
                     modelVersion = reader.ReadInt64();
                     break;
 
-                case 7: // string doc_string
+                case 6: // string doc_string
                     reader.ExpectWireType(tag.WireType, ProtoWireType.LengthDelimited, "ModelProto.doc_string");
                     docString = reader.ReadString();
                     break;
 
-                case 8: // GraphProto graph
+                case 7: // GraphProto graph
                     reader.ExpectWireType(tag.WireType, ProtoWireType.LengthDelimited, "ModelProto.graph");
                     long graphLimit = reader.PushMessageLimit();
                     primaryGraph = ReadGraphProto(reader, depth: 0, options, cancellationToken);
                     reader.PopLimit(graphLimit);
+                    break;
+
+                case 8: // repeated OperatorSetIdProto opset_import
+                    reader.ExpectWireType(tag.WireType, ProtoWireType.LengthDelimited, "ModelProto.opset_import");
+                    (string opsetDomain, int opsetVersion) = ReadOperatorSetIdProto(reader);
+                    string normalizedDomain = NormalizeDomain(opsetDomain);
+                    opsetImports[normalizedDomain] = opsetVersion;
                     break;
 
                 case 14: // repeated StringStringEntryProto metadata_props
@@ -905,7 +905,7 @@ internal sealed class OnnxFormatReader : IModelFormatReader
             switch (tag.FieldNumber)
             {
                 case 1: // TypeProto.Tensor tensor_type
-                case 9: // TypeProto.SparseTensor sparse_tensor_type
+                case 8: // TypeProto.SparseTensor sparse_tensor_type
                     reader.ExpectWireType(tag.WireType, ProtoWireType.LengthDelimited, "TypeProto.tensor_type");
                     long tensorLimit = reader.PushMessageLimit();
                     descriptor = ReadTensorTypeProto(reader);
@@ -913,7 +913,7 @@ internal sealed class OnnxFormatReader : IModelFormatReader
                     break;
 
                 case 4: // TypeProto.Sequence sequence_type
-                case 8: // TypeProto.Optional optional_type
+                case 9: // TypeProto.Optional optional_type
                     reader.ExpectWireType(tag.WireType, ProtoWireType.LengthDelimited, "TypeProto.wrapper");
                     long wrapperLimit = reader.PushMessageLimit();
                     descriptor = ReadWrapperTypeProto(reader);

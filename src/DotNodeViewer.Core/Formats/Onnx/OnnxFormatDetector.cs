@@ -80,21 +80,10 @@ internal sealed class OnnxFormatDetector : IModelFormatDetector
                     hasIrVersion = true;
                     break;
 
-                case 2: // repeated OperatorSetIdProto opset_import
-                    if (wireType != ProtoWireType.LengthDelimited
-                        || !TryReadLengthDelimitedBounds(probe, ref offset, streamLength, out long opsetStart, out long opsetLen)
-                        || !ValidateOpsetImport(probe, opsetStart, opsetLen))
-                    {
-                        return false;
-                    }
-
-                    hasOpsetImport = true;
-                    break;
-
-                case 3: // string producer_name
-                case 4: // string producer_version
-                case 5: // string domain
-                case 7: // string doc_string
+                case 2: // string producer_name
+                case 3: // string producer_version
+                case 4: // string domain
+                case 6: // string doc_string
                 case 14: // repeated StringStringEntryProto metadata_props
                 case 20: // repeated TrainingInfoProto training_info
                 case 25: // repeated FunctionProto functions
@@ -106,7 +95,7 @@ internal sealed class OnnxFormatDetector : IModelFormatDetector
 
                     break;
 
-                case 6: // int64 model_version
+                case 5: // int64 model_version
                     if (wireType != ProtoWireType.Varint
                         || !TryReadVarint64(probe, ref offset, streamLength, out _))
                     {
@@ -115,7 +104,7 @@ internal sealed class OnnxFormatDetector : IModelFormatDetector
 
                     break;
 
-                case 8: // GraphProto graph
+                case 7: // GraphProto graph
                     if (wireType != ProtoWireType.LengthDelimited
                         || !TryReadLengthDelimitedBounds(probe, ref offset, streamLength, out long graphStart, out long graphLen)
                         || graphLen <= 0
@@ -125,6 +114,17 @@ internal sealed class OnnxFormatDetector : IModelFormatDetector
                     }
 
                     hasGraph = true;
+                    break;
+
+                case 8: // repeated OperatorSetIdProto opset_import
+                    if (wireType != ProtoWireType.LengthDelimited
+                        || !TryReadLengthDelimitedBounds(probe, ref offset, streamLength, out long opsetStart, out long opsetLen)
+                        || !ValidateOpsetImport(probe, opsetStart, opsetLen))
+                    {
+                        return false;
+                    }
+
+                    hasOpsetImport = true;
                     break;
 
                 default:

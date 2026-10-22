@@ -1,0 +1,45 @@
+{
+  "modelId": "onnx-mobilenetv2-7",
+  "format": "ONNX IR v3",
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "main",
+    "nodeCount": 155,
+    "operatorHistogram": {
+      "Conv": 54,
+      "BatchNormalization": 53,
+      "Relu": 36,
+      "Add": 10,
+      "GlobalAveragePool": 1,
+      "Reshape": 1
+    },
+    "inputs": [
+      {
+        "name": "data",
+        "dataType": "Float32",
+        "shape": [
+          "1",
+          "3",
+          "224",
+          "224"
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "mobilenetv20_output_flatten0_reshape0",
+        "dataType": "Float32",
+        "shape": [
+          "1",
+          "1000"
+        ]
+      }
+    ],
+    "sampleWeightSlice": {
+      "tensorName": "mobilenetv20_features_conv0_weight",
+      "dataType": "Float32",
+      "streamOffset": 50810,
+      "byteLength": 3456
+    }
+  }
+}

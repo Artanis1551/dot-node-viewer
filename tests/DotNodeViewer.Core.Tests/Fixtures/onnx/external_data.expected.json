@@ -1,0 +1,39 @@
+{
+  "modelId": "onnx-external_data",
+  "format": "ONNX IR v9",
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "external_data_main",
+    "nodeCount": 2,
+    "operatorHistogram": {
+      "MatMul": 1,
+      "Add": 1
+    },
+    "inputs": [
+      {
+        "name": "x",
+        "dataType": "Float32",
+        "shape": [
+          "1",
+          "4"
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "y",
+        "dataType": "Float32",
+        "shape": [
+          "1",
+          "2"
+        ]
+      }
+    ],
+    "sampleWeightSlice": {
+      "tensorName": "inline_b",
+      "dataType": "Float32",
+      "streamOffset": 225,
+      "byteLength": 8
+    }
+  }
+}

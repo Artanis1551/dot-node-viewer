@@ -1,5 +1,60 @@
 {
   "schemaVersion": 1,
-  "models": []
+  "models": [
+    {
+      "id": "onnx-tiny_mlp",
+      "format": "onnx",
+      "fileName": "tiny_mlp.onnx",
+      "tier": "committed",
+      "relativePath": "Fixtures/onnx/tiny_mlp.onnx",
+      "sourceUrl": null,
+      "sha256": "252ad7eb2b5c02073bb60be9b0a3a59c8d8c6bfd287751f9d2539a55af7afe23",
+      "byteLength": 440,
+      "expectedSnapshot": "Fixtures/onnx/tiny_mlp.expected.json"
+    },
+    {
+      "id": "onnx-tiny_cnn_dynamic_batch",
+      "format": "onnx",
+      "fileName": "tiny_cnn_dynamic_batch.onnx",
+      "tier": "committed",
+      "relativePath": "Fixtures/onnx/tiny_cnn_dynamic_batch.onnx",
+      "sourceUrl": null,
+      "sha256": "80c74327fbf3ae6ca7e922ec3f7388224451a01d959f3bedf6767c2b2f4d1882",
+      "byteLength": 1054,
+      "expectedSnapshot": "Fixtures/onnx/tiny_cnn_dynamic_batch.expected.json"
+    },
+    {
+      "id": "onnx-if_subgraph",
+      "format": "onnx",
+      "fileName": "if_subgraph.onnx",
+      "tier": "committed",
+      "relativePath": "Fixtures/onnx/if_subgraph.onnx",
+      "sourceUrl": null,
+      "sha256": "2ce94749b18c628cd6c0d0a3e3341ed52c9558499cb96a16b9c19f16bbedd7f7",
+      "byteLength": 408,
+      "expectedSnapshot": "Fixtures/onnx/if_subgraph.expected.json"
+    },
+    {
+      "id": "onnx-external_data",
+      "format": "onnx",
+      "fileName": "external_data.onnx",
+      "tier": "committed",
+      "relativePath": "Fixtures/onnx/external_data.onnx",
+      "sourceUrl": null,
+      "sha256": "d6918bd2b221894bacbffba33441a8d8228efbe0ac96a2df6bb427f3df87d985",
+      "byteLength": 281,
+      "expectedSnapshot": "Fixtures/onnx/external_data.expected.json"
+    },
+    {
+      "id": "onnx-mobilenetv2-7",
+      "format": "onnx",
+      "fileName": "mobilenetv2-7.onnx",
+      "tier": "cached",
+      "relativePath": ".model-cache/onnx/mobilenetv2-7.onnx",
+      "sourceUrl": "https://github.com/onnx/models/raw/main/validated/vision/classification/mobilenet/model/mobilenetv2-7.onnx",
+      "sha256": "c1c513582d56afceff8516c73804e484c81c6a830712ab6d682253f4a3cd042f",
+      "byteLength": 14246826,
+      "expectedSnapshot": "Fixtures/onnx/mobilenetv2-7.expected.json"
+    }
+  ]
 }
-

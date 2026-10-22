@@ -1,0 +1,104 @@
+{
+  "modelId": "onnx-tiny_cnn_dynamic_batch",
+  "format": "ONNX IR v9",
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "tiny_cnn_dynamic_batch",
+    "nodeCount": 4,
+    "operatorHistogram": {
+      "Conv": 1,
+      "BatchNormalization": 1,
+      "Relu": 1,
+      "GlobalAveragePool": 1
+    },
+    "inputs": [
+      {
+        "name": "input",
+        "dataType": "Float32",
+        "shape": [
+          "batch",
+          "3",
+          "8",
+          "8"
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "output",
+        "dataType": "Float32",
+        "shape": [
+          "batch",
+          "4",
+          "1",
+          "1"
+        ]
+      }
+    ],
+    "initializers": [
+      {
+        "name": "conv_w",
+        "dataType": "Float32",
+        "shape": [
+          "4",
+          "3",
+          "3",
+          "3"
+        ],
+        "byteLength": 432,
+        "isExternal": false,
+        "externalLocation": null
+      },
+      {
+        "name": "conv_b",
+        "dataType": "Float32",
+        "shape": [
+          "4"
+        ],
+        "byteLength": 16,
+        "isExternal": false,
+        "externalLocation": null
+      },
+      {
+        "name": "bn_scale",
+        "dataType": "Float32",
+        "shape": [
+          "4"
+        ],
+        "byteLength": 16,
+        "isExternal": false,
+        "externalLocation": null
+      },
+      {
+        "name": "bn_bias",
+        "dataType": "Float32",
+        "shape": [
+          "4"
+        ],
+        "byteLength": 16,
+        "isExternal": false,
+        "externalLocation": null
+      },
+      {
+        "name": "bn_mean",
+        "dataType": "Float32",
+        "shape": [
+          "4"
+        ],
+        "byteLength": 16,
+        "isExternal": false,
+        "externalLocation": null
+      },
+      {
+        "name": "bn_var",
+        "dataType": "Float32",
+        "shape": [
+          "4"
+        ],
+        "byteLength": 16,
+        "isExternal": false,
+        "externalLocation": null
+      }
+    ]
+  }
+}
