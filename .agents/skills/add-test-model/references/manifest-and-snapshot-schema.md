@@ -14,7 +14,7 @@ Maintain a single manifest at `tests/<TestProject>/Fixtures/models.manifest.json
       "fileName": "mobilenet_v2_1.0_224_quant.tflite",
       "tier": "cached",
       "relativePath": ".model-cache/tflite/mobilenet_v2_1.0_224_quant.tflite",
-      "sourceUrl": "[https://storage.googleapis.com/download.tensorflow.org/models/tflite_11_05_08/mobilenet_v2_1.0_224_quant.tgz](https://storage.googleapis.com/download.tensorflow.org/models/tflite_11_05_08/mobilenet_v2_1.0_224_quant.tgz)",
+      "sourceUrl": "https://raw.githubusercontent.com/google-coral/test_data/master/mobilenet_v2_1.0_224_quant.tflite",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "byteLength": 3423112,
       "expectedSnapshot": "Fixtures/tflite/mobilenet_v2_1.0_224_quant.expected.json"

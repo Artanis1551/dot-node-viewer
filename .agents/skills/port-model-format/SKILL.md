@@ -51,8 +51,8 @@ Follow this workflow whenever adding or updating a model format parser. The prim
 2. Prefer magic-byte signature verification over file extension checks, using file extensions only as a secondary tie-breaker when container formats overlap (e.g., Zip-based `.pt`, `.pte`, or `.mlpackage` files).
 
 ### Step 3: Streaming Parser Implementation (`IModelFormatReader`)
-1. Implement the format reader in its own internal namespace (e.g., `NetronNet.Formats.<FormatName>`).
-2. Decode the container structure:
+1. Implement the format reader in its own internal namespace (e.g., `DotNodeViewer.Core.Formats.<FormatName>`).
+2. Decode the container structure (you may pragmatically combine AOT/WASM-compatible parsing libraries such as `Google.FlatBuffers`/`FlatSharp`, `Google.Protobuf` `CodedInputStream`, `PureHDF`, or `System.IO.Compression.ZipArchive` with custom span/stream readers wherever needed to avoid eager weight allocations):
    - **Binary/Header formats (Safetensors, GGUF):** Parse header length via `BinaryPrimitives`, deserialize header metadata using source-generated JSON or span readers, and calculate absolute byte offsets for tensor data.
    - **FlatBuffers (TFLite, ExecuTorch):** Read the buffer table offsets directly without copying tensor `uint8` vectors onto the managed heap.
    - **Protobuf (ONNX, TensorFlow):** Use `CodedInputStream` or custom tag-skipping readers to bypass `TensorProto.RawData` fields while capturing dimensions, `elem_type`, and external data locations.

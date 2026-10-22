@@ -39,16 +39,16 @@ bash .agents/skills/add-test-model/scripts/stage-model.sh "<file-path-or-url>" "
 ```
 
 - `<file-path-or-url>`: Local path (e.g., `~/Downloads/mobilenet_v2.tflite`) or remote URL (e.g., `https://huggingface.co/.../model.onnx`).
-- `<format-slug>`: Lowercase format folder name (e.g., `onnx`, `tflite`, `safetensors`, `gguf`, `executorch`).
-- `<test-project-dir>`: Path to the test project (e.g., `tests/NetronNet.Tests`).
+- `<format-slug>`: Lowercase format folder name (e.g., `onnx`, `tflite`, `keras`, `pytorch`, `executorch`).
+- `<test-project-dir>`: Path to the test project (defaults to `tests/DotNodeViewer.Core.Tests`).
 
 ### Step 2: Register the Model in `models.manifest.json`
 1. Read `references/manifest-and-snapshot-schema.md` for the exact JSON structure.
-2. Add or update the model entry in `tests/<TestProject>/Fixtures/models.manifest.json` using the `id`, `tier` (`committed` or `cached`), `relativePath`, `sourceUrl`, `sha256`, and `byteLength` output by `stage-model.sh`.
+2. Add or update the model entry in `tests/DotNodeViewer.Core.Tests/Fixtures/models.manifest.json` using the `id`, `tier` (`committed` or `cached`), `relativePath`, `sourceUrl`, `sha256`, and `byteLength` output by `stage-model.sh`.
 
 ### Step 3: Extract the Expected Topology Snapshot
-1. Generate the golden topology snapshot at `tests/<TestProject>/Fixtures/<format>/<model-id>.expected.json`:
-   - Run the parser against the staged file (via a test runner helper or CLI harness) to capture the extracted `ModelGraph` summary.
+1. Generate the golden topology snapshot at `tests/DotNodeViewer.Core.Tests/Fixtures/<format>/<model-id>.expected.json`:
+   - Run the parser against the staged file via the CLI harness (`dotnet run --project tools/DotNodeViewer.Cli -c Release -- snapshot <file> --id <model-id>`) and cross-check against independent ground truth (e.g., `.truth.json` emitted by the Python generator in `tools/model-gen/` or reference Netron).
    - If the model is being added to reproduce a parser bug before the fix is complete, inspect the file header/schema directly (or compare against reference Netron) to author the ground-truth `.expected.json` first (TDD).
 2. Capture:
    - `format`: Format identifier and version string.
@@ -59,13 +59,13 @@ bash .agents/skills/add-test-model/scripts/stage-model.sh "<file-path-or-url>" "
    - `sampleWeightSlice`: Name, `dataType`, `streamOffset`, and `byteLength` of a representative initializer tensor to verify lazy stream slicing.
 
 ### Step 4: Wire Up the Test Case
-1. **Standard regression coverage:** Confirm the manifest-driven parameterized test (`ModelManifestTests.ParseRegisteredModel_MatchesExpectedTopology`) discovers the new entry in `models.manifest.json`.
-2. **Model-specific edge-case assertions (when applicable):** If the user added this model to test a specific feature (such as per-channel int8 quantization parameters, NPU custom delegate payloads like `ethos-u`, or nested control-flow subgraphs), add a dedicated `[Fact]` / `[Test]` method in `tests/<TestProject>/Formats/<Format>ModelTests.cs` targeting that exact node or tensor attribute.
+1. **Standard regression coverage:** Confirm the manifest-driven parameterized TUnit test (`ModelManifestTests.ParseRegisteredModel_MatchesExpectedTopology` via `[MethodDataSource]`) discovers the new entry in `models.manifest.json`.
+2. **Model-specific edge-case assertions (when applicable):** If the user added this model to test a specific feature (such as per-channel int8 quantization parameters, NPU custom delegate payloads like `ethos-u`, or nested control-flow subgraphs), add a dedicated `[Test]` method in `tests/DotNodeViewer.Core.Tests/Formats/<Format>ModelTests.cs` targeting that exact node or tensor attribute.
    - For `cached` tier models without a public `sourceUrl` (local-only large files), guard the test with a helper that skips gracefully with a descriptive message when the uncached binary is absent on another machine.
 
 ### Step 5: Verify via `dotnet test`
-Run the targeted test filter to confirm the model downloads/loads, passes SHA-256 verification, parses without unexpected heap allocations, and matches the snapshot:
+Run the targeted TUnit test filter to confirm the model downloads/loads, passes SHA-256 verification, parses without unexpected heap allocations, and matches the snapshot:
 
 ```bash
-dotnet test --filter "FullyQualifiedName~<ModelIdOrFormatTestName>"
+dotnet test --project tests/DotNodeViewer.Core.Tests -c Release -- --treenode-filter "/*/*/<TestClassName>/*"
 ```

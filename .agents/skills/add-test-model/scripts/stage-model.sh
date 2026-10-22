@@ -4,7 +4,7 @@ set -euo pipefail
 # Usage: stage-model.sh <source-path-or-url> <format-slug> [test-project-dir] [max-committed-kb]
 SOURCE="${1:?Error: Provide a local file path or download URL as argument 1}"
 FORMAT="${2:?Error: Provide a lowercase format slug (e.g. onnx, tflite, safetensors) as argument 2}"
-TEST_DIR="${3:-tests/NetronNet.Tests}"
+TEST_DIR="${3:-tests/DotNodeViewer.Core.Tests}"
 MAX_COMMITTED_KB="${4:-256}"
 
 TMP_FILE="$(mktemp)"
