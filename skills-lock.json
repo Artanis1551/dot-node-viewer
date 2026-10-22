@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "computer-use": {
+      "source": "nousresearch/hermes-agent",
+      "sourceType": "github",
+      "skillPath": "skills/autonomous-ai-agents/computer-use/SKILL.md",
+      "computedHash": "d528536846945672e5a26f8132368949d0ad87527c0ef31a7c81f462cc979c3f"
+    }
+  }
+}
