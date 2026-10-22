@@ -13,6 +13,7 @@ Implement the shared `ZipDirectory` reader (exposing exact file offsets for stor
 - `.agents/skills/csharp-tunit/SKILL.md`
 - `.agents/skills/csharp-async/SKILL.md`
 - `.agents/skills/csharp-docs/SKILL.md`
+- `.agents/skills/documentation-writer/SKILL.md`
 - `.agents/skills/analyzing-dotnet-performance/SKILL.md`
 
 ## Scope & Deliverables
@@ -47,12 +48,16 @@ Implement the shared `ZipDirectory` reader (exposing exact file offsets for stor
    - Unit tests for `ZipDirectory` and `PickleMachine` (including hostile/unknown globals).
    - `Synthetic/PyTorchSyntheticTests.cs` (the 4 mandatory tests).
    - `Formats/PyTorchModelTests.cs` (traced graph vs `.truth.json`, scripted fallback diagnostic, state_dict weight slices).
+6. **Documentation (`README.md` & `docs/site/`):**
+   - Update root `README.md` supported-formats table with PyTorch TorchScript & `state_dict` (`.pt` / `.pth`).
+   - Add `docs/site/articles/formats/pytorch.md` (and update `toc.yml` / `overview.md`) explaining safe Pickle VM execution, TorchScript traced vs. scripted graphs, and `state_dict` inspection.
 
 ## Acceptance Criteria & Verification
 ```bash
 dotnet build dot-node-viewer.slnx -c Release
 dotnet test dot-node-viewer.slnx -c Release
 dotnet publish tools/DotNodeViewer.Cli -c Release -p:PublishAot=true
+dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors
 ```
 
 ## Hand-off & Git Requirements

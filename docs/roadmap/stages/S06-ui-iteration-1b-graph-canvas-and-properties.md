@@ -17,6 +17,7 @@ Replace the S05 viewport placeholder with a high-performance custom `GraphCanvas
   - `skills/avalonia-testing-diagnostics-and-performance/SKILL.md`
 - `.agents/skills/analyzing-dotnet-performance/SKILL.md`
 - `.agents/skills/csharp-tunit/SKILL.md`
+- `.agents/skills/documentation-writer/SKILL.md`
 
 ## Scope & Deliverables
 1. **`GraphCanvas` Custom Control (`src/DotNodeViewer.App/Controls/GraphCanvas.cs`):**
@@ -52,6 +53,9 @@ Replace the S05 viewport placeholder with a high-performance custom `GraphCanvas
      2. Click a `Conv` / `CONV_2D` node on the canvas (`capture_after=True`) and verify the right-hand Properties Sidebar displays its attributes, initializer weights, and quantization parameters.
      3. Zoom in and out and capture the LOD transition.
    - Critique the screenshots against `docs/design/design-system.md`, save them to `docs/screenshots/S06/`, and link them in `docs/roadmap/PROGRESS.md`.
+3. **Documentation (`README.md` & `docs/site/`):**
+   - Update root `README.md` with a screenshot of `GraphCanvas` rendering a neural network and updated visualizer feature list.
+   - Update `docs/site/articles/visualizer/user-guide.md` (and add `docs/site/articles/visualizer/embedding-controls.md` explaining how .NET developers can embed `GraphCanvas` in their own Avalonia apps) and verify `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`.
 
 ## Recommended Checkpoint After S06
 Recommend to the user that they can optionally run `.agents/skills/improve-codebase-architecture/SKILL.md` before proceeding to Stages S07–S10.

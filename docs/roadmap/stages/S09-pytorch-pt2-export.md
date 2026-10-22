@@ -13,6 +13,7 @@ Implement detection and parsing for modern PyTorch 2 `torch.export.save` (`.pt2`
 - `.agents/skills/csharp-tunit/SKILL.md`
 - `.agents/skills/csharp-async/SKILL.md`
 - `.agents/skills/csharp-docs/SKILL.md`
+- `.agents/skills/documentation-writer/SKILL.md`
 - `.agents/skills/analyzing-dotnet-performance/SKILL.md`
 
 ## Scope & Deliverables
@@ -34,12 +35,15 @@ Implement detection and parsing for modern PyTorch 2 `torch.export.save` (`.pt2`
 3. **Tests (`tests/DotNodeViewer.Core.Tests/`):**
    - `Synthetic/PyTorchPt2SyntheticTests.cs` (the 4 mandatory tests).
    - `Formats/PyTorchPt2ModelTests.cs` (verifying `Initializer` separation from user inputs, symbolic dimension extraction, lazy weight slices, and `.truth.json` parity).
+4. **Documentation (`README.md` & `docs/site/`):**
+   - Update root `README.md` and `docs/site/articles/formats/pytorch.md` to cover PyTorch 2 `torch.export` (`.pt2`) archives, `SymInt` dynamic dimensions, and how to compare a `.pt2` export against a downstream `.tflite` or `.pte` conversion.
 
 ## Acceptance Criteria & Verification
 ```bash
 dotnet build dot-node-viewer.slnx -c Release
 dotnet test dot-node-viewer.slnx -c Release
 dotnet publish tools/DotNodeViewer.Cli -c Release -p:PublishAot=true
+dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors
 ```
 
 ## Hand-off & Git Requirements

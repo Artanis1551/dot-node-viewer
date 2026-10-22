@@ -10,6 +10,7 @@ Create a buildable, warning-free .NET 10 solution with central package managemen
 ## Skills to Load
 - `.agents/skills/csharp-tunit/SKILL.md`
 - `.agents/skills/csharp-docs/SKILL.md`
+- `.agents/skills/documentation-writer/SKILL.md` (Diátaxis structure for `docs/site/` and `README.md`)
 
 ## Scope & Deliverables
 1. **`global.json`:** Pin the .NET 10 SDK (`10.0.100` with `rollForward: latestFeature`) and configure the `Microsoft.Testing.Platform` test runner.
@@ -34,19 +35,32 @@ Create a buildable, warning-free .NET 10 solution with central package managemen
    - `tests/DotNodeViewer.Core.Tests/DotNodeViewer.Core.Tests.csproj` (references `Core`, `TUnit`, with 1 smoke `[Test]`)
    - `tests/DotNodeViewer.Layout.Tests/DotNodeViewer.Layout.Tests.csproj` (references `Layout`, `TUnit`, with 1 smoke `[Test]`)
    - `tests/DotNodeViewer.App.Tests/DotNodeViewer.App.Tests.csproj` (references `App`, `TUnit`, `Avalonia.Headless`, with 1 smoke `[Test]`)
-5. **`.gitignore` Updates:** Ensure `.model-cache/`, `tools/model-gen/**/.venv/`, and `__pycache__/` are ignored.
-6. **Architecture Decision Records (`docs/adr/`):**
+5. **`.gitignore` Updates:** Ensure `.model-cache/`, `tools/model-gen/**/.venv/`, `__pycache__/`, and `docs/site/_site/` + `docs/site/api/*.yml` are ignored.
+6. **Documentation Website Scaffolding (`docs/site/` + `.config/dotnet-tools.json`, guided by `documentation-writer`):**
+   - Create `.config/dotnet-tools.json` registering `docfx` so `dotnet tool restore` and `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors` work reproducibly.
+   - Create `docs/site/docfx.json` configured to generate API reference metadata from `src/DotNodeViewer.Core/DotNodeViewer.Core.csproj` and `src/DotNodeViewer.Layout/DotNodeViewer.Layout.csproj` alongside Markdown articles organized around the **Diátaxis framework** (`Tutorials`, `How-To Guides`, `Reference`, `Explanation`):
+     - `docs/site/index.md` & `docs/site/toc.yml`
+     - `docs/site/articles/toc.yml`
+     - `docs/site/articles/getting-started.md` (*Tutorial*)
+     - `docs/site/articles/library/unified-graph-ir.md` (*Explanation & Reference*, stubbed for S01)
+     - `docs/site/articles/formats/overview.md` (*Reference*, stubbed for S02–S10)
+     - `docs/site/articles/cli/reference.md` (*Reference & How-To*, stubbed for S01)
+     - `docs/site/articles/visualizer/user-guide.md` (*How-To Guide*, stubbed for S05–S11)
+7. **Architecture Decision Records (`docs/adr/`):**
    - `0001-hybrid-parsing-and-encapsulation.md`
    - `0002-immutable-record-ir.md`
    - `0003-lazy-weight-slices.md`
    - `0004-tunit.md`
    - `0005-avalonia-version.md`
-7. **GitHub Actions CI (`.github/workflows/ci.yml`):** Run `dotnet build -c Release` and `dotnet test -c Release` on Ubuntu.
+8. **GitHub Actions CI (`.github/workflows/ci.yml`):** Run `dotnet build -c Release`, `dotnet test -c Release`, and `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors` on Ubuntu.
+9. **Update Root `README.md`:** Document the project vision, solution structure, and links to `PREREQUISITES.md` and `docs/site/`.
 
 ## Acceptance Criteria & Verification
 ```bash
+dotnet tool restore
 dotnet build dot-node-viewer.slnx -c Release
 dotnet test dot-node-viewer.slnx -c Release
+dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors
 grep -r "NetronNet" .agents/    # must return no matches
 ```
 

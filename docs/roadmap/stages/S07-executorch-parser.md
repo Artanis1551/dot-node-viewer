@@ -13,6 +13,7 @@ Implement the ExecuTorch (`.pte`) format detector and streaming parser (`DotNode
 - `.agents/skills/csharp-tunit/SKILL.md`
 - `.agents/skills/csharp-async/SKILL.md`
 - `.agents/skills/csharp-docs/SKILL.md`
+- `.agents/skills/documentation-writer/SKILL.md`
 - `.agents/skills/analyzing-dotnet-performance/SKILL.md`
 - `.agents/skills/computer-use/SKILL.md` (optional visual sanity check of `.pte` in `DotNodeViewer.Desktop`)
 
@@ -43,12 +44,16 @@ Implement the ExecuTorch (`.pte`) format detector and streaming parser (`DotNode
 4. **Tests (`tests/DotNodeViewer.Core.Tests/`):**
    - `Synthetic/ExecuTorchSyntheticTests.cs` (the 4 mandatory tests, including extended `eh00` segment offset math).
    - `Formats/ExecuTorchModelTests.cs` (verifying portable ops, `XnnpackBackend` delegate node & payload slice, and `*.truth.json` parity).
+5. **Documentation (`README.md` & `docs/site/`):**
+   - Update root `README.md` supported-formats table with ExecuTorch (`.pte`).
+   - Add `docs/site/articles/formats/executorch.md` (and update `toc.yml` / `overview.md`) documenting `.pte` execution plans, `eh00` extended headers, segmented weights, and backend delegate inspection (`XnnpackBackend`, etc.).
 
 ## Acceptance Criteria & Verification
 ```bash
 dotnet build dot-node-viewer.slnx -c Release
 dotnet test dot-node-viewer.slnx -c Release
 dotnet publish tools/DotNodeViewer.Cli -c Release -p:PublishAot=true
+dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors
 ```
 
 ## Hand-off & Git Requirements

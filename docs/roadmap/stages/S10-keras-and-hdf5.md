@@ -13,6 +13,7 @@ Implement the Keras format detector and streaming parser (`DotNodeViewer.Core.Fo
 - `.agents/skills/csharp-tunit/SKILL.md`
 - `.agents/skills/csharp-async/SKILL.md`
 - `.agents/skills/csharp-docs/SKILL.md`
+- `.agents/skills/documentation-writer/SKILL.md`
 - `.agents/skills/analyzing-dotnet-performance/SKILL.md`
 
 ## Scope & Deliverables
@@ -40,12 +41,16 @@ Implement the Keras format detector and streaming parser (`DotNodeViewer.Core.Fo
 4. **Tests (`tests/DotNodeViewer.Core.Tests/`):**
    - `Synthetic/KerasSyntheticTests.cs` (the 4 mandatory tests).
    - `Formats/KerasModelTests.cs` (Sequential, Functional skip connections, `.h5` contiguous dataset slices, weights-only diagnostic, and `.truth.json` parity).
+5. **Documentation (`README.md` & `docs/site/`):**
+   - Update root `README.md` supported-formats table with Keras (`.keras` v3 and `.h5`).
+   - Add `docs/site/articles/formats/keras.md` (and update `toc.yml` / `overview.md`) covering `.keras` v3 archives, legacy HDF5 `.h5` models, contiguous vs. chunked dataset weight slicing, and weights-only checkpoints.
 
 ## Acceptance Criteria & Verification
 ```bash
 dotnet build dot-node-viewer.slnx -c Release
 dotnet test dot-node-viewer.slnx -c Release
 dotnet publish tools/DotNodeViewer.Cli -c Release -p:PublishAot=true
+dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors
 ```
 
 ## Recommended Checkpoint After S10

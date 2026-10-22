@@ -9,6 +9,7 @@ Build `DotNodeViewer.Layout`, a fast, deterministic, pure C# Sugiyama/dagre-styl
 
 ## Skills to Load
 - `.agents/skills/csharp-docs/SKILL.md`
+- `.agents/skills/documentation-writer/SKILL.md`
 - `.agents/skills/csharp-tunit/SKILL.md`
 - `.agents/skills/analyzing-dotnet-performance/SKILL.md`
 
@@ -36,11 +37,15 @@ Build `DotNodeViewer.Layout`, a fast, deterministic, pure C# Sugiyama/dagre-styl
    - Cycle resilience test: graphs with 2-node and 3-node cycles complete without infinite loops or exceptions.
    - Real-fixture integration tests: lay out every committed ONNX (`tiny_mlp.onnx`, `tiny_cnn_dynamic_batch.onnx`, `if_subgraph.onnx`) and TFLite (`tiny_cnn_float.tflite`, `tiny_cnn_int8.tflite`, `tiny_while.tflite`) model.
    - **Performance budget test:** lay out a synthetic 5,000-node layered graph in `< 1,000 ms` in Release configuration.
+4. **Documentation (`README.md` & `docs/site/`):**
+   - Update root `README.md` architecture section to cover `DotNodeViewer.Layout`.
+   - Add `docs/site/articles/library/layout-engine.md` (and link in `toc.yml`) explaining how to use `DotNodeViewer.Layout` and `ModelGraphLayoutAdapter` programmatically in custom .NET applications.
 
 ## Acceptance Criteria & Verification
 ```bash
 dotnet build dot-node-viewer.slnx -c Release
 dotnet test dot-node-viewer.slnx -c Release
+dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors
 ```
 
 ## Hand-off & Git Requirements

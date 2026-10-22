@@ -13,6 +13,7 @@ Implement FlatBuffers reading support (`internal` in `DotNodeViewer.Core`), the 
 - `.agents/skills/csharp-tunit/SKILL.md`
 - `.agents/skills/csharp-async/SKILL.md`
 - `.agents/skills/csharp-docs/SKILL.md`
+- `.agents/skills/documentation-writer/SKILL.md`
 - `.agents/skills/analyzing-dotnet-performance/SKILL.md`
 
 ## Scope & Deliverables
@@ -44,12 +45,16 @@ Implement FlatBuffers reading support (`internal` in `DotNodeViewer.Core`), the 
 5. **Tests (`tests/DotNodeViewer.Core.Tests/`):**
    - `Synthetic/TfliteSyntheticTests.cs` (the 4 mandatory tests + malicious FlatBuffer offset resilience).
    - `Formats/TfliteModelTests.cs` (verifying `AffineQuantization`, fused activations, `WHILE` subgraphs, and `*.truth.json` parity).
+6. **Documentation (`README.md` & `docs/site/`):**
+   - Update root `README.md` supported-formats table with TensorFlow Lite (`TFL3`).
+   - Add `docs/site/articles/formats/tflite.md` (and update `toc.yml` / `overview.md`) covering TFLite FlatBuffers zero-copy weight slices, per-tensor/per-channel `INT8` quantization metadata, fused activations, control-flow subgraphs, and custom delegate payloads (e.g., TFLite Micro / Ethos-U).
 
 ## Acceptance Criteria & Verification
 ```bash
 dotnet build dot-node-viewer.slnx -c Release
 dotnet test dot-node-viewer.slnx -c Release
 dotnet publish tools/DotNodeViewer.Cli -c Release -p:PublishAot=true
+dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors
 ```
 
 ## Hand-off & Git Requirements

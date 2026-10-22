@@ -20,6 +20,11 @@ This document specifies all required SDKs, system libraries, Python toolchains, 
   ```bash
   sudo apt-get update && sudo apt-get install -y clang zlib1g-dev libkrb5-dev
   ```
+- **Documentation Website Generator (`docfx`, Required from Stage S0):**
+  - Managed via the repo's `.config/dotnet-tools.json` local tool manifest (`dotnet tool restore` installs `docfx` locally so `dotnet tool run docfx build docs/site/docfx.json` works out of the box), or globally via:
+    ```bash
+    dotnet tool install -g docfx
+    ```
 
 ---
 

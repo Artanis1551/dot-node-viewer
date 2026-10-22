@@ -13,6 +13,7 @@ Implement the ONNX format detector and streaming parser (`DotNodeViewer.Core.For
 - `.agents/skills/csharp-tunit/SKILL.md`
 - `.agents/skills/csharp-async/SKILL.md`
 - `.agents/skills/csharp-docs/SKILL.md`
+- `.agents/skills/documentation-writer/SKILL.md`
 - `.agents/skills/analyzing-dotnet-performance/SKILL.md`
 
 ## Scope & Deliverables
@@ -42,12 +43,16 @@ Implement the ONNX format detector and streaming parser (`DotNodeViewer.Core.For
 5. **Unit & Regression Tests (`tests/DotNodeViewer.Core.Tests/`):**
    - `Synthetic/OnnxSyntheticTests.cs`: all 4 mandatory tests from `port-model-format` (magic-byte detection, topology/symbolic shapes, lazy weight skipping with allocation check, corrupted input resilience throwing `ModelParseException`).
    - `Formats/OnnxModelTests.cs`: assertions for `If` subgraph attribute, external data reference, and comparing snapshots against `*.truth.json`.
+6. **Documentation (`README.md` & `docs/site/`):**
+   - Update root `README.md` supported-formats table to include ONNX.
+   - Add `docs/site/articles/formats/onnx.md` (and link in `docs/site/articles/formats/overview.md` + `toc.yml`) documenting ONNX IR versions supported, initializer vs. input handling, external data references, control-flow subgraphs, and lazy weight slicing.
 
 ## Acceptance Criteria & Verification
 ```bash
 dotnet build dot-node-viewer.slnx -c Release
 dotnet test dot-node-viewer.slnx -c Release
 dotnet publish tools/DotNodeViewer.Cli -c Release -p:PublishAot=true
+dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors
 ```
 Verify that parsing `mobilenetv2-7.onnx` allocates `< 10%` of the file's weight byte length on the managed heap.
 

@@ -11,6 +11,7 @@ Implement the frozen public Unified Graph IR (`DotNodeViewer.Core.Ir`), public f
 - `.agents/skills/port-model-format/SKILL.md` (and `references/ir-mapping-checklist.md`)
 - `.agents/skills/add-test-model/SKILL.md` (and `references/manifest-and-snapshot-schema.md`)
 - `.agents/skills/csharp-docs/SKILL.md`
+- `.agents/skills/documentation-writer/SKILL.md`
 - `.agents/skills/csharp-async/SKILL.md`
 - `.agents/skills/csharp-tunit/SKILL.md`
 - `.agents/skills/analyzing-dotnet-performance/SKILL.md`
@@ -55,12 +56,16 @@ Implement the frozen public Unified Graph IR (`DotNodeViewer.Core.Ir`), public f
    - `inspect <file>` → prints human-readable graph summary
    - `detect <file>` → prints detected format ID
 6. **ADR:** Record `docs/adr/0006-ir-v1.md` freezing the v1 Unified Graph IR.
+7. **Documentation (`README.md` & `docs/site/`):**
+   - Update root `README.md` with an overview of `DotNodeViewer.Core` and `DotNodeViewer.Cli`.
+   - Write `docs/site/articles/library/unified-graph-ir.md` (explaining `ModelGraph`, `Subgraph`, `GraphNode`, `TensorEdge`, `TensorShape`, lazy `TensorDataSlice`, and `ModelFormatRegistry` with C# code examples) and `docs/site/articles/cli/reference.md` (`snapshot`, `inspect`, `detect` usage).
 
 ## Acceptance Criteria & Verification
 ```bash
 dotnet build dot-node-viewer.slnx -c Release
 dotnet test dot-node-viewer.slnx -c Release
 dotnet publish tools/DotNodeViewer.Cli -c Release -p:PublishAot=true
+dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors
 ```
 All commands must succeed with zero warnings.
 

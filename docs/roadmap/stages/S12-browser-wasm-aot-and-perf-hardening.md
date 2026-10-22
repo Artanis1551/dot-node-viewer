@@ -17,6 +17,7 @@ Complete the `DotNodeViewer.Browser` WebAssembly head, verify zero-warning Nativ
   - `skills/avalonia-testing-diagnostics-and-performance/SKILL.md`
 - `.agents/skills/csharp-async/SKILL.md`
 - `.agents/skills/csharp-docs/SKILL.md`
+- `.agents/skills/documentation-writer/SKILL.md`
 
 ## Scope & Deliverables
 1. **WebAssembly Head (`src/DotNodeViewer.Browser/`):**
@@ -29,9 +30,9 @@ Complete the `DotNodeViewer.Browser` WebAssembly head, verify zero-warning Nativ
 3. **Comprehensive Performance Audit (`analyzing-dotnet-performance`):**
    - Scan `DotNodeViewer.Core`, `DotNodeViewer.Layout`, and `DotNodeViewer.App` for allocation, span, async, collection, and rendering anti-patterns.
    - Fix all critical and high-severity findings and write the audit summary to `docs/perf/performance-audit.md`.
-4. **NuGet Packaging & Documentation:**
+4. **NuGet Packaging & Documentation Website Finalization:**
    - Configure NuGet package metadata (`PackageId`, `Description`, `Authors`, `License`, `PackageReadmeFile`, deterministic build flags) on `DotNodeViewer.Core` and `DotNodeViewer.Layout` and verify `dotnet pack -c Release`.
-   - Rewrite root `README.md` with architecture overview, supported formats table, CLI usage, library code sample, and embedded screenshots from `docs/screenshots/`.
+   - Polish root `README.md` and `docs/site/` (adding browser/WASM deployment instructions, NativeAOT publishing guide, and API reference index) and optionally add a GitHub Pages deployment job for `docs/site/_site` in `.github/workflows/ci.yml`.
 
 ## Acceptance Criteria & Verification
 ```bash
@@ -42,6 +43,7 @@ dotnet publish src/DotNodeViewer.Desktop -c Release -p:PublishAot=true
 dotnet build src/DotNodeViewer.Browser -c Release
 dotnet pack src/DotNodeViewer.Core -c Release
 dotnet pack src/DotNodeViewer.Layout -c Release
+dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors
 ```
 
 ## Hand-off & Git Requirements

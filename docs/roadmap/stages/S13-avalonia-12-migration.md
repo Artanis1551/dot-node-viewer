@@ -12,12 +12,14 @@ If Stages S05–S12 were built on the `11.3.12` baseline from `development-plugi
   - `skills/avalonia-12-migration/SKILL.md`
   - `references/68-avalonia-12-migration-guide.md`
 - **`.agents/skills/computer-use/SKILL.md`** (mandatory live desktop verification & screenshots after migration)
+- `.agents/skills/documentation-writer/SKILL.md`
 
 ## Scope & Deliverables
 1. Update `Avalonia*` package versions in `Directory.Packages.props` to the latest stable `12.x` release.
 2. Apply any API, styling, rendering, or headless testing updates documented in `references/68-avalonia-12-migration-guide.md`.
 3. Update `docs/adr/0005-avalonia-version.md`.
 4. Run all headless UI tests and perform a live `computer-use` screenshot pass (`docs/screenshots/S13/`) to confirm visual and interactive parity.
+5. Update `README.md` and `docs/site/` to reflect Avalonia 12 support and verify `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`.
 
 ## Acceptance Criteria & Verification
 ```bash

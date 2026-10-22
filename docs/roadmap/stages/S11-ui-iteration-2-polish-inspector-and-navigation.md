@@ -17,6 +17,7 @@ Deliver the complete, polished desktop visualizer experience across all 5 model 
   - `skills/avalonia-input-and-commands/SKILL.md`
 - `.agents/skills/csharp-async/SKILL.md`
 - `.agents/skills/csharp-tunit/SKILL.md`
+- `.agents/skills/documentation-writer/SKILL.md`
 
 ## Scope & Deliverables
 1. **On-Demand Tensor Weight Inspector (`TensorInspectorViewModel`):**
@@ -55,6 +56,9 @@ Deliver the complete, polished desktop visualizer experience across all 5 model 
      4. **PyTorch** (`tiny_cnn_export.pt2` and `tiny_cnn_traced.pt` — using Search `Ctrl+F` to jump to a node).
      5. **Keras** (`tiny_functional_residual.keras` — verifying skip-connection layout and minimap in both Light and Dark themes).
    - Save all screenshots under `docs/screenshots/S11/` and link them with critique notes in `docs/roadmap/PROGRESS.md`.
+3. **Documentation (`README.md` & `docs/site/`):**
+   - Update root `README.md` and `docs/site/articles/visualizer/user-guide.md` with documentation and screenshots for the On-Demand Tensor Weight Inspector, full-graph Search (`Ctrl+F`), Subgraph Breadcrumb Navigation, Minimap, and a dedicated guide `docs/site/articles/visualizer/inspecting-edge-conversions.md` for developers verifying converted models (e.g., `.pt2` → `.tflite` / `.pte`).
+   - Verify `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`.
 
 ## Hand-off & Git Requirements
 - Work on branch `stage/S11-ui-polish-and-inspector` (`git checkout -b stage/S11-ui-polish-and-inspector`).

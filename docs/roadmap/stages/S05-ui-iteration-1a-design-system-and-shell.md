@@ -19,6 +19,7 @@ Establish a distinctive, intentional visual design system (`docs/design/design-s
   - `skills/avalonia-accessibility-and-validation/SKILL.md`
 - `.agents/skills/csharp-async/SKILL.md`
 - `.agents/skills/csharp-tunit/SKILL.md`
+- `.agents/skills/documentation-writer/SKILL.md`
 
 ## Scope & Deliverables
 
@@ -62,6 +63,9 @@ Before writing UI code, author `docs/design/design-system.md` following `.agents
      4. Theme toggle (Light vs Dark)
    - Use `computer_use(action="capture", mode="som", app="DotNodeViewer")` (and `mode="vision"`) in the background without stealing focus to capture screenshots and verify the AT-SPI element tree.
    - Save screenshots under `docs/screenshots/S05/`, critique them against `docs/design/design-system.md`, fix any visual flaws, and link the final screenshots in `docs/roadmap/PROGRESS.md`.
+3. **Documentation (`README.md` & `docs/site/`):**
+   - Update root `README.md` with desktop app launch instructions and initial shell screenshots.
+   - Update `docs/site/articles/visualizer/user-guide.md` covering the desktop shell, CLI arguments, file loading, and theme switching, and verify `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`.
 
 ## Hand-off & Git Requirements
 - Work on branch `stage/S05-ui-design-and-shell` (`git checkout -b stage/S05-ui-design-and-shell`).

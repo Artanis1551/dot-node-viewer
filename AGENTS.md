@@ -26,7 +26,11 @@ Development is organized into sequential stages (`S00` through `S13`). Every age
    - All public types and members have XML documentation comments (`/// <summary>`).
    - Golden topology snapshots (`*.expected.json`) are cross-checked against an independent ground truth (`*.truth.json` from Python model generators or format inspection)—**never blindly regenerated**.
    - **UI Changes:** Whenever any UI change is made, you MUST follow the **Mandatory Live UI Verification & Screenshot Rule** (Section 4).
-7. **Hand-off:** Append a structured completion entry to `docs/roadmap/PROGRESS.md` (branch name, commits made, what was built, deviations, known limitations, new ADRs, test count, screenshots taken, and exact verification commands run) and commit it on your stage branch, leaving `git status` clean.
+   - **Update `README.md` & Website Documentation (`docs/site/`) via `documentation-writer`:** Before a stage can be marked done:
+     1. Read [`.agents/skills/documentation-writer/SKILL.md`](.agents/skills/documentation-writer/SKILL.md) and structure documentation updates following the **Diátaxis framework** (Tutorials, How-to Guides, Reference, Explanation).
+     2. The repository's root [`README.md`](README.md) MUST be updated to reflect the capabilities, supported formats, CLI/UI features, or architecture added in that stage.
+     3. The documentation site files in `docs/site/` (DocFX Markdown guides, format support pages, CLI/UI user guides, library API articles, and `toc.yml` table-of-contents files) MUST be updated in lockstep, and `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors` must pass cleanly.
+7. **Hand-off:** Append a structured completion entry to `docs/roadmap/PROGRESS.md` (branch name, commits made, what was built, `README.md` and `docs/site/` updates, deviations, known limitations, new ADRs, test count, screenshots taken, and exact verification commands run) and commit it on your stage branch, leaving `git status` clean.
 
 ---
 
@@ -43,6 +47,12 @@ dot-node-viewer.slnx
 ├── tools/
 │   ├── DotNodeViewer.Cli/        # CLI tool: `snapshot`, `inspect`, `detect`
 │   └── model-gen/                # Deterministic Python scripts + pinned requirements (`onnx/`, `tf/`, `torch/`)
+├── docs/
+│   ├── site/                     # DocFX documentation website source (guides, format docs, CLI/UI manual, C# API metadata)
+│   ├── adr/                      # Architecture Decision Records
+│   ├── design/                   # UI design system & token specification
+│   ├── screenshots/              # Stage verification screenshots (`S05/`, `S06/`, `S11/`, `S12/`)
+│   └── roadmap/                  # `PROGRESS.md` and stage briefs (`stages/S00..S13-*.md`)
 └── tests/
     ├── DotNodeViewer.Core.Tests/ # TUnit tests: synthetic fixtures + manifest-driven golden snapshots
     ├── DotNodeViewer.Layout.Tests/
@@ -108,6 +118,7 @@ Whenever you make **any UI changes** (in Stages `S05`, `S06`, `S11`, `S12`, `S13
 | `add-test-model` | `.agents/skills/add-test-model/SKILL.md` | Staging a test model, registering in `models.manifest.json`, and creating `.expected.json` |
 | `csharp-tunit` | `.agents/skills/csharp-tunit/SKILL.md` | Writing or running unit/data-driven tests with TUnit |
 | `csharp-docs` | `.agents/skills/csharp-docs/SKILL.md` | Documenting public/internal C# types with XML comments |
+| `documentation-writer` | `.agents/skills/documentation-writer/SKILL.md` | Authoring and maintaining `README.md` and `docs/site/` (Diátaxis framework: Tutorials, How-to Guides, Reference, Explanation) |
 | `csharp-async` | `.agents/skills/csharp-async/SKILL.md` | Writing async streaming I/O or background tasks |
 | `analyzing-dotnet-performance` | `.agents/skills/analyzing-dotnet-performance/SKILL.md` | Auditing hot paths and allocation budgets |
 | `frontend-design` | `.agents/skills/frontend-design/SKILL.md` | Designing or critiquing UI identity, typography, palette, and copywriting |
@@ -136,4 +147,7 @@ dotnet run --project tools/DotNodeViewer.Cli -c Release -- inspect <path-to-mode
 
 # Verify NativeAOT & trimming cleanliness on Core + CLI
 dotnet publish tools/DotNodeViewer.Cli -c Release -p:PublishAot=true
+
+# Build the static documentation website (DocFX) from docs/site/ + C# XML docs
+dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors
 ```
