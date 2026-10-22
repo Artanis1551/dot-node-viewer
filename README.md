@@ -7,13 +7,15 @@
 ## Architectural Highlights
 
 - **Pure Immutable C# Record Unified Graph IR (`DotNodeViewer.Core.Ir`):**
-  Every supported model format maps into a strongly typed, immutable record hierarchy (`ModelGraph`, `Subgraph`, `GraphNode`, `NodePort`, `GraphPort`, `TensorEdge`, `TensorDescriptor`, `TensorShape`, `NodeAttribute`, `QuantizationInfo`, `TensorDataSource`). Format-specific binary schemas are strictly `internal`.
-- **Zero-Allocation Topology Scanning & Lazy Weight Slices:**
+  Every supported model format maps into a strongly typed, immutable record hierarchy (`ModelGraph`, `Subgraph`, `GraphNode`, `NodePort`, `GraphPort`, `TensorEdge`, `TensorDescriptor`, `TensorShape`, `TensorDimension`, `NodeAttribute`, `AttributeValue`, `QuantizationInfo`, `TensorDataSource`). Format-specific binary schemas are strictly `internal`.
+- **Zero-Allocation Topology Scanning & Lazy Weight Slices (`DotNodeViewer.Core.Abstractions`):**
   Model parsers never buffer full model files in memory or allocate arrays for tensor weights during graph extraction. Raw weight payloads are recorded as lightweight `TensorDataSlice(StreamOffset, ByteLength, DataType, Encoding)` references and loaded on demand via `TensorDataLoader`.
+- **Non-Destructive Probing & Reflection-Free Format Registry:**
+  `ModelProbe` peeks the first 64 header bytes and lazily inspects ZIP central-directory entries while restoring `Stream.Position`. `ModelFormatRegistry` wires `IModelFormatDetector` and `IModelFormatReader` implementations without runtime reflection.
 - **Zero UI Leakage in Core & Layout:**
-  `DotNodeViewer.Core` and `DotNodeViewer.Layout` have zero dependencies on `Avalonia`, `SkiaSharp`, or rendering packages—enforced at build time via MSBuild guardrails in `Directory.Build.props`.
+  `DotNodeViewer.Core` and `DotNodeViewer.Layout` have zero dependencies on `Avalonia`, `SkiaSharp`, or rendering packages—enforced at build time via MSBuild guardrails in `Directory.Build.props` and at test time via `PublicApiEncapsulationTests`.
 - **NativeAOT & WebAssembly Ready:**
-  Library projects compile with `IsAotCompatible=true`, `IsTrimmable=true`, `EnableTrimAnalyzer=true`, and `EnableAotAnalyzer=true` with `TreatWarningsAsErrors=true`.
+  Library projects and `DotNodeViewer.Cli` compile with `IsAotCompatible=true`, `IsTrimmable=true`, `EnableTrimAnalyzer=true`, and `EnableAotAnalyzer=true` with `TreatWarningsAsErrors=true`.
 
 ---
 
@@ -32,12 +34,55 @@ dot-node-viewer.slnx
 │   └── model-gen/                # Deterministic Python scripts + pinned requirements (onnx/, tf/, torch/)
 ├── docs/
 │   ├── site/                     # DocFX documentation website source (Diátaxis guides + C# API reference)
-│   ├── adr/                      # Architecture Decision Records (0001..0005+)
+│   ├── adr/                      # Architecture Decision Records (0001..0006+)
 │   └── roadmap/                  # PROGRESS.md and sequential stage briefs (S00..S13)
 └── tests/
     ├── DotNodeViewer.Core.Tests/ # TUnit tests: synthetic fixtures + manifest-driven golden snapshots
     ├── DotNodeViewer.Layout.Tests/
     └── DotNodeViewer.App.Tests/  # Headless Avalonia + ViewModel tests
+```
+
+---
+
+## Core Library (`DotNodeViewer.Core`) Overview
+
+`DotNodeViewer.Core` can be embedded directly in any .NET 10 application, CLI tool, or WebAssembly app to inspect neural network topologies:
+
+```csharp
+using DotNodeViewer.Core.Abstractions;
+using DotNodeViewer.Core.Ir;
+
+await using FileStream stream = File.OpenRead("model.onnx");
+
+// Detect and extract the Unified Graph IR without loading raw weight tensors into memory:
+ModelGraph graph = await ModelFormatRegistry.Default.ReadAsync(
+    stream,
+    new ModelReadOptions { FileName = "model.onnx" });
+
+Subgraph primary = graph.PrimarySubgraph!;
+GraphIndex index = new(primary);
+
+foreach (GraphNode node in primary.Nodes)
+{
+    Console.WriteLine($"{node.Name}: {node.Operator.Name} ({node.Operator.Category})");
+}
+```
+
+---
+
+## CLI Tool (`DotNodeViewer.Cli`)
+
+`DotNodeViewer.Cli` provides three commands for inspecting model files and generating golden regression snapshots:
+
+```bash
+# Detect a model file's format ID from its header / container entries
+dotnet run --project tools/DotNodeViewer.Cli -c Release -- detect <path-to-model>
+
+# Print a human-readable summary of format, producer, subgraphs, inputs, and outputs
+dotnet run --project tools/DotNodeViewer.Cli -c Release -- inspect <path-to-model>
+
+# Emit a deterministic .expected.json topology snapshot to stdout
+dotnet run --project tools/DotNodeViewer.Cli -c Release -- snapshot <path-to-model> --id <model-id>
 ```
 
 ---
@@ -54,7 +99,10 @@ dotnet tool restore
 dotnet build dot-node-viewer.slnx -c Release
 
 # Run all TUnit tests on Microsoft.Testing.Platform
-dotnet test dot-node-viewer.slnx -c Release
+dotnet test --solution dot-node-viewer.slnx -c Release
+
+# Publish NativeAOT CLI binary to verify AOT & trimming compliance
+dotnet publish tools/DotNodeViewer.Cli -c Release -p:PublishAot=true
 
 # Build the DocFX documentation website and API reference
 dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors

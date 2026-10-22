@@ -7,7 +7,7 @@ Every stage agent MUST read this file before starting work and append a completi
 | Stage | Brief | Branch | Status | Notes |
 |---|---|---|---|---|
 | **S00** | [`S00-bootstrap-and-governance.md`](stages/S00-bootstrap-and-governance.md) | `stage/S00-bootstrap-and-governance` | Complete | Solution scaffolding, `Directory.Build.props`, ADRs `0001`–`0005`, DocFX site, CI |
-| **S01** | [`S01-core-ir-harness-and-cli.md`](stages/S01-core-ir-harness-and-cli.md) | `stage/S01-core-ir-harness-and-cli` | Pending | Unified Graph IR records, `ModelFormatRegistry`, `ModelFixtureLoader`, `DotNodeViewer.Cli` |
+| **S01** | [`S01-core-ir-harness-and-cli.md`](stages/S01-core-ir-harness-and-cli.md) | `stage/S01-core-ir-harness-and-cli` | Complete | Unified Graph IR records, `ModelFormatRegistry`, `ModelFixtureLoader`, `DotNodeViewer.Cli` |
 | **S02** | [`S02-onnx-parser-and-model-gen.md`](stages/S02-onnx-parser-and-model-gen.md) | `stage/S02-onnx-parser` | Pending | `ProtoReader`, ONNX detector & streaming reader, `tools/model-gen/onnx`, base ONNX models |
 | **S03** | [`S03-tflite-parser-and-flatbuffers.md`](stages/S03-tflite-parser-and-flatbuffers.md) | `stage/S03-tflite-parser` | Pending | FlatBuffers support, TFLite detector & reader, quantization metadata, `tools/model-gen/tf` |
 | **S04** | [`S04-layout-engine.md`](stages/S04-layout-engine.md) | `stage/S04-layout-engine` | Pending | `DotNodeViewer.Layout` pure C# Sugiyama/dagre layered layout + `ModelGraphLayoutAdapter` |
@@ -74,3 +74,46 @@ Every stage agent MUST read this file before starting work and append a completi
   - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
   - `grep -r "NetronNet" .agents/` (no matches)
 - **Next Stage:** Run **Stage S01** (`docs/roadmap/stages/S01-core-ir-harness-and-cli.md`).
+
+### Stage S01 — Core IR, Abstractions, Test Harness & Snapshot CLI
+- **Branch:** `stage/S01-core-ir-harness-and-cli`
+- **Commits:**
+  - `a88de35` — `S01: add Unified Graph IR records and ADR 0006`
+  - `d2f59d9` — `S01: add abstractions and RandomAccessSource`
+  - `c44e958` — `S01: add ModelFixtureLoader, manifest tests, and snapshot CLI`
+  - *(final commit)* — `S01: update README, DocFX site, and PROGRESS.md`
+- **What Was Built:**
+  - Implemented the frozen public Unified Graph IR in `src/DotNodeViewer.Core/Ir/` with complete XML documentation:
+    - `ModelGraph`, `ModelFormatInfo`, `ModelFormatId`, `Subgraph`, `GraphNode`, `OperatorInfo`, `OperatorCategory`, `NodePort`, `GraphPort`
+    - `TensorEdge`, `TensorKind`, `TensorDescriptor`, `DataType`, `TensorShape`, and closed union `TensorDimension` (`Fixed`, `Symbolic`, `Dynamic`)
+    - Closed union `QuantizationInfo` (`AffineQuantization`, `BlockQuantization`)
+    - Closed union `TensorDataSource` (`TensorDataSlice`, `ExternalTensorDataReference`) and `TensorDataEncoding` (`Raw`, `VarintPacked`)
+    - `NodeAttribute` and 13-case closed union `AttributeValue` (`Int64`, `Float64`, `Bool`, `String`, `Int64List`, `Float64List`, `StringList`, `DataTypeValue`, `ShapeValue`, `Tensor`, `Graph`, `GraphList`, `Bytes`)
+    - `ParseDiagnostic` and `DiagnosticSeverity`
+  - Implemented public parser and inspection abstractions in `src/DotNodeViewer.Core/Abstractions/`:
+    - `IModelFormatDetector`, `IModelFormatReader`, `ModelProbe` (64-byte header peek, normalized file extension, lazy ZIP central-directory entry listing, always restoring `Stream.Position`), `ModelFormatRegistry` (reflection-free registration, detection, and `ReadAsync`), `ModelReadOptions`, `ModelParseException` (with `FileOffset` and `Context`), `GraphIndex` (lazy producer/consumer and 1-hop upstream/downstream lookup), and `TensorDataLoader` (zero-allocation on-demand slice reading).
+  - Implemented internal I/O primitives in `src/DotNodeViewer.Core/IO/`:
+    - `RandomAccessSource`: LRU 64 KB page cache backed by `ArrayPool<byte>.Shared` over a seekable `Stream` with `GetSpan`, `ReadExactly`, and primitive readers, throwing `ModelParseException` on non-seekable or out-of-bounds reads.
+    - `BinaryCursor`: bounds-checked sequential `BinaryPrimitives` span reader tracking `FileOffset`.
+  - Implemented the manifest-driven TUnit test harness in `tests/DotNodeViewer.Core.Tests/`:
+    - `ModelFixtureLoader`, `SnapshotBuilder`, `HarnessJsonContext` (source-generated JSON serialization for `models.manifest.json` and `*.expected.json`), `AllocationProbe` (`GC.GetAllocatedBytesForCurrentThread()`), `ModelManifestTests.ParseRegisteredModel_MatchesExpectedTopology` (`[Test]` + `[MethodDataSource]`), `PublicApiEncapsulationTests`, and unit tests for IR records, `ModelProbe`, `ModelFormatRegistry`, `GraphIndex`, `TensorDataLoader`, `RandomAccessSource`, and `BinaryCursor`.
+    - Initialized `tests/DotNodeViewer.Core.Tests/Fixtures/models.manifest.json` (`{"schemaVersion": 1, "models": []}`).
+  - Implemented `tools/DotNodeViewer.Cli/` (`detect <file>`, `inspect <file>`, and `snapshot <file> --id <model-id>`) with NativeAOT-compatible source-generated JSON snapshot output.
+- **`README.md` & `docs/site/` Updates:**
+  - Updated root [`README.md`](../../README.md) with programmatic `DotNodeViewer.Core` usage examples, `DotNodeViewer.Cli` command reference, and NativeAOT publish instructions.
+  - Expanded [`docs/site/articles/library/unified-graph-ir.md`](../site/articles/library/unified-graph-ir.md) with comprehensive reference and C# usage examples for `ModelGraph`, `Subgraph`, `GraphNode`, `TensorEdge`, `TensorShape`, `TensorDataSlice`, `ModelFormatRegistry`, `GraphIndex`, and `TensorDataLoader`.
+  - Expanded [`docs/site/articles/cli/reference.md`](../site/articles/cli/reference.md) with complete `detect`, `inspect`, and `snapshot` usage and exit codes.
+- **New ADRs Recorded:**
+  - [`docs/adr/0006-ir-v1.md`](../adr/0006-ir-v1.md) — Frozen v1 Unified Graph IR & Format Abstraction Contract.
+- **Deviations & Known Limitations:**
+  - None. When `models.manifest.json` has an empty `models` array in Stage S01, `ModelManifestTests.GetRegisteredModels()` yields a single `null` sentinel so TUnit executes `ParseRegisteredModel_MatchesExpectedTopology` and validates the manifest schema; once Stage S02 registers ONNX fixtures, `GetRegisteredModels()` yields each registered `ModelManifestEntry`.
+- **Test Count:** 19 passed (`DotNodeViewer.Core.Tests`: 17, `DotNodeViewer.Layout.Tests`: 1, `DotNodeViewer.App.Tests`: 1), 0 failed, 0 skipped.
+- **Screenshots Taken:** None (no UI changes in Stage S01).
+- **Verification Commands Run:**
+  - `dotnet build dot-node-viewer.slnx -c Release --no-restore`
+  - `dotnet test --solution dot-node-viewer.slnx -c Release --no-build`
+  - `dotnet publish tools/DotNodeViewer.Cli -c Release -p:PublishAot=true`
+  - `./tools/DotNodeViewer.Cli/bin/Release/net10.0/linux-x64/publish/DotNodeViewer.Cli --help`
+  - `dotnet tool run docfx metadata docs/site/docfx.json --warningsAsErrors`
+  - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
+- **Next Stage:** Run **Stage S02** (`docs/roadmap/stages/S02-onnx-parser-and-model-gen.md`).
