@@ -1,3 +1,4 @@
+using DotNodeViewer.Core.Formats.Onnx;
 using DotNodeViewer.Core.Ir;
 
 namespace DotNodeViewer.Core.Abstractions;
@@ -178,6 +179,7 @@ public sealed class ModelFormatRegistry
     private static ModelFormatRegistry CreateDefault()
     {
         ModelFormatRegistry registry = new();
+        registry.Register(OnnxFormatDetector.Instance, OnnxFormatReader.Instance);
         return registry;
     }
 
