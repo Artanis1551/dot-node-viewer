@@ -1,0 +1,4 @@
+interface:
+  display_name: "Development Plugin for Avalonia"
+  short_description: "Repo-local umbrella skill that routes Avalonia work to focused plugin skills"
+  default_prompt: "Use $development-plugin-for-avalonia to route broad Avalonia work in this repo to the right focused skill"
