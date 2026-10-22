@@ -44,6 +44,19 @@ dot-node-viewer.slnx
 
 ---
 
+## Supported Model Formats
+
+| Format | Extensions | Format ID | Capabilities | Status |
+|---|---|---|---|---|
+| [**ONNX**](docs/site/articles/formats/onnx.md) | `.onnx` | `onnx` | Streaming `ModelProto`/`GraphProto`, IR v3 initializer filtering, symbolic/dynamic shapes, `If`/`Loop`/`Scan` subgraphs, `FunctionProto`, lazy weight slices & `external_data` references | **Supported (S02)** |
+| **TensorFlow Lite** | `.tflite` | `tflite` | FlatBuffers (`TFL3`), affine/block quantization | Planned (S03) |
+| **ExecuTorch** | `.pte` | `executorch` | FlatBuffers (`ET12`), lowered delegate payloads | Planned (S07) |
+| **PyTorch (`state_dict` & TorchScript)** | `.pt`, `.pth` | `pytorch` | ZIP container, safe `PickleMachine`, TorchScript graph/module fallback | Planned (S08) |
+| **PyTorch ExportedProgram** | `.pt2` | `pytorch-pt2` | `torch.export` archive & `ExportedProgram` JSON | Planned (S09) |
+| **Keras v3 & Legacy HDF5** | `.keras`, `.h5` | `keras` | Keras v3 `config.json` + HDF5 weight slices (`PureHDF`) | Planned (S10) |
+
+---
+
 ## Core Library (`DotNodeViewer.Core`) Overview
 
 `DotNodeViewer.Core` can be embedded directly in any .NET 10 application, CLI tool, or WebAssembly app to inspect neural network topologies:
