@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>DotNodeViewer.Core</RootNamespace>
+    <AssemblyName>DotNodeViewer.Core</AssemblyName>
+    <Description>Pure C# neural network model format detection, streaming graph extraction, and Unified Graph IR.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="DotNodeViewer.Core.Tests" />
+  </ItemGroup>
+</Project>
+

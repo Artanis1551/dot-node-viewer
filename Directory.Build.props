@@ -1,0 +1,52 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework Condition="'$(TargetFramework)' == ''">net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'DotNodeViewer.Core' or '$(MSBuildProjectName)' == 'DotNodeViewer.Layout'">
+    <IsAotCompatible>true</IsAotCompatible>
+    <IsTrimmable>true</IsTrimmable>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <EnableAotAnalyzer>true</EnableAotAnalyzer>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('.Tests'))">
+    <!-- Allow MethodName_Scenario_ExpectedBehavior naming convention in TUnit test projects -->
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+  </PropertyGroup>
+
+  <ItemGroup Condition="$(MSBuildProjectName.EndsWith('.Tests'))">
+    <Compile Include="$(MSBuildThisFileDirectory)tests\TestEnvironmentInitializer.cs" Link="TestEnvironmentInitializer.cs" />
+  </ItemGroup>
+
+  <Target Name="DisableAvaloniaBuildTelemetry"
+          BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <UsedAvaloniaProducts />
+    </PropertyGroup>
+  </Target>
+
+  <Target Name="ValidateNoUiDependenciesInCoreAndLayout"
+          BeforeTargets="CollectPackageReferences;ResolveAssemblyReferences;BeforeBuild"
+          Condition="'$(MSBuildProjectName)' == 'DotNodeViewer.Core' or '$(MSBuildProjectName)' == 'DotNodeViewer.Layout'">
+    <ItemGroup>
+      <_ForbiddenUiPackage Include="@(PackageReference)"
+                           Condition="$([System.String]::Copy('%(Identity)').StartsWith('Avalonia', System.StringComparison.OrdinalIgnoreCase)) or $([System.String]::Copy('%(Identity)').StartsWith('SkiaSharp', System.StringComparison.OrdinalIgnoreCase))" />
+      <_ForbiddenUiProject Include="@(ProjectReference)"
+                           Condition="$([System.String]::Copy('%(Filename)').Contains('App', System.StringComparison.OrdinalIgnoreCase)) or $([System.String]::Copy('%(Filename)').Contains('Desktop', System.StringComparison.OrdinalIgnoreCase)) or $([System.String]::Copy('%(Filename)').Contains('Browser', System.StringComparison.OrdinalIgnoreCase))" />
+    </ItemGroup>
+    <Error Condition="'@(_ForbiddenUiPackage)' != ''"
+           Text="Architectural guardrail violation: $(MSBuildProjectName) must not reference any Avalonia* or SkiaSharp* package (found: @(_ForbiddenUiPackage))." />
+    <Error Condition="'@(_ForbiddenUiProject)' != ''"
+           Text="Architectural guardrail violation: $(MSBuildProjectName) must not reference any UI project (found: @(_ForbiddenUiProject))." />
+  </Target>
+</Project>

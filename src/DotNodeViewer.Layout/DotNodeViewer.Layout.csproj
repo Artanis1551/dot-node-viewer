@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>DotNodeViewer.Layout</RootNamespace>
+    <AssemblyName>DotNodeViewer.Layout</AssemblyName>
+    <Description>Pure C# Sugiyama layered directed-graph layout engine for DotNodeViewer.Core graphs.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DotNodeViewer.Core\DotNodeViewer.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="DotNodeViewer.Layout.Tests" />
+  </ItemGroup>
+</Project>
+

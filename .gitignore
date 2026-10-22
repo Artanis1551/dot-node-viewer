@@ -55,3 +55,19 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# Model fixture cache (> 256 KB models managed by ModelFixtureLoader)
+.model-cache/
+**/Fixtures/.model-cache/
+
+# Python virtual environments & caches for deterministic model generation
+tools/model-gen/**/.venv/
+.venv/
+__pycache__/
+*.py[cod]
+
+# DocFX generated site & API metadata
+docs/site/_site/
+docs/site/api/*.yml
+docs/site/api/.manifest
+

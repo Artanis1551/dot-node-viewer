@@ -1,0 +1,28 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Testing -->
+    <PackageVersion Include="TUnit" Version="1.76.0" />
+
+    <!-- UI & MVVM (Avalonia 11.3.12 baseline per ADR 0005) -->
+    <PackageVersion Include="Avalonia" Version="11.3.12" />
+    <PackageVersion Include="Avalonia.Desktop" Version="11.3.12" />
+    <PackageVersion Include="Avalonia.Browser" Version="11.3.12" />
+    <PackageVersion Include="Avalonia.Themes.Fluent" Version="11.3.12" />
+    <PackageVersion Include="Avalonia.Headless" Version="11.3.12" />
+    <PackageVersion Include="Avalonia.Diagnostics" Version="11.3.12" />
+    <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <!-- Transitive security bump for Avalonia.FreeDesktop (GHSA-xrw6-gwf8-vvr9) -->
+    <PackageVersion Include="Tmds.DBus.Protocol" Version="0.21.3" />
+
+    <!-- Format Parsing Primitives (Internal to DotNodeViewer.Core in Stages S02-S10) -->
+    <PackageVersion Include="Google.Protobuf" Version="3.29.3" />
+    <PackageVersion Include="Google.FlatBuffers" Version="24.3.25" />
+    <PackageVersion Include="FlatSharp.Runtime" Version="7.8.0" />
+    <PackageVersion Include="PureHDF" Version="1.0.0-beta.17" />
+  </ItemGroup>
+</Project>

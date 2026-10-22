@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Stubbed as a standard net10.0 library referencing DotNodeViewer.App and Avalonia.Browser
+    until Stage S12 when the wasm-tools workload and net10.0-browser head are activated.
+  -->
+  <PropertyGroup>
+    <RootNamespace>DotNodeViewer.Browser</RootNamespace>
+    <AssemblyName>DotNodeViewer.Browser</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DotNodeViewer.App\DotNodeViewer.App.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Browser" />
+  </ItemGroup>
+</Project>
+
