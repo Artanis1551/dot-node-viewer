@@ -58,6 +58,9 @@ dotnet test dot-node-viewer.slnx -c Release
 
 # Build the DocFX documentation website and API reference
 dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors
+
+# Build (metadata + site) and serve the documentation website locally at http://localhost:8080
+dotnet tool run docfx docs/site/docfx.json --serve
 ```
 
 ---

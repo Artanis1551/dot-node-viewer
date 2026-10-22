@@ -56,12 +56,25 @@ dotnet test dot-node-viewer.slnx -c Release
 
 ---
 
-## Step 5: Build the Documentation Website
+## Step 5: Build & Host the Documentation Website Locally
 
 Generate C# API metadata from `DotNodeViewer.Core` and `DotNodeViewer.Layout` and build the static documentation site into `docs/site/_site/`:
 
 ```bash
+dotnet tool run docfx metadata docs/site/docfx.json --warningsAsErrors
 dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors
+```
+
+To build (both API metadata and Markdown articles) and host the documentation website locally with live preview at `http://localhost:8080`:
+
+```bash
+dotnet tool run docfx docs/site/docfx.json --serve
+```
+
+If you have already built `docs/site/_site/` and only want to start the static HTTP server (optionally specifying a custom port with `-p`):
+
+```bash
+dotnet tool run docfx serve docs/site/_site -p 8080
 ```
 
 ---
