@@ -1,0 +1,19 @@
+- name: Tutorials
+  items:
+    - name: Getting Started
+      href: getting-started.md
+- name: How-To Guides
+  items:
+    - name: Visualizer User Guide
+      href: visualizer/user-guide.md
+- name: Reference
+  items:
+    - name: Supported Model Formats
+      href: formats/overview.md
+    - name: CLI Reference (DotNodeViewer.Cli)
+      href: cli/reference.md
+- name: Explanation
+  items:
+    - name: Unified Graph IR & Architecture
+      href: library/unified-graph-ir.md
+
