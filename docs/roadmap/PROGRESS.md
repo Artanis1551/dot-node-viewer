@@ -9,7 +9,7 @@ Every stage agent MUST read this file before starting work and append a completi
 | **S00** | [`S00-bootstrap-and-governance.md`](stages/S00-bootstrap-and-governance.md) | `stage/S00-bootstrap-and-governance` | Complete | Solution scaffolding, `Directory.Build.props`, ADRs `0001`–`0005`, DocFX site, CI |
 | **S01** | [`S01-core-ir-harness-and-cli.md`](stages/S01-core-ir-harness-and-cli.md) | `stage/S01-core-ir-harness-and-cli` | Complete | Unified Graph IR records, `ModelFormatRegistry`, `ModelFixtureLoader`, `DotNodeViewer.Cli` |
 | **S02** | [`S02-onnx-parser-and-model-gen.md`](stages/S02-onnx-parser-and-model-gen.md) | `stage/S02-onnx-parser` | Complete | `ProtoReader`, ONNX detector & streaming reader, `tools/model-gen/onnx`, base ONNX models |
-| **S03** | [`S03-tflite-parser-and-flatbuffers.md`](stages/S03-tflite-parser-and-flatbuffers.md) | `stage/S03-tflite-parser` | Pending | FlatBuffers support, TFLite detector & reader, quantization metadata, `tools/model-gen/tf` |
+| **S03** | [`S03-tflite-parser-and-flatbuffers.md`](stages/S03-tflite-parser-and-flatbuffers.md) | `stage/S03-tflite-parser` | Complete | FlatBuffers support, TFLite detector & reader, quantization metadata, `tools/model-gen/tf` |
 | **S04** | [`S04-layout-engine.md`](stages/S04-layout-engine.md) | `stage/S04-layout-engine` | Pending | `DotNodeViewer.Layout` pure C# Sugiyama/dagre layered layout + `ModelGraphLayoutAdapter` |
 | **S05** | [`S05-ui-iteration-1a-design-system-and-shell.md`](stages/S05-ui-iteration-1a-design-system-and-shell.md) | `stage/S05-ui-design-and-shell` | Pending | `frontend-design` token system, Avalonia shell, file loading, `computer-use` screenshots |
 | **S06** | [`S06-ui-iteration-1b-graph-canvas-and-properties.md`](stages/S06-ui-iteration-1b-graph-canvas-and-properties.md) | `stage/S06-ui-graph-canvas` | Pending | Custom `GraphCanvas`, pan/zoom/hit-test, basic node properties sidebar, `computer-use` verification |
@@ -155,3 +155,37 @@ Every stage agent MUST read this file before starting work and append a completi
   - `dotnet tool run docfx metadata docs/site/docfx.json --warningsAsErrors`
   - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
 - **Next Stage:** Run **Stage S03** (`docs/roadmap/stages/S03-tflite-parser-and-flatbuffers.md`).
+
+### Stage S03 — TFLite Parser & FlatBuffers Support
+- **Branch:** `stage/S03-tflite-parser`
+- **Commits:**
+  - `e03b969` — `S03: add FlatBuffers reading support`
+  - `22c0d77` — `S03: implement TFLite detector, reader, and quantization mapping`
+  - `e261c3a` — `S03: add TFLite model-gen, fixtures, and golden snapshots`
+  - *(final commit)* — `S03: update README, DocFX site, and PROGRESS.md`
+- **What Was Built:**
+  - Implemented `FlatBufferTable` (`src/DotNodeViewer.Core/IO/FlatBuffers/FlatBufferTable.cs`, `internal`) providing bounds-checked FlatBuffers vtable/table/vector/union reading over `RandomAccessSource` and zero-allocation `CaptureByteVectorSlice` for extracting `TensorDataSlice` byte ranges without reading payload bytes onto the managed heap.
+  - Implemented the TensorFlow Lite (`TFL3`) parser under `src/DotNodeViewer.Core/Formats/Tflite/` (`internal`) and registered it in `ModelFormatRegistry.Default`:
+    - `TfliteFormatDetector`: validates the `TFL3` file identifier at bytes `4..8`, root table offset at `0..4`, and root vtable bounds while restoring `Stream.Position`.
+    - `TfliteFormatReader`: decodes `operator_codes` (`builtin_code` vs `deprecated_builtin_code`, `version`, and `custom_code`), `buffers` (both inline `Buffer.data` byte vectors and v3c `offset`/`size` fields as lazy `TensorDataSlice` references), `subgraphs` (`tensors`, `inputs`, `outputs`, `operators`, `name`), `shape` and `shape_signature` (`-1` mapped to `TensorDimension.Dynamic`), `QuantizationParameters` (`scale`, `zero_point`, `quantized_dimension` mapped to `AffineQuantization`), `builtin_options` (including `padding`, `strides`, `dilations`, `depth_multiplier`, `filter_size`, `fused_activation_function`, `keep_dims`, `axis`, `new_shape`, etc.), `IF`/`WHILE`/`CALL_ONCE` nested `AttributeValue.Graph` attributes, and `CUSTOM` delegate operators (`custom_code` and `custom_options` as `AttributeValue.Bytes(TensorDataSlice)`).
+    - `TfliteOperatorCatalog`: maps TFLite `BuiltinOperator` codes to canonical operator names, `OperatorCategory`, formal port names, and `DataType`.
+  - Created `tools/model-gen/tf/requirements.txt` (`tensorflow-cpu==2.18.0`, `keras==3.8.0`, `h5py==3.12.1`, `numpy==1.26.4`) and `tools/model-gen/tf/gen_tflite.py` generating `tiny_cnn_float.tflite`, `tiny_cnn_int8.tflite`, `tiny_while.tflite` and independent `.truth.json` ground-truth metadata.
+  - Staged and registered 3 committed fixtures (`tiny_cnn_float.tflite`, `tiny_cnn_int8.tflite`, `tiny_while.tflite`) and 1 cached fixture (`mobilenet_v2_1.0_224_quant.tflite`, 3.6 MB from `google-coral/test_data`) in `tests/DotNodeViewer.Core.Tests/Fixtures/models.manifest.json` with golden `.expected.json` snapshots verified against `.truth.json`.
+  - Added `FlatBufferTableTests`, `Synthetic/TfliteSyntheticTests`, and `Formats/TfliteModelTests`.
+- **`README.md` & `docs/site/` Updates:**
+  - Updated root [`README.md`](../../README.md) supported-formats table with TensorFlow Lite (`TFL3`).
+  - Added [`docs/site/articles/formats/tflite.md`](../site/articles/formats/tflite.md) and linked it in [`docs/site/articles/formats/overview.md`](../site/articles/formats/overview.md) and [`docs/site/articles/toc.yml`](../site/articles/toc.yml).
+- **New ADRs Recorded:**
+  - None (strictly followed ADRs `0001`–`0006`).
+- **Deviations & Known Limitations:**
+  - None.
+- **Test Count:** 52 passed (`DotNodeViewer.Core.Tests`: 50, `DotNodeViewer.Layout.Tests`: 1, `DotNodeViewer.App.Tests`: 1), 0 failed, 0 skipped.
+- **Screenshots Taken:** None (no UI changes in Stage S03).
+- **Verification Commands Run:**
+  - `tools/model-gen/tf/.venv/bin/python tools/model-gen/tf/gen_tflite.py`
+  - `dotnet build dot-node-viewer.slnx -c Release --no-restore`
+  - `dotnet test --solution dot-node-viewer.slnx -c Release --no-build`
+  - `dotnet publish tools/DotNodeViewer.Cli/DotNodeViewer.Cli.csproj -c Release -p:PublishAot=true --no-restore`
+  - `dotnet tool run docfx metadata docs/site/docfx.json --warningsAsErrors`
+  - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
+- **Next Stage:** Run **Stage S04** (`docs/roadmap/stages/S04-layout-engine.md`).

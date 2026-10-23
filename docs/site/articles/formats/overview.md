@@ -10,7 +10,7 @@
 | Format | Extensions | Framing / Schema | Stage | Status |
 |---|---|---|---|---|
 | [**ONNX**](onnx.md) | `.onnx` | Protobuf (`ModelProto`, `GraphProto`) + external data shards | **S02** | **Supported** |
-| **TensorFlow Lite** | `.tflite` | FlatBuffers (`TFL3` file identifier) + affine/block quantization | **S03** | Planned |
+| [**TensorFlow Lite**](tflite.md) | `.tflite` | FlatBuffers (`TFL3` file identifier) + affine quantization & delegate slices | **S03** | **Supported** |
 | **ExecuTorch** | `.pte` | FlatBuffers (`ET12` magic header) + backend delegate blobs | **S07** | Planned |
 | **PyTorch (`state_dict` & TorchScript)** | `.pt`, `.pth` | ZIP container + safe `PickleMachine` VM + TorchScript IR | **S08** | Planned |
 | **PyTorch ExportedProgram** | `.pt2` | ZIP archive + `ExportedProgram` JSON (`models/*.json`) | **S09** | Planned |

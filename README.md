@@ -49,7 +49,7 @@ dot-node-viewer.slnx
 | Format | Extensions | Format ID | Capabilities | Status |
 |---|---|---|---|---|
 | [**ONNX**](docs/site/articles/formats/onnx.md) | `.onnx` | `onnx` | Streaming `ModelProto`/`GraphProto`, IR v3 initializer filtering, symbolic/dynamic shapes, `If`/`Loop`/`Scan` subgraphs, `FunctionProto`, lazy weight slices & `external_data` references | **Supported (S02)** |
-| **TensorFlow Lite** | `.tflite` | `tflite` | FlatBuffers (`TFL3`), affine/block quantization | Planned (S03) |
+| [**TensorFlow Lite**](docs/site/articles/formats/tflite.md) | `.tflite` | `tflite` | Bounds-checked FlatBuffers (`TFL3`), zero-copy `Buffer.data` & external `offset`/`size` weight slices, per-tensor/per-channel `INT8` `AffineQuantization`, fused activations, `IF`/`WHILE`/`CALL_ONCE` subgraphs, and `CUSTOM` NPU delegate slices | **Supported (S03)** |
 | **ExecuTorch** | `.pte` | `executorch` | FlatBuffers (`ET12`), lowered delegate payloads | Planned (S07) |
 | **PyTorch (`state_dict` & TorchScript)** | `.pt`, `.pth` | `pytorch` | ZIP container, safe `PickleMachine`, TorchScript graph/module fallback | Planned (S08) |
 | **PyTorch ExportedProgram** | `.pt2` | `pytorch-pt2` | `torch.export` archive & `ExportedProgram` JSON | Planned (S09) |
