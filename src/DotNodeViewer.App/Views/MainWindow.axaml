@@ -132,8 +132,8 @@
                 AutomationProperties.AutomationId="ThemeToggleButton"
                 Margin="8,0"
                 VerticalAlignment="Center">
-          <TextBlock Text="{Binding IsDarkTheme, ConverterParameter='Theme', StringFormat='Theme: {0}'}"
-                     FontSize="11" />
+          <TextBlock Text="{Binding ThemeDisplayName}"
+                     FontSize="12" />
         </Button>
 
       </Grid>

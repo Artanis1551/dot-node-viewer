@@ -82,7 +82,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private int _quantizedTensorCount;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ThemeDisplayName))]
     private bool _isDarkTheme = true;
+
+    /// <summary>
+    /// Gets the user-facing theme display name (e.g. <c>"Theme: Dark"</c> or <c>"Theme: Light"</c>).
+    /// </summary>
+    public string ThemeDisplayName => IsDarkTheme ? "Theme: Dark" : "Theme: Light";
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MainWindowViewModel"/> class.
