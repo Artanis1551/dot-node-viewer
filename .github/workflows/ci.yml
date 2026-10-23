@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - "stage/**"
   pull_request:
     branches:
       - main
@@ -16,8 +15,8 @@ env:
   AVALONIA_TELEMETRY_OPTOUT: "1"
 
 jobs:
-  build-test-docs:
-    name: Build, Test & DocFX (Ubuntu)
+  build-and-unit-tests:
+    name: Build, DocFX & Unit Tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -34,8 +33,14 @@ jobs:
       - name: Build solution (Release, zero warnings)
         run: dotnet build dot-node-viewer.slnx -c Release
 
-      - name: Run TUnit tests (Release)
-        run: dotnet test --solution dot-node-viewer.slnx -c Release --no-build
+      - name: Run Layout tests (Release)
+        run: dotnet test --project tests/DotNodeViewer.Layout.Tests -c Release --no-build --output Detailed
+
+      - name: Run App tests (Release)
+        run: dotnet test --project tests/DotNodeViewer.App.Tests -c Release --no-build --output Detailed
+
+      - name: Run Core unit & synthetic tests (Release)
+        run: dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/(CoreSmokeTests|PublicApiEncapsulationTests|UnifiedGraphIrTests|RandomAccessSourceAndBinaryCursorTests|ProtoReaderTests|FlatBufferTableTests|ModelProbeAndRegistryTests|ModelFixtureLoaderTests|OnnxSyntheticTests|TfliteSyntheticTests)/*"
 
       - name: Generate DocFX C# API metadata (warnings as errors)
         run: dotnet tool run docfx metadata docs/site/docfx.json --warningsAsErrors
@@ -43,3 +48,68 @@ jobs:
       - name: Build DocFX documentation site (warnings as errors)
         run: dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors
 
+  model-tests-onnx:
+    name: "Model Tests: ONNX"
+    needs: [build-and-unit-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore cached model fixtures
+        uses: actions/cache@v4
+        with:
+          path: tests/DotNodeViewer.Core.Tests/.model-cache
+          key: model-cache-${{ hashFiles('tests/DotNodeViewer.Core.Tests/Fixtures/models.manifest.json') }}
+          restore-keys: |
+            model-cache-
+
+      - name: Build test project (Release)
+        run: dotnet build tests/DotNodeViewer.Core.Tests -c Release
+
+      - name: Run ONNX format tests (Release)
+        run: dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/OnnxModelTests/*"
+
+      - name: Run ONNX manifest golden snapshot tests (Release)
+        run: dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredOnnxModel*"
+
+      - name: Pipeline inspection - List & verify tested ONNX models
+        run: python3 tools/ci/report-tested-models.py onnx
+
+  model-tests-tflite:
+    name: "Model Tests: TensorFlow Lite"
+    needs: [build-and-unit-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore cached model fixtures
+        uses: actions/cache@v4
+        with:
+          path: tests/DotNodeViewer.Core.Tests/.model-cache
+          key: model-cache-${{ hashFiles('tests/DotNodeViewer.Core.Tests/Fixtures/models.manifest.json') }}
+          restore-keys: |
+            model-cache-
+
+      - name: Build test project (Release)
+        run: dotnet build tests/DotNodeViewer.Core.Tests -c Release
+
+      - name: Run TensorFlow Lite format tests (Release)
+        run: dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/TfliteModelTests/*"
+
+      - name: Run TensorFlow Lite manifest golden snapshot tests (Release)
+        run: dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredTfliteModel*"
+
+      - name: Pipeline inspection - List & verify tested TensorFlow Lite models
+        run: python3 tools/ci/report-tested-models.py tflite

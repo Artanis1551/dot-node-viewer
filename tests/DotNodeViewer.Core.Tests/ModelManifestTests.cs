@@ -30,16 +30,33 @@ public sealed class ModelManifestTests
         }
     }
 
+    /// <summary>
+    /// Enumerates all ONNX model entries registered in <c>Fixtures/models.manifest.json</c>.
+    /// </summary>
+    /// <returns>The sequence of registered ONNX <see cref="ModelManifestEntry"/> instances.</returns>
+    public static IEnumerable<ModelManifestEntry> GetRegisteredOnnxModels() =>
+        ModelFixtureLoader.LoadManifest().Models.Where(m => m.Format == "onnx");
+
+    /// <summary>
+    /// Enumerates all TensorFlow Lite model entries registered in <c>Fixtures/models.manifest.json</c>.
+    /// </summary>
+    /// <returns>The sequence of registered TensorFlow Lite <see cref="ModelManifestEntry"/> instances.</returns>
+    public static IEnumerable<ModelManifestEntry> GetRegisteredTfliteModels() =>
+        ModelFixtureLoader.LoadManifest().Models.Where(m => m.Format == "tflite");
+
     [Test]
-    [MethodDataSource(nameof(GetRegisteredModels))]
-    public async Task ParseRegisteredModel_MatchesExpectedTopology(ModelManifestEntry? entry)
+    [MethodDataSource(nameof(GetRegisteredOnnxModels))]
+    public async Task ParseRegisteredOnnxModel_MatchesExpectedTopology(ModelManifestEntry entry) =>
+        await AssertModelMatchesExpectedTopologyAsync(entry);
+
+    [Test]
+    [MethodDataSource(nameof(GetRegisteredTfliteModels))]
+    public async Task ParseRegisteredTfliteModel_MatchesExpectedTopology(ModelManifestEntry entry) =>
+        await AssertModelMatchesExpectedTopologyAsync(entry);
+
+    private static async Task AssertModelMatchesExpectedTopologyAsync(ModelManifestEntry entry)
     {
-        if (entry is null)
-        {
-            ModelManifestDocument manifest = ModelFixtureLoader.LoadManifest();
-            await Assert.That(manifest.SchemaVersion).IsEqualTo(1);
-            return;
-        }
+        ArgumentNullException.ThrowIfNull(entry);
 
         await using FileStream? stream = await ModelFixtureLoader.OpenVerifiedModelStreamAsync(entry);
         if (stream is null)
@@ -66,99 +83,7 @@ public sealed class ModelManifestTests
         await AssertSnapshotsMatchAsync(actual, expected, entry.ByteLength);
     }
 
-    [Test]
-    public async Task ModelFixtureLoader_EndToEndWithTemporaryFixture_VerifiesIntegrityAndTopologySnapshot()
-    {
-        string tempDir = Path.Combine(Path.GetTempPath(), $"dnv-manifest-test-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(tempDir);
-        try
-        {
-            byte[] modelBytes = Encoding.UTF8.GetBytes("SYNTH_HEADER____WEIGHT_PAYLOAD_12345678");
-            string sha256 = Convert.ToHexStringLower(SHA256.HashData(modelBytes));
-
-            string fixturesDir = Path.Combine(tempDir, "Fixtures", "synth");
-            Directory.CreateDirectory(fixturesDir);
-            string modelPath = Path.Combine(fixturesDir, "tiny.synth");
-            await File.WriteAllBytesAsync(modelPath, modelBytes);
-
-            TensorEdge inputEdge = new(
-                "x",
-                new TensorDescriptor(
-                    DataType.Float32,
-                    new TensorShape([new TensorDimension.Symbolic("batch"), new TensorDimension.Fixed(4)])),
-                TensorKind.GraphInput);
-
-            TensorEdge weightEdge = new(
-                "w",
-                new TensorDescriptor(
-                    DataType.Int8,
-                    new TensorShape([new TensorDimension.Fixed(4), new TensorDimension.Fixed(2)]),
-                    new AffineQuantization([0.25f], [0], QuantizedDimension: 0)),
-                TensorKind.Initializer,
-                new TensorDataSlice(StreamOffset: 16, ByteLength: 8, DataType.Int8));
-
-            TensorEdge outputEdge = new(
-                "y",
-                new TensorDescriptor(
-                    DataType.Float32,
-                    new TensorShape([new TensorDimension.Symbolic("batch"), new TensorDimension.Fixed(2)])),
-                TensorKind.GraphOutput);
-
-            GraphNode node = new(
-                "gemm_0",
-                new OperatorInfo("Gemm", OperatorCategory.Layer),
-                Inputs: [new NodePort("A", [inputEdge]), new NodePort("B", [weightEdge])],
-                Outputs: [new NodePort("Y", [outputEdge])],
-                Attributes: []);
-
-            Subgraph subgraph = new(
-                "main",
-                Nodes: [node],
-                Tensors: [inputEdge, weightEdge, outputEdge],
-                Inputs: [new GraphPort("x", [inputEdge])],
-                Outputs: [new GraphPort("y", [outputEdge])]);
-
-            ModelGraph expectedGraph = new(
-                new ModelFormatInfo(new ModelFormatId("synth"), "Synthetic Test Format", "v1"),
-                Producer: "unit-test",
-                Subgraphs: [subgraph],
-                Metadata: new Dictionary<string, string>(),
-                Diagnostics: []);
-
-            ModelTopologySnapshot snapshot = SnapshotBuilder.Build(expectedGraph, "synth-tiny");
-            string snapshotJson = SnapshotBuilder.ToJson(snapshot);
-            string snapshotPath = Path.Combine(fixturesDir, "tiny.expected.json");
-            await File.WriteAllTextAsync(snapshotPath, snapshotJson);
-
-            ModelManifestEntry entry = new(
-                Id: "synth-tiny",
-                Format: "synth",
-                FileName: "tiny.synth",
-                Tier: "committed",
-                RelativePath: "Fixtures/synth/tiny.synth",
-                SourceUrl: null,
-                Sha256: sha256,
-                ByteLength: modelBytes.Length,
-                ExpectedSnapshot: "Fixtures/synth/tiny.expected.json");
-
-            await using FileStream? verifiedStream = await ModelFixtureLoader.OpenVerifiedModelStreamAsync(entry, tempDir);
-            await Assert.That(verifiedStream).IsNotNull();
-            await Assert.That(verifiedStream!.Position).IsEqualTo(0);
-
-            ModelTopologySnapshot loadedExpected = ModelFixtureLoader.LoadExpectedSnapshot(entry, tempDir);
-            await AssertSnapshotsMatchAsync(snapshot, loadedExpected, entry.ByteLength);
-
-            ModelManifestEntry badHashEntry = entry with { Sha256 = new string('0', 64) };
-            await Assert.That(async () => await ModelFixtureLoader.OpenVerifiedModelStreamAsync(badHashEntry, tempDir))
-                .Throws<InvalidDataException>();
-        }
-        finally
-        {
-            Directory.Delete(tempDir, recursive: true);
-        }
-    }
-
-    private static async Task AssertSnapshotsMatchAsync(
+    internal static async Task AssertSnapshotsMatchAsync(
         ModelTopologySnapshot actual,
         ModelTopologySnapshot expected,
         long fileByteLength)

@@ -23,7 +23,35 @@ Unlike container formats with a fixed 4-byte ASCII magic header, ONNX files are 
 
 ---
 
-## 2. Unified Graph IR Mapping
+## 2. Streaming Parser Architecture
+
+```mermaid
+flowchart TD
+    Stream["Model Stream (FileStream / MemoryStream)"] --> Detector["OnnxFormatDetector (Bounded wire tag scan)"]
+    Detector --> Reader["OnnxFormatReader.ReadAsync"]
+
+    subgraph Parser["Zero-Allocation Tag Parsing"]
+        Reader --> Header["ModelProto Header (ir_version, producer, opset)"]
+        Reader --> Graph["GraphProto Extraction"]
+        
+        Graph --> Init["1. Scan Initializers (fields 5, 15)"]
+        Init --> Slices["Lazy TensorDataSlice (Offset, ByteLength, DataType)"]
+        
+        Graph --> Inputs["2. Scan Inputs (field 11)"]
+        Inputs --> Filter{"Is name in Initializers?"}
+        Filter -->|"Yes (IR v3 artifact)"| Discard["Filter out of Subgraph.Inputs"]
+        Filter -->|"No"| RuntimeInputs["Add to Subgraph.Inputs (GraphPort)"]
+
+        Graph --> Nodes["3. Scan NodeProto (field 1)"]
+        Nodes --> NodeSlots["Resolve Inputs/Outputs to TensorEdges &amp; Attributes"]
+    end
+
+    Parser --> ModelGraph["ModelGraph (Pure immutable Unified Graph IR)"]
+```
+
+---
+
+## 3. Unified Graph IR Mapping
 
 ### 2.1 `ModelProto` & Function Subgraphs
 
