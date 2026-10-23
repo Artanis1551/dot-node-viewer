@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Globalization;
 using Avalonia;
 using Avalonia.Styling;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DotNodeViewer.App.Rendering;
@@ -329,7 +330,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
         IsDarkTheme = !IsDarkTheme;
         if (Application.Current is not null)
         {
-            Application.Current.RequestedThemeVariant = IsDarkTheme ? ThemeVariant.Dark : ThemeVariant.Light;
+            ThemeVariant target = IsDarkTheme ? ThemeVariant.Dark : ThemeVariant.Light;
+            if (Dispatcher.UIThread.CheckAccess())
+            {
+                Application.Current.RequestedThemeVariant = target;
+            }
+            else
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    Application.Current.RequestedThemeVariant = target;
+                });
+            }
         }
     }
 
