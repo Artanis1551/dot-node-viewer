@@ -1,3 +1,4 @@
+using DotNodeViewer.Core.Formats.ExecuTorch;
 using DotNodeViewer.Core.Formats.Onnx;
 using DotNodeViewer.Core.Formats.Tflite;
 using DotNodeViewer.Core.Ir;
@@ -181,6 +182,7 @@ public sealed class ModelFormatRegistry
     {
         ModelFormatRegistry registry = new();
         registry.Register(TfliteFormatDetector.Instance, TfliteFormatReader.Instance);
+        registry.Register(ExecuTorchFormatDetector.Instance, ExecuTorchFormatReader.Instance);
         registry.Register(OnnxFormatDetector.Instance, OnnxFormatReader.Instance);
         return registry;
     }
