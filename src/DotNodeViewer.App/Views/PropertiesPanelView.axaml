@@ -1,0 +1,633 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:DotNodeViewer.App.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="360" d:DesignHeight="700"
+             x:Class="DotNodeViewer.App.Views.PropertiesPanelView"
+             x:DataType="vm:MainWindowViewModel"
+             Background="{DynamicResource ShellSurfaceBaseBrush}">
+
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                VerticalScrollBarVisibility="Auto"
+                Padding="16,14">
+    <StackPanel Spacing="16">
+
+      <!-- ========================================================= -->
+      <!-- 1. GRAPH OVERVIEW (WHEN NO NODE IS SELECTED)             -->
+      <!-- ========================================================= -->
+      <StackPanel IsVisible="{Binding !HasSelectedNode}" Spacing="16">
+
+        <!-- Header Strip -->
+        <Border Background="{DynamicResource ShellSurfaceElevatedBrush}"
+                BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                BorderThickness="1"
+                CornerRadius="{DynamicResource RadiusMedium}"
+                Padding="14,12">
+          <StackPanel Spacing="8">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Border Background="{DynamicResource ShellAccentSubtleBrush}"
+                      BorderBrush="{DynamicResource ShellAccentPrimaryBrush}"
+                      BorderThickness="1"
+                      CornerRadius="{DynamicResource RadiusPill}"
+                      Padding="8,2"
+                      VerticalAlignment="Center">
+                <TextBlock Text="{Binding FormatDisplayName}"
+                           FontSize="10"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource ShellAccentPrimaryBrush}" />
+              </Border>
+              <TextBlock Text="Model Properties"
+                         FontSize="14"
+                         FontWeight="SemiBold"
+                         Foreground="{DynamicResource ShellTextPrimaryBrush}"
+                         VerticalAlignment="Center" />
+            </StackPanel>
+
+            <TextBlock Text="{Binding ProducerName, StringFormat='Producer: {0}'}"
+                       FontSize="11"
+                       Foreground="{DynamicResource ShellTextSecondaryBrush}" />
+
+            <TextBlock Text="{Binding SelectedSubgraph.Name, StringFormat='Subgraph: {0}'}"
+                       FontSize="11"
+                       FontFamily="{DynamicResource CodeFontFamily}"
+                       Foreground="{DynamicResource ShellTextSecondaryBrush}" />
+          </StackPanel>
+        </Border>
+
+        <!-- High-level Metric Pills Grid -->
+        <Border Background="{DynamicResource ShellSurfaceElevatedBrush}"
+                BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                BorderThickness="1"
+                CornerRadius="{DynamicResource RadiusMedium}"
+                Padding="12,10">
+          <Grid ColumnDefinitions="*,*,*,*">
+            <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+              <TextBlock Text="{Binding TotalNodeCount}"
+                         FontFamily="{DynamicResource CodeFontFamily}"
+                         FontSize="16"
+                         FontWeight="Bold"
+                         Foreground="{DynamicResource ShellTextPrimaryBrush}"
+                         HorizontalAlignment="Center" />
+              <TextBlock Text="Nodes"
+                         FontSize="10"
+                         Foreground="{DynamicResource ShellTextSecondaryBrush}"
+                         HorizontalAlignment="Center" />
+            </StackPanel>
+
+            <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+              <TextBlock Text="{Binding TotalEdgeCount}"
+                         FontFamily="{DynamicResource CodeFontFamily}"
+                         FontSize="16"
+                         FontWeight="Bold"
+                         Foreground="{DynamicResource ShellTextPrimaryBrush}"
+                         HorizontalAlignment="Center" />
+              <TextBlock Text="Edges"
+                         FontSize="10"
+                         Foreground="{DynamicResource ShellTextSecondaryBrush}"
+                         HorizontalAlignment="Center" />
+            </StackPanel>
+
+            <StackPanel Grid.Column="2" HorizontalAlignment="Center">
+              <TextBlock Text="{Binding TotalTensorCount}"
+                         FontFamily="{DynamicResource CodeFontFamily}"
+                         FontSize="16"
+                         FontWeight="Bold"
+                         Foreground="{DynamicResource ShellTextPrimaryBrush}"
+                         HorizontalAlignment="Center" />
+              <TextBlock Text="Tensors"
+                         FontSize="10"
+                         Foreground="{DynamicResource ShellTextSecondaryBrush}"
+                         HorizontalAlignment="Center" />
+            </StackPanel>
+
+            <StackPanel Grid.Column="3" HorizontalAlignment="Center">
+              <TextBlock Text="{Binding QuantizedTensorCount}"
+                         FontFamily="{DynamicResource CodeFontFamily}"
+                         FontSize="16"
+                         FontWeight="Bold"
+                         Foreground="{DynamicResource ShellSuccessBrush}"
+                         HorizontalAlignment="Center" />
+              <TextBlock Text="Quantized"
+                         FontSize="10"
+                         Foreground="{DynamicResource ShellTextSecondaryBrush}"
+                         HorizontalAlignment="Center" />
+            </StackPanel>
+          </Grid>
+        </Border>
+
+        <!-- Subgraph Inputs Section -->
+        <StackPanel Spacing="8">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <TextBlock Text="Model Inputs"
+                       FontSize="12"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource ShellTextPrimaryBrush}" />
+            <Border Background="{DynamicResource ShellSurfaceElevatedBrush}"
+                    CornerRadius="{DynamicResource RadiusPill}"
+                    Padding="5,1">
+              <TextBlock Text="{Binding Inputs.Count}"
+                         FontFamily="{DynamicResource CodeFontFamily}"
+                         FontSize="10"
+                         Foreground="{DynamicResource ShellTextSecondaryBrush}" />
+            </Border>
+          </StackPanel>
+
+          <ItemsControl ItemsSource="{Binding Inputs}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:TensorSummaryItem">
+                <Border Background="{DynamicResource ShellSurfaceElevatedBrush}"
+                        BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                        BorderThickness="1"
+                        CornerRadius="{DynamicResource RadiusSmall}"
+                        Padding="10,6"
+                        Margin="0,2">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                      <TextBlock Text="{Binding Name}"
+                                 FontWeight="Medium"
+                                 FontSize="11"
+                                 Foreground="{DynamicResource ShellTextPrimaryBrush}"
+                                 TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding ShapeText}"
+                                 FontFamily="{DynamicResource CodeFontFamily}"
+                                 FontSize="10"
+                                 Foreground="{DynamicResource ShellTextSecondaryBrush}" />
+                      <TextBlock Text="{Binding Details}"
+                                 FontSize="9"
+                                 Foreground="{DynamicResource ShellAccentPrimaryBrush}"
+                                 IsVisible="{Binding Details, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                    </StackPanel>
+
+                    <Border Grid.Column="1"
+                            Background="{DynamicResource ShellCanvasBackgroundBrush}"
+                            BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                            BorderThickness="1"
+                            CornerRadius="{DynamicResource RadiusPill}"
+                            Padding="6,2"
+                            VerticalAlignment="Center">
+                      <TextBlock Text="{Binding QuantizationBadge}"
+                                 FontFamily="{DynamicResource CodeFontFamily}"
+                                 FontSize="9"
+                                 FontWeight="SemiBold"
+                                 Foreground="{DynamicResource ShellTextPrimaryBrush}" />
+                    </Border>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+
+        <!-- Subgraph Outputs Section -->
+        <StackPanel Spacing="8">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <TextBlock Text="Model Outputs"
+                       FontSize="12"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource ShellTextPrimaryBrush}" />
+            <Border Background="{DynamicResource ShellSurfaceElevatedBrush}"
+                    CornerRadius="{DynamicResource RadiusPill}"
+                    Padding="5,1">
+              <TextBlock Text="{Binding Outputs.Count}"
+                         FontFamily="{DynamicResource CodeFontFamily}"
+                         FontSize="10"
+                         Foreground="{DynamicResource ShellTextSecondaryBrush}" />
+            </Border>
+          </StackPanel>
+
+          <ItemsControl ItemsSource="{Binding Outputs}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:TensorSummaryItem">
+                <Border Background="{DynamicResource ShellSurfaceElevatedBrush}"
+                        BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                        BorderThickness="1"
+                        CornerRadius="{DynamicResource RadiusSmall}"
+                        Padding="10,6"
+                        Margin="0,2">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                      <TextBlock Text="{Binding Name}"
+                                 FontWeight="Medium"
+                                 FontSize="11"
+                                 Foreground="{DynamicResource ShellTextPrimaryBrush}"
+                                 TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding ShapeText}"
+                                 FontFamily="{DynamicResource CodeFontFamily}"
+                                 FontSize="10"
+                                 Foreground="{DynamicResource ShellTextSecondaryBrush}" />
+                      <TextBlock Text="{Binding Details}"
+                                 FontSize="9"
+                                 Foreground="{DynamicResource ShellAccentPrimaryBrush}"
+                                 IsVisible="{Binding Details, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                    </StackPanel>
+
+                    <Border Grid.Column="1"
+                            Background="{DynamicResource ShellCanvasBackgroundBrush}"
+                            BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                            BorderThickness="1"
+                            CornerRadius="{DynamicResource RadiusPill}"
+                            Padding="6,2"
+                            VerticalAlignment="Center">
+                      <TextBlock Text="{Binding QuantizationBadge}"
+                                 FontFamily="{DynamicResource CodeFontFamily}"
+                                 FontSize="9"
+                                 FontWeight="SemiBold"
+                                 Foreground="{DynamicResource ShellTextPrimaryBrush}" />
+                    </Border>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+
+        <!-- Operator Categories Breakdown -->
+        <StackPanel Spacing="8">
+          <TextBlock Text="Operator Distribution"
+                     FontSize="12"
+                     FontWeight="SemiBold"
+                     Foreground="{DynamicResource ShellTextPrimaryBrush}" />
+
+          <ItemsControl ItemsSource="{Binding OperatorCategories}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:OperatorCategorySummaryItem">
+                <Border Background="{DynamicResource ShellSurfaceElevatedBrush}"
+                        BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                        BorderThickness="1"
+                        CornerRadius="{DynamicResource RadiusSmall}"
+                        Padding="10,6"
+                        Margin="0,2">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding Name}"
+                               FontSize="11"
+                               FontWeight="Medium"
+                               Foreground="{DynamicResource ShellTextPrimaryBrush}"
+                               VerticalAlignment="Center" />
+
+                    <Border Grid.Column="1"
+                            Background="{DynamicResource ShellCanvasBackgroundBrush}"
+                            CornerRadius="{DynamicResource RadiusPill}"
+                            Padding="7,2"
+                            VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Count}"
+                                 FontFamily="{DynamicResource CodeFontFamily}"
+                                 FontSize="10"
+                                 FontWeight="Bold"
+                                 Foreground="{DynamicResource ShellTextPrimaryBrush}" />
+                    </Border>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+
+      </StackPanel>
+
+      <!-- ========================================================= -->
+      <!-- 2. NODE INSPECTOR (WHEN A NODE IS SELECTED)               -->
+      <!-- ========================================================= -->
+      <StackPanel IsVisible="{Binding HasSelectedNode}" Spacing="14">
+
+        <!-- Selected Node Header Card -->
+        <Border Background="{DynamicResource ShellSurfaceElevatedBrush}"
+                BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                BorderThickness="1"
+                CornerRadius="{DynamicResource RadiusMedium}"
+                Padding="14,12">
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel Grid.Column="0" Spacing="6">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="{Binding SelectedNodeTitle}"
+                           FontSize="16"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource ShellTextPrimaryBrush}"
+                           VerticalAlignment="Center" />
+
+                <!-- Operator Category Pill Badge -->
+                <Border Background="{DynamicResource ShellCanvasBackgroundBrush}"
+                        BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                        BorderThickness="1"
+                        CornerRadius="{DynamicResource RadiusPill}"
+                        Padding="8,2"
+                        VerticalAlignment="Center">
+                  <TextBlock Text="{Binding SelectedNodeCategoryName}"
+                             FontSize="10"
+                             FontWeight="SemiBold"
+                             Foreground="{DynamicResource ShellAccentPrimaryBrush}" />
+                </Border>
+              </StackPanel>
+
+              <!-- Node Subtitle / Name -->
+              <TextBlock Text="{Binding SelectedNodeSubtitle}"
+                         FontFamily="{DynamicResource CodeFontFamily}"
+                         FontSize="11"
+                         Foreground="{DynamicResource ShellTextSecondaryBrush}"
+                         TextWrapping="Wrap"
+                         IsVisible="{Binding SelectedNodeSubtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+              <!-- Domain & Version Metadata -->
+              <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,2,0,0">
+                <TextBlock Text="{Binding SelectedNodeDomain, StringFormat='Domain: {0}'}"
+                           FontSize="10"
+                           Foreground="{DynamicResource ShellTextSecondaryBrush}"
+                           IsVisible="{Binding SelectedNodeDomain, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                <TextBlock Text="{Binding SelectedNodeVersion, StringFormat='v{0}'}"
+                           FontSize="10"
+                           FontFamily="{DynamicResource CodeFontFamily}"
+                           Foreground="{DynamicResource ShellTextSecondaryBrush}"
+                           IsVisible="{Binding SelectedNodeVersion, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+              </StackPanel>
+
+              <!-- Documentation Summary -->
+              <TextBlock Text="{Binding SelectedNodeDocSummary}"
+                         FontSize="11"
+                         Foreground="{DynamicResource ShellTextSecondaryBrush}"
+                         TextWrapping="Wrap"
+                         Margin="0,4,0,0"
+                         IsVisible="{Binding SelectedNodeDocSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+            </StackPanel>
+
+            <!-- Close / Deselect Action Button -->
+            <Button Grid.Column="1"
+                    Classes="toolbar-btn"
+                    Command="{Binding DeselectNodeCommand}"
+                    ToolTip.Tip="Deselect Node (Return to Overview)"
+                    AutomationProperties.Name="Deselect Node"
+                    AutomationProperties.AutomationId="DeselectNodeButton"
+                    VerticalAlignment="Top"
+                    Padding="6,4">
+              <TextBlock Text="✕" FontSize="11" FontWeight="Bold" />
+            </Button>
+          </Grid>
+        </Border>
+
+        <!-- Typed Attributes Section -->
+        <Border Background="{DynamicResource ShellSurfaceElevatedBrush}"
+                BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                BorderThickness="1"
+                CornerRadius="{DynamicResource RadiusMedium}"
+                Padding="12,10">
+          <StackPanel Spacing="8">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <TextBlock Text="Attributes"
+                         FontSize="12"
+                         FontWeight="SemiBold"
+                         Foreground="{DynamicResource ShellTextPrimaryBrush}" />
+              <Border Background="{DynamicResource ShellCanvasBackgroundBrush}"
+                      CornerRadius="{DynamicResource RadiusPill}"
+                      Padding="5,1">
+                <TextBlock Text="{Binding SelectedNodeAttributes.Count}"
+                           FontFamily="{DynamicResource CodeFontFamily}"
+                           FontSize="10"
+                           Foreground="{DynamicResource ShellTextSecondaryBrush}" />
+              </Border>
+            </StackPanel>
+
+            <TextBlock Text="No explicit attributes declared for this node."
+                       FontSize="11"
+                       Foreground="{DynamicResource ShellTextSecondaryBrush}"
+                       IsVisible="{Binding !SelectedNodeAttributes.Count}" />
+
+            <ItemsControl ItemsSource="{Binding SelectedNodeAttributes}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:NodeAttributeItem">
+                  <Border Background="{DynamicResource ShellSurfaceBaseBrush}"
+                          BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                          BorderThickness="1"
+                          CornerRadius="{DynamicResource RadiusSmall}"
+                          Padding="10,6"
+                          Margin="0,2">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                      <TextBlock Grid.Column="0"
+                                 Text="{Binding Name}"
+                                 FontWeight="SemiBold"
+                                 FontSize="11"
+                                 Foreground="{DynamicResource ShellTextPrimaryBrush}"
+                                 VerticalAlignment="Center" />
+
+                      <TextBlock Grid.Column="1"
+                                 Text="{Binding ValueText}"
+                                 FontFamily="{DynamicResource CodeFontFamily}"
+                                 FontSize="10.5"
+                                 Foreground="{DynamicResource ShellTextSecondaryBrush}"
+                                 TextAlignment="Right"
+                                 VerticalAlignment="Center"
+                                 Margin="8,0"
+                                 TextWrapping="Wrap" />
+
+                      <Border Grid.Column="2"
+                              Background="{DynamicResource ShellSurfaceElevatedBrush}"
+                              CornerRadius="{DynamicResource RadiusPill}"
+                              Padding="6,1"
+                              VerticalAlignment="Center">
+                        <TextBlock Text="{Binding TypeName}"
+                                   FontFamily="{DynamicResource CodeFontFamily}"
+                                   FontSize="9"
+                                   Foreground="{DynamicResource ShellTextSecondaryBrush}" />
+                      </Border>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+
+        <!-- Input Connections & Weights Section -->
+        <Border Background="{DynamicResource ShellSurfaceElevatedBrush}"
+                BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                BorderThickness="1"
+                CornerRadius="{DynamicResource RadiusMedium}"
+                Padding="12,10">
+          <StackPanel Spacing="8">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <TextBlock Text="Inputs &amp; Weights"
+                         FontSize="12"
+                         FontWeight="SemiBold"
+                         Foreground="{DynamicResource ShellTextPrimaryBrush}" />
+              <Border Background="{DynamicResource ShellCanvasBackgroundBrush}"
+                      CornerRadius="{DynamicResource RadiusPill}"
+                      Padding="5,1">
+                <TextBlock Text="{Binding SelectedNodeInputs.Count}"
+                           FontFamily="{DynamicResource CodeFontFamily}"
+                           FontSize="10"
+                           Foreground="{DynamicResource ShellTextSecondaryBrush}" />
+              </Border>
+            </StackPanel>
+
+            <TextBlock Text="No inputs."
+                       FontSize="11"
+                       Foreground="{DynamicResource ShellTextSecondaryBrush}"
+                       IsVisible="{Binding !SelectedNodeInputs.Count}" />
+
+            <ItemsControl ItemsSource="{Binding SelectedNodeInputs}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:NodePortItem">
+                  <Border Background="{DynamicResource ShellSurfaceBaseBrush}"
+                          BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                          BorderThickness="1"
+                          CornerRadius="{DynamicResource RadiusSmall}"
+                          Padding="10,6"
+                          Margin="0,2">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <StackPanel Grid.Column="0" Spacing="2">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                          <TextBlock Text="{Binding PortName}"
+                                     FontFamily="{DynamicResource CodeFontFamily}"
+                                     FontWeight="Bold"
+                                     FontSize="11"
+                                     Foreground="{DynamicResource ShellTextPrimaryBrush}" />
+                          <TextBlock Text="{Binding KindBadge}"
+                                     FontSize="10"
+                                     Foreground="{DynamicResource ShellTextSecondaryBrush}" />
+                        </StackPanel>
+
+                        <TextBlock Text="{Binding TensorName}"
+                                   FontFamily="{DynamicResource CodeFontFamily}"
+                                   FontSize="10"
+                                   Foreground="{DynamicResource ShellTextSecondaryBrush}"
+                                   TextTrimming="CharacterEllipsis" />
+
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                          <TextBlock Text="{Binding DataTypeText}"
+                                     FontFamily="{DynamicResource CodeFontFamily}"
+                                     FontSize="10"
+                                     FontWeight="Medium"
+                                     Foreground="{DynamicResource ShellAccentPrimaryBrush}" />
+                          <TextBlock Text="{Binding ShapeText}"
+                                     FontFamily="{DynamicResource CodeFontFamily}"
+                                     FontSize="10"
+                                     Foreground="{DynamicResource ShellTextPrimaryBrush}" />
+                        </StackPanel>
+
+                        <TextBlock Text="{Binding Details}"
+                                   FontSize="9"
+                                   Foreground="{DynamicResource ShellSuccessBrush}"
+                                   IsVisible="{Binding Details, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                      </StackPanel>
+
+                      <Border Grid.Column="1"
+                              Background="{DynamicResource ShellSurfaceElevatedBrush}"
+                              BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                              BorderThickness="1"
+                              CornerRadius="{DynamicResource RadiusPill}"
+                              Padding="6,2"
+                              VerticalAlignment="Center">
+                        <TextBlock Text="{Binding QuantizationBadge}"
+                                   FontFamily="{DynamicResource CodeFontFamily}"
+                                   FontSize="9"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource ShellTextPrimaryBrush}" />
+                      </Border>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+
+        <!-- Output Connections Section -->
+        <Border Background="{DynamicResource ShellSurfaceElevatedBrush}"
+                BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                BorderThickness="1"
+                CornerRadius="{DynamicResource RadiusMedium}"
+                Padding="12,10">
+          <StackPanel Spacing="8">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <TextBlock Text="Outputs"
+                         FontSize="12"
+                         FontWeight="SemiBold"
+                         Foreground="{DynamicResource ShellTextPrimaryBrush}" />
+              <Border Background="{DynamicResource ShellCanvasBackgroundBrush}"
+                      CornerRadius="{DynamicResource RadiusPill}"
+                      Padding="5,1">
+                <TextBlock Text="{Binding SelectedNodeOutputs.Count}"
+                           FontFamily="{DynamicResource CodeFontFamily}"
+                           FontSize="10"
+                           Foreground="{DynamicResource ShellTextSecondaryBrush}" />
+              </Border>
+            </StackPanel>
+
+            <TextBlock Text="No outputs."
+                       FontSize="11"
+                       Foreground="{DynamicResource ShellTextSecondaryBrush}"
+                       IsVisible="{Binding !SelectedNodeOutputs.Count}" />
+
+            <ItemsControl ItemsSource="{Binding SelectedNodeOutputs}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:NodePortItem">
+                  <Border Background="{DynamicResource ShellSurfaceBaseBrush}"
+                          BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                          BorderThickness="1"
+                          CornerRadius="{DynamicResource RadiusSmall}"
+                          Padding="10,6"
+                          Margin="0,2">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <StackPanel Grid.Column="0" Spacing="2">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                          <TextBlock Text="{Binding PortName}"
+                                     FontFamily="{DynamicResource CodeFontFamily}"
+                                     FontWeight="Bold"
+                                     FontSize="11"
+                                     Foreground="{DynamicResource ShellTextPrimaryBrush}" />
+                          <TextBlock Text="{Binding KindBadge}"
+                                     FontSize="10"
+                                     Foreground="{DynamicResource ShellTextSecondaryBrush}" />
+                        </StackPanel>
+
+                        <TextBlock Text="{Binding TensorName}"
+                                   FontFamily="{DynamicResource CodeFontFamily}"
+                                   FontSize="10"
+                                   Foreground="{DynamicResource ShellTextSecondaryBrush}"
+                                   TextTrimming="CharacterEllipsis" />
+
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                          <TextBlock Text="{Binding DataTypeText}"
+                                     FontFamily="{DynamicResource CodeFontFamily}"
+                                     FontSize="10"
+                                     FontWeight="Medium"
+                                     Foreground="{DynamicResource ShellAccentPrimaryBrush}" />
+                          <TextBlock Text="{Binding ShapeText}"
+                                     FontFamily="{DynamicResource CodeFontFamily}"
+                                     FontSize="10"
+                                     Foreground="{DynamicResource ShellTextPrimaryBrush}" />
+                        </StackPanel>
+
+                        <TextBlock Text="{Binding Details}"
+                                   FontSize="9"
+                                   Foreground="{DynamicResource ShellSuccessBrush}"
+                                   IsVisible="{Binding Details, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                      </StackPanel>
+
+                      <Border Grid.Column="1"
+                              Background="{DynamicResource ShellSurfaceElevatedBrush}"
+                              BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                              BorderThickness="1"
+                              CornerRadius="{DynamicResource RadiusPill}"
+                              Padding="6,2"
+                              VerticalAlignment="Center">
+                        <TextBlock Text="{Binding QuantizationBadge}"
+                                   FontFamily="{DynamicResource CodeFontFamily}"
+                                   FontSize="9"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource ShellTextPrimaryBrush}" />
+                      </Border>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+
+      </StackPanel>
+
+    </StackPanel>
+  </ScrollViewer>
+
+</UserControl>
+
