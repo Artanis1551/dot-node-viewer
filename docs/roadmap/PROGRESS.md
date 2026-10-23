@@ -27,6 +27,8 @@ Every stage agent MUST read this file before starting work and append a completi
 
 *(Stage agents append deferred enhancements or follow-ups here instead of expanding their current stage's scope.)*
 
+- Post-roadmap feature briefs live in [`docs/wishes/`](../wishes/README.md) (first entry: [W01 — Ethos-U Command Stream Unwrapping](../wishes/W01-ethos-u-command-stream-unwrapping.md)).
+
 ---
 
 ## Stage Completion Entries

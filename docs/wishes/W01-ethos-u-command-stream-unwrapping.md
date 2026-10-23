@@ -175,4 +175,3 @@ dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors
   6. UI and screenshots,
   7. docs and `PROGRESS.md`.
 - Set this wish's status to `Promoted (Sxx)` in [`docs/wishes/README.md`](README.md), and to `Done` when the stage completes.
-

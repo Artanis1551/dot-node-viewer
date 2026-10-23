@@ -15,4 +15,3 @@ This folder holds **feature briefs for work we want to do after the planned road
 | ID | Title | Depends on | Status |
 |---|---|---|---|
 | [W01](W01-ethos-u-command-stream-unwrapping.md) | Ethos-U Command Stream Unwrapping (TFLite & ExecuTorch) | S03, S07, S11 | Proposed |
-
