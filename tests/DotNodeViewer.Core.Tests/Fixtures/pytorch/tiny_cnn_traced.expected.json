@@ -1,0 +1,34 @@
+{
+  "modelId": "pytorch-tiny_cnn_traced",
+  "format": "PyTorch (.pt/.pth)",
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "main",
+    "nodeCount": 5,
+    "operatorHistogram": {
+      "Conv2d": 1,
+      "BatchNorm2d": 1,
+      "ReLU": 1,
+      "torch.flatten": 1,
+      "Linear": 1
+    },
+    "inputs": [
+      {
+        "name": "x",
+        "dataType": "Float32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "_temp_3",
+        "dataType": "Float32"
+      }
+    ],
+    "sampleWeightSlice": {
+      "tensorName": "conv1.weight",
+      "dataType": "Float32",
+      "streamOffset": 64,
+      "byteLength": 72
+    }
+  }
+}

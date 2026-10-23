@@ -1,0 +1,22 @@
+{
+  "modelId": "pytorch-tiny_cnn_scripted_if",
+  "format": "PyTorch (.pt/.pth)",
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "main",
+    "nodeCount": 3,
+    "operatorHistogram": {
+      "Conv2d": 1,
+      "ReLU": 1,
+      "Linear": 1
+    },
+    "inputs": [],
+    "outputs": [],
+    "sampleWeightSlice": {
+      "tensorName": "conv1.weight",
+      "dataType": "Float32",
+      "streamOffset": 64,
+      "byteLength": 72
+    }
+  }
+}

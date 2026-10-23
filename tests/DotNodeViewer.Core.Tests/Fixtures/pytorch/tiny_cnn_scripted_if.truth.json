@@ -1,0 +1,54 @@
+{
+  "modelId": "pytorch-tiny_cnn_scripted_if",
+  "format": "PyTorch",
+  "modelType": "TorchScript",
+  "subgraphCount": 1,
+  "hasControlFlow": true,
+  "primarySubgraph": {
+    "name": "main",
+    "nodeCount": 3,
+    "operatorHistogram": {
+      "Conv2d": 1,
+      "ReLU": 1,
+      "Linear": 1
+    },
+    "initializers": [
+      {
+        "name": "conv1.weight",
+        "dataType": "Float32",
+        "shape": [
+          2,
+          1,
+          3,
+          3
+        ],
+        "byteLength": 72
+      },
+      {
+        "name": "conv1.bias",
+        "dataType": "Float32",
+        "shape": [
+          2
+        ],
+        "byteLength": 8
+      },
+      {
+        "name": "fc.weight",
+        "dataType": "Float32",
+        "shape": [
+          3,
+          32
+        ],
+        "byteLength": 384
+      },
+      {
+        "name": "fc.bias",
+        "dataType": "Float32",
+        "shape": [
+          3
+        ],
+        "byteLength": 12
+      }
+    ]
+  }
+}
