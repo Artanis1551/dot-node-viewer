@@ -13,12 +13,14 @@ Development is organized into sequential stages (`S00` through `S13`). Every age
    - [`PREREQUISITES.md`](PREREQUISITES.md) (development machine SDKs, Python venvs, and `cua-driver` / AT-SPI setup)
    - [`docs/roadmap/PROGRESS.md`](docs/roadmap/PROGRESS.md) (hand-off log from prior stage agents)
    - Your assigned stage brief in [`docs/roadmap/stages/`](docs/roadmap/stages/)
-   - [`GLOSSARY.md`](GLOSSARY.md) and relevant ADRs in `docs/adr/`
+   - [`GLOSSARY.md`](GLOSSARY.md) and the Architecture Decision Records index in [`docs/adr/README.md`](docs/adr/README.md)
 2. **Work on a Dedicated Stage Branch & Commit Incrementally:**
    - Before making changes, create and switch to a dedicated branch for your stage (branched off the previous stage's completed branch or `main`), named `stage/Sxx-<short-slug>` (e.g., `git checkout -b stage/S02-onnx-parser`).
    - You are explicitly **allowed and encouraged to make git commits** throughout your stage. Split your work into logical, self-contained sub-commits where it makes sense (for example: one commit for internal I/O primitives, one for the format detector/reader, one for Python model-gen & staged fixtures, and a final commit updating `docs/roadmap/PROGRESS.md`), prefixing commit messages with `Sxx: <summary>`.
 3. **Load Assigned Skills:** Read the `SKILL.md` file in `.agents/skills/<skill-name>/SKILL.md` for every skill listed in your stage brief before writing code.
-4. **Frozen Contracts:** Once Stage `S01` is complete, do not break the public Unified Graph IR (`DotNodeViewer.Core.Ir`), public parser abstractions (`DotNodeViewer.Core.Abstractions`), or `models.manifest.json` / `.expected.json` schemas without recording a new ADR in `docs/adr/` and noting it in `docs/roadmap/PROGRESS.md`.
+4. **Frozen Contracts & Architectural Decisions (ADR Protocol):**
+   - **Consult the ADR Index First:** Always read [`docs/adr/README.md`](docs/adr/README.md) before writing code or proposing design modifications. Scan the one-sentence briefs in the index table to quickly understand established architectural guardrails, framing choices, and testing contracts, and click through to individual ADRs for detailed rationale and consequences.
+   - Once Stage `S01` is complete, do not break the public Unified Graph IR (`DotNodeViewer.Core.Ir`), public parser abstractions (`DotNodeViewer.Core.Abstractions`), `models.manifest.json` / `.expected.json` schemas, or established CI pipeline guardrails without recording a new ADR in `docs/adr/` (following the authoring guide in `docs/adr/README.md`, updating the index table, and recording the decision in `docs/roadmap/PROGRESS.md`).
 5. **Stay in Scope:** Implement only your assigned stage. Log any out-of-scope follow-ups under the **Deferred** section of `docs/roadmap/PROGRESS.md`.
 6. **Definition of Done (Every Stage):**
    - `dotnet build dot-node-viewer.slnx -c Release` succeeds with **zero warnings** (`TreatWarningsAsErrors=true`).

@@ -218,7 +218,7 @@ Every stage agent MUST read this file before starting work and append a completi
   - Updated root [`README.md`](../../README.md) with a `Layout Engine (DotNodeViewer.Layout)` overview and programmatic example.
   - Added [`docs/site/articles/library/layout-engine.md`](../site/articles/library/layout-engine.md) and linked it in [`docs/site/articles/toc.yml`](../site/articles/toc.yml).
 - **New ADRs Recorded:**
-  - None.
+  - [`docs/adr/0007-isolated-model-test-ci-jobs-and-pipeline-reporting.md`](../adr/0007-isolated-model-test-ci-jobs-and-pipeline-reporting.md) — Isolated Model Test CI Jobs and Pipeline Inspection Reporting.
 - **Deviations & Known Limitations:**
   - None.
 - **Test Count:** 64 passed (`DotNodeViewer.Core.Tests`: 50, `DotNodeViewer.Layout.Tests`: 13, `DotNodeViewer.App.Tests`: 1), 0 failed, 0 skipped.
