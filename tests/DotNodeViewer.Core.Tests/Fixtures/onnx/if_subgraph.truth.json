@@ -1,0 +1,51 @@
+{
+  "modelId": "onnx-if_subgraph",
+  "format": "ONNX IR v9",
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "if_subgraph_main",
+    "nodeCount": 2,
+    "operatorHistogram": {
+      "Mul": 1,
+      "If": 1
+    },
+    "inputs": [
+      {
+        "name": "cond",
+        "dataType": "Bool",
+        "shape": []
+      },
+      {
+        "name": "x",
+        "dataType": "Float32",
+        "shape": [
+          "1",
+          "4"
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "y",
+        "dataType": "Float32",
+        "shape": [
+          "1",
+          "4"
+        ]
+      }
+    ],
+    "initializers": [
+      {
+        "name": "scale_w",
+        "dataType": "Float32",
+        "shape": [
+          "1",
+          "4"
+        ],
+        "byteLength": 16,
+        "isExternal": false,
+        "externalLocation": null
+      }
+    ]
+  }
+}

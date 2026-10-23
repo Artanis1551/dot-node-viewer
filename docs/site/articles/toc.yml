@@ -10,6 +10,11 @@
   items:
     - name: Supported Model Formats
       href: formats/overview.md
+      items:
+        - name: ONNX (.onnx)
+          href: formats/onnx.md
+        - name: TensorFlow Lite (.tflite)
+          href: formats/tflite.md
     - name: CLI Reference (DotNodeViewer.Cli)
       href: cli/reference.md
 - name: Explanation

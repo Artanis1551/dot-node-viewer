@@ -1,0 +1,45 @@
+{
+  "modelId": "tflite-tiny_while",
+  "format": "TensorFlow Lite v3",
+  "subgraphCount": 3,
+  "primarySubgraph": {
+    "name": "main",
+    "nodeCount": 1,
+    "operatorHistogram": {
+      "WHILE": 1
+    },
+    "inputs": [
+      {
+        "name": "serving_default_steps:0",
+        "dataType": "Int32",
+        "shape": []
+      },
+      {
+        "name": "serving_default_x:0",
+        "dataType": "Float32",
+        "shape": [
+          "1",
+          "4"
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "PartitionedCall:0",
+        "dataType": "Float32",
+        "shape": [
+          "1",
+          "4"
+        ]
+      }
+    ],
+    "initializers": [
+      {
+        "name": "arith.constant",
+        "dataType": "Int32",
+        "shape": [],
+        "byteLength": 4
+      }
+    ]
+  }
+}

@@ -8,8 +8,8 @@ Every stage agent MUST read this file before starting work and append a completi
 |---|---|---|---|---|
 | **S00** | [`S00-bootstrap-and-governance.md`](stages/S00-bootstrap-and-governance.md) | `stage/S00-bootstrap-and-governance` | Complete | Solution scaffolding, `Directory.Build.props`, ADRs `0001`–`0005`, DocFX site, CI |
 | **S01** | [`S01-core-ir-harness-and-cli.md`](stages/S01-core-ir-harness-and-cli.md) | `stage/S01-core-ir-harness-and-cli` | Complete | Unified Graph IR records, `ModelFormatRegistry`, `ModelFixtureLoader`, `DotNodeViewer.Cli` |
-| **S02** | [`S02-onnx-parser-and-model-gen.md`](stages/S02-onnx-parser-and-model-gen.md) | `stage/S02-onnx-parser` | Pending | `ProtoReader`, ONNX detector & streaming reader, `tools/model-gen/onnx`, base ONNX models |
-| **S03** | [`S03-tflite-parser-and-flatbuffers.md`](stages/S03-tflite-parser-and-flatbuffers.md) | `stage/S03-tflite-parser` | Pending | FlatBuffers support, TFLite detector & reader, quantization metadata, `tools/model-gen/tf` |
+| **S02** | [`S02-onnx-parser-and-model-gen.md`](stages/S02-onnx-parser-and-model-gen.md) | `stage/S02-onnx-parser` | Complete | `ProtoReader`, ONNX detector & streaming reader, `tools/model-gen/onnx`, base ONNX models |
+| **S03** | [`S03-tflite-parser-and-flatbuffers.md`](stages/S03-tflite-parser-and-flatbuffers.md) | `stage/S03-tflite-parser` | Complete | FlatBuffers support, TFLite detector & reader, quantization metadata, `tools/model-gen/tf` |
 | **S04** | [`S04-layout-engine.md`](stages/S04-layout-engine.md) | `stage/S04-layout-engine` | Pending | `DotNodeViewer.Layout` pure C# Sugiyama/dagre layered layout + `ModelGraphLayoutAdapter` |
 | **S05** | [`S05-ui-iteration-1a-design-system-and-shell.md`](stages/S05-ui-iteration-1a-design-system-and-shell.md) | `stage/S05-ui-design-and-shell` | Pending | `frontend-design` token system, Avalonia shell, file loading, `computer-use` screenshots |
 | **S06** | [`S06-ui-iteration-1b-graph-canvas-and-properties.md`](stages/S06-ui-iteration-1b-graph-canvas-and-properties.md) | `stage/S06-ui-graph-canvas` | Pending | Custom `GraphCanvas`, pan/zoom/hit-test, basic node properties sidebar, `computer-use` verification |
@@ -117,3 +117,75 @@ Every stage agent MUST read this file before starting work and append a completi
   - `dotnet tool run docfx metadata docs/site/docfx.json --warningsAsErrors`
   - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
 - **Next Stage:** Run **Stage S02** (`docs/roadmap/stages/S02-onnx-parser-and-model-gen.md`).
+
+### Stage S02 — ONNX Parser, Protobuf Streaming & Model-Generation Framework
+- **Branch:** `stage/S02-onnx-parser`
+- **Commits:**
+  - `afaaf1c` — `S02: add streaming ProtoReader`
+  - `98d13f8` — `S02: implement ONNX detector, reader, and operator catalog`
+  - `560fa7e` — `S02: add ONNX model-gen, fixtures, and golden snapshots`
+  - *(final commit)* — `S02: update README, DocFX site, and PROGRESS.md`
+- **What Was Built:**
+  - Implemented `ProtoReader` (`src/DotNodeViewer.Core/IO/ProtoReader.cs`, `internal`) over `RandomAccessSource` with nested message limit tracking (`PushMessageLimit` / `PushLimit` / `PopLimit`), varint and fixed-width primitive decoding, packed/unpacked repeated field readers, `SkipField`, and zero-allocation `CaptureLengthDelimitedRange` / `CaptureLengthDelimitedSlice` so raw tensor payloads are recorded by offset/length and skipped in $O(1)$ without allocating `byte[]` buffers.
+  - Implemented the ONNX format parser under `src/DotNodeViewer.Core/Formats/Onnx/` (`internal`) and registered it in `ModelFormatRegistry.Default`:
+    - `OnnxFormatDetector`: non-destructive bounded Protobuf tag-walk validating `ModelProto` (`ir_version`, `graph`, `opset_import`, and header fields) while rejecting ZIP, HDF5, FlatBuffers (`TFL3`/`ET12`), and Pickle signatures and restoring `Stream.Position`.
+    - `OnnxFormatReader`: streams `ModelProto`, `GraphProto`, `NodeProto`, `AttributeProto`, `TensorProto`, `SparseTensorProto`, `ValueInfoProto`, `TypeProto`, `TensorShapeProto`, and `FunctionProto` into `ModelGraph`, filtering initializers out of `GraphInput` ports for ONNX IR v3 compatibility, mapping `Fixed`/`Symbolic`/`Dynamic` dimensions and unranked/scalar shapes, capturing `raw_data` (`Raw`), packed `float_data`/`double_data` (`Raw`), packed `int32_data`/`int64_data`/`uint64_data` (`VarintPacked`), and `external_data` (`ExternalTensorDataReference`), and recursively parsing control-flow subgraphs (`If`, `Loop`, `Scan`) into `AttributeValue.Graph` / `GraphList`.
+    - `OnnxOperatorCatalog`: maps standard `ai.onnx` operators to `OperatorCategory`, formal input/output port names (`X`, `W`, `B`, `Y`, `A`, `C`, etc.), and `TensorProto.DataType` codes to `DataType`.
+  - Created the deterministic ONNX Python model-generation toolchain (`tools/model-gen/onnx/requirements.txt` with `onnx==1.17.0`, `numpy==1.26.4`, `protobuf==5.29.3`, and `tools/model-gen/onnx/gen_onnx.py`) emitting both `.onnx` binaries and independent `.truth.json` ground-truth metadata.
+  - Staged and registered 4 committed fixtures (`tiny_mlp.onnx`, `tiny_cnn_dynamic_batch.onnx`, `if_subgraph.onnx`, `external_data.onnx` + `external_data.bin`) and 1 cached fixture (`mobilenetv2-7.onnx`, 14.2 MB from the ONNX Model Zoo) in `tests/DotNodeViewer.Core.Tests/Fixtures/models.manifest.json` with golden `.expected.json` snapshots verified against `.truth.json`.
+  - Added `ProtoReaderTests`, `Synthetic/OnnxSyntheticTests` (all 4 mandatory `port-model-format` tests), and `Formats/OnnxModelTests` (control-flow subgraphs, external data references, `.truth.json` cross-checks, and `mobilenetv2-7.onnx` `< 10%` allocation budget test).
+  - **Pattern Established for Subsequent Format Stages (`S03`, `S07`–`S10`):**
+    1. Keep all format-specific wire readers and catalogs `internal` under `DotNodeViewer.Core.Formats.<Format>` and register in `ModelFormatRegistry.CreateDefault()`.
+    2. Collect raw graph/function items during wire traversal and resolve `TensorEdge` references after reading the container so field ordering on the wire never affects port or opset resolution.
+    3. Emit deterministic `<stem>.truth.json` files alongside generated fixtures in `tools/model-gen/<toolchain>/` and assert in `Formats/<Format>ModelTests.cs` that `.expected.json` snapshots match `.truth.json`.
+- **`README.md` & `docs/site/` Updates:**
+  - Added the Supported Model Formats table to root [`README.md`](../../README.md) highlighting ONNX support.
+  - Added [`docs/site/articles/formats/onnx.md`](../site/articles/formats/onnx.md) and linked it in [`docs/site/articles/formats/overview.md`](../site/articles/formats/overview.md) and [`docs/site/articles/toc.yml`](../site/articles/toc.yml).
+- **New ADRs Recorded:**
+  - None (strictly followed ADRs `0001`–`0006`).
+- **Deviations & Known Limitations:**
+  - In `github.com/onnx/models` on `main`, `mobilenetv2-7.onnx` resides under `validated/vision/classification/mobilenet/model/mobilenetv2-7.onnx`; registered that canonical URL in `models.manifest.json`.
+- **Test Count:** 36 passed (`DotNodeViewer.Core.Tests`: 34, `DotNodeViewer.Layout.Tests`: 1, `DotNodeViewer.App.Tests`: 1), 0 failed, 0 skipped.
+- **Screenshots Taken:** None (no UI changes in Stage S02).
+- **Verification Commands Run:**
+  - `tools/model-gen/onnx/.venv/bin/python tools/model-gen/onnx/gen_onnx.py`
+  - `dotnet build dot-node-viewer.slnx -c Release --no-restore`
+  - `dotnet test --solution dot-node-viewer.slnx -c Release --no-build`
+  - `dotnet publish tools/DotNodeViewer.Cli/DotNodeViewer.Cli.csproj -c Release -p:PublishAot=true --no-restore`
+  - `dotnet tool run docfx metadata docs/site/docfx.json --warningsAsErrors`
+  - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
+- **Next Stage:** Run **Stage S03** (`docs/roadmap/stages/S03-tflite-parser-and-flatbuffers.md`).
+
+### Stage S03 — TFLite Parser & FlatBuffers Support
+- **Branch:** `stage/S03-tflite-parser`
+- **Commits:**
+  - `e03b969` — `S03: add FlatBuffers reading support`
+  - `22c0d77` — `S03: implement TFLite detector, reader, and quantization mapping`
+  - `e261c3a` — `S03: add TFLite model-gen, fixtures, and golden snapshots`
+  - *(final commit)* — `S03: update README, DocFX site, and PROGRESS.md`
+- **What Was Built:**
+  - Implemented `FlatBufferTable` (`src/DotNodeViewer.Core/IO/FlatBuffers/FlatBufferTable.cs`, `internal`) providing bounds-checked FlatBuffers vtable/table/vector/union reading over `RandomAccessSource` and zero-allocation `CaptureByteVectorSlice` for extracting `TensorDataSlice` byte ranges without reading payload bytes onto the managed heap.
+  - Implemented the TensorFlow Lite (`TFL3`) parser under `src/DotNodeViewer.Core/Formats/Tflite/` (`internal`) and registered it in `ModelFormatRegistry.Default`:
+    - `TfliteFormatDetector`: validates the `TFL3` file identifier at bytes `4..8`, root table offset at `0..4`, and root vtable bounds while restoring `Stream.Position`.
+    - `TfliteFormatReader`: decodes `operator_codes` (`builtin_code` vs `deprecated_builtin_code`, `version`, and `custom_code`), `buffers` (both inline `Buffer.data` byte vectors and v3c `offset`/`size` fields as lazy `TensorDataSlice` references), `subgraphs` (`tensors`, `inputs`, `outputs`, `operators`, `name`), `shape` and `shape_signature` (`-1` mapped to `TensorDimension.Dynamic`), `QuantizationParameters` (`scale`, `zero_point`, `quantized_dimension` mapped to `AffineQuantization`), `builtin_options` (including `padding`, `strides`, `dilations`, `depth_multiplier`, `filter_size`, `fused_activation_function`, `keep_dims`, `axis`, `new_shape`, etc.), `IF`/`WHILE`/`CALL_ONCE` nested `AttributeValue.Graph` attributes, and `CUSTOM` delegate operators (`custom_code` and `custom_options` as `AttributeValue.Bytes(TensorDataSlice)`).
+    - `TfliteOperatorCatalog`: maps TFLite `BuiltinOperator` codes to canonical operator names, `OperatorCategory`, formal port names, and `DataType`.
+  - Created `tools/model-gen/tf/requirements.txt` (`tensorflow-cpu==2.18.0`, `keras==3.8.0`, `h5py==3.12.1`, `numpy==1.26.4`) and `tools/model-gen/tf/gen_tflite.py` generating `tiny_cnn_float.tflite`, `tiny_cnn_int8.tflite`, `tiny_while.tflite` and independent `.truth.json` ground-truth metadata.
+  - Staged and registered 3 committed fixtures (`tiny_cnn_float.tflite`, `tiny_cnn_int8.tflite`, `tiny_while.tflite`) and 1 cached fixture (`mobilenet_v2_1.0_224_quant.tflite`, 3.6 MB from `google-coral/test_data`) in `tests/DotNodeViewer.Core.Tests/Fixtures/models.manifest.json` with golden `.expected.json` snapshots verified against `.truth.json`.
+  - Added `FlatBufferTableTests`, `Synthetic/TfliteSyntheticTests`, and `Formats/TfliteModelTests`.
+- **`README.md` & `docs/site/` Updates:**
+  - Updated root [`README.md`](../../README.md) supported-formats table with TensorFlow Lite (`TFL3`).
+  - Added [`docs/site/articles/formats/tflite.md`](../site/articles/formats/tflite.md) and linked it in [`docs/site/articles/formats/overview.md`](../site/articles/formats/overview.md) and [`docs/site/articles/toc.yml`](../site/articles/toc.yml).
+- **New ADRs Recorded:**
+  - None (strictly followed ADRs `0001`–`0006`).
+- **Deviations & Known Limitations:**
+  - None.
+- **Test Count:** 52 passed (`DotNodeViewer.Core.Tests`: 50, `DotNodeViewer.Layout.Tests`: 1, `DotNodeViewer.App.Tests`: 1), 0 failed, 0 skipped.
+- **Screenshots Taken:** None (no UI changes in Stage S03).
+- **Verification Commands Run:**
+  - `tools/model-gen/tf/.venv/bin/python tools/model-gen/tf/gen_tflite.py`
+  - `dotnet build dot-node-viewer.slnx -c Release --no-restore`
+  - `dotnet test --solution dot-node-viewer.slnx -c Release --no-build`
+  - `dotnet publish tools/DotNodeViewer.Cli/DotNodeViewer.Cli.csproj -c Release -p:PublishAot=true --no-restore`
+  - `dotnet tool run docfx metadata docs/site/docfx.json --warningsAsErrors`
+  - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
+- **Next Stage:** Run **Stage S04** (`docs/roadmap/stages/S04-layout-engine.md`).
