@@ -83,6 +83,25 @@ foreach (GraphNode node in primary.Nodes)
 
 ---
 
+## Layout Engine (`DotNodeViewer.Layout`) Overview
+
+`DotNodeViewer.Layout` is a pure C#, zero-UI-dependency Sugiyama/dagre layered graph layout engine paired with `ModelGraphLayoutAdapter`, which collapses static `Initializer`/`Constant` tensors into compact parameter rows inside operator node cards, renders `GraphInput`/`GraphOutput` ports as terminal pills, surfaces fused activation badges, and routes cubic Bézier edges:
+
+```csharp
+using DotNodeViewer.Layout;
+
+VisualSubgraphLayout layout = ModelGraphLayoutAdapter.Default.CreateLayout(
+    graph,
+    new LayoutOptions { Direction = LayoutDirection.TopToBottom });
+
+foreach (VisualNode vNode in layout.Nodes)
+{
+    Console.WriteLine($"{vNode.Title}: ({vNode.Bounds.X:F1}, {vNode.Bounds.Y:F1}) [{vNode.Bounds.Width:F1}x{vNode.Bounds.Height:F1}]");
+}
+```
+
+---
+
 ## CLI Tool (`DotNodeViewer.Cli`)
 
 `DotNodeViewer.Cli` provides three commands for inspecting model files and generating golden regression snapshots:
@@ -131,6 +150,7 @@ dotnet tool run docfx docs/site/docfx.json --serve
 - [**Documentation Website Source (`docs/site/`)**](docs/site/index.md)
   - [Tutorial: Getting Started](docs/site/articles/getting-started.md)
   - [Explanation: Unified Graph IR & Architecture](docs/site/articles/library/unified-graph-ir.md)
+  - [How-To & Reference: Layered Graph Layout Engine (`DotNodeViewer.Layout`)](docs/site/articles/library/layout-engine.md)
   - [Reference: Supported Model Formats](docs/site/articles/formats/overview.md)
   - [Reference: CLI Tool (`DotNodeViewer.Cli`)](docs/site/articles/cli/reference.md)
   - [How-To: Visualizer User Guide](docs/site/articles/visualizer/user-guide.md)

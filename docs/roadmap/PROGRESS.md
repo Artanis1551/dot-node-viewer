@@ -10,7 +10,7 @@ Every stage agent MUST read this file before starting work and append a completi
 | **S01** | [`S01-core-ir-harness-and-cli.md`](stages/S01-core-ir-harness-and-cli.md) | `stage/S01-core-ir-harness-and-cli` | Complete | Unified Graph IR records, `ModelFormatRegistry`, `ModelFixtureLoader`, `DotNodeViewer.Cli` |
 | **S02** | [`S02-onnx-parser-and-model-gen.md`](stages/S02-onnx-parser-and-model-gen.md) | `stage/S02-onnx-parser` | Complete | `ProtoReader`, ONNX detector & streaming reader, `tools/model-gen/onnx`, base ONNX models |
 | **S03** | [`S03-tflite-parser-and-flatbuffers.md`](stages/S03-tflite-parser-and-flatbuffers.md) | `stage/S03-tflite-parser` | Complete | FlatBuffers support, TFLite detector & reader, quantization metadata, `tools/model-gen/tf` |
-| **S04** | [`S04-layout-engine.md`](stages/S04-layout-engine.md) | `stage/S04-layout-engine` | Pending | `DotNodeViewer.Layout` pure C# Sugiyama/dagre layered layout + `ModelGraphLayoutAdapter` |
+| **S04** | [`S04-layout-engine.md`](stages/S04-layout-engine.md) | `stage/S04-layout-engine` | Complete | `DotNodeViewer.Layout` pure C# Sugiyama/dagre layered layout + `ModelGraphLayoutAdapter` |
 | **S05** | [`S05-ui-iteration-1a-design-system-and-shell.md`](stages/S05-ui-iteration-1a-design-system-and-shell.md) | `stage/S05-ui-design-and-shell` | Pending | `frontend-design` token system, Avalonia shell, file loading, `computer-use` screenshots |
 | **S06** | [`S06-ui-iteration-1b-graph-canvas-and-properties.md`](stages/S06-ui-iteration-1b-graph-canvas-and-properties.md) | `stage/S06-ui-graph-canvas` | Pending | Custom `GraphCanvas`, pan/zoom/hit-test, basic node properties sidebar, `computer-use` verification |
 | **S07** | [`S07-executorch-parser.md`](stages/S07-executorch-parser.md) | `stage/S07-executorch-parser` | Pending | ExecuTorch `.pte` detector & reader, delegate payloads, `tools/model-gen/torch` |
@@ -189,3 +189,41 @@ Every stage agent MUST read this file before starting work and append a completi
   - `dotnet tool run docfx metadata docs/site/docfx.json --warningsAsErrors`
   - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
 - **Next Stage:** Run **Stage S04** (`docs/roadmap/stages/S04-layout-engine.md`).
+
+### Stage S04 — Layout Engine (`DotNodeViewer.Layout`)
+- **Branch:** `stage/S04-layout-engine`
+- **Commits:**
+  - `b3be57b` — `S04: implement Sugiyama layout engine with Brandes-Kopf coordinates and edge routing`
+  - `63f397e` — `S04: add ModelGraphLayoutAdapter and layout tests`
+  - *(final commit)* — `S04: update README, DocFX site, and PROGRESS.md`
+- **What Was Built:**
+  - Implemented the pure C# Sugiyama/dagre layered graph layout engine in `src/DotNodeViewer.Layout/` (`IGraphLayoutEngine`, `SugiyamaLayoutEngine`, `SugiyamaPipeline`):
+    - Input/output geometry and graph models: `LayoutDirection` (`TopToBottom`, `LeftToRight`), `LayoutPoint`, `BoundingBox` (with `Intersects` and `Contains`), `CubicBezierSegment`, `LayoutOptions`, `LayoutPort`, `LayoutNode`, `LayoutEdge`, `LayoutGraph`, `PositionedPort`, `PositionedNode`, `PositionedEdge`, and `PositionedGraph`.
+    - Six-stage Sugiyama pipeline over compact integer-indexed arrays:
+      1. Iterative (stack-safe) DFS feedback arc set cycle removal (`RemoveCycles`).
+      2. Kahn's topological longest-path layer ranking followed by tight-tree slack refinement (`AssignLayers`).
+      3. Multi-layer edge normalization inserting dummy routing vertices for `rankDelta > 1` (`NormalizeAndBuildLayers`).
+      4. Alternating top-down / bottom-up port-aware barycenter crossing minimization sweeps with adjacent-exchange transpose refinement (`MinimizeCrossings`).
+      5. Directional Brandes–Köpf median coordinate alignment with 1D non-overlapping block compaction (`AssignCoordinates`).
+      6. Port anchor resolution, dummy-chain polyline & cubic Bézier spline routing, midpoint label anchor computation, and reversed cycle endpoint restoration (`BuildPositionedGraph`).
+  - Implemented `ITextMeasurer` and `MonospaceTextMeasurer` (`src/DotNodeViewer.Layout/ITextMeasurer.cs`) providing a UI-free text measurement seam.
+  - Implemented `ModelGraphLayoutAdapter` and `VisualSubgraphLayout` (`src/DotNodeViewer.Layout/ModelGraphLayoutAdapter.cs`, `VisualSubgraphLayout.cs`):
+    - Collapses static `TensorKind.Initializer` and `TensorKind.Constant` inputs into `CollapsedParameterSlot` rows inside operator node cards.
+    - Represents `Subgraph.Inputs` and `Subgraph.Outputs` as compact `VisualNodeKind.GraphInput` / `GraphOutput` terminal pills.
+    - Surfaces fused activation attributes (`fused_activation_function` / `activation`) as `VisualNode.FusedActivationBadge`.
+  - Added `SugiyamaLayoutEngineTests` (determinism, `TopToBottom` and `LeftToRight` DAG flow and non-overlap, 2-node/3-node/self-loop cycle resilience, and 5,000-node `< 1,000 ms` performance budget test) and `ModelGraphLayoutAdapterTests` (real-fixture layout verification across all committed ONNX and TFLite models).
+- **`README.md` & `docs/site/` Updates:**
+  - Updated root [`README.md`](../../README.md) with a `Layout Engine (DotNodeViewer.Layout)` overview and programmatic example.
+  - Added [`docs/site/articles/library/layout-engine.md`](../site/articles/library/layout-engine.md) and linked it in [`docs/site/articles/toc.yml`](../site/articles/toc.yml).
+- **New ADRs Recorded:**
+  - None.
+- **Deviations & Known Limitations:**
+  - None.
+- **Test Count:** 64 passed (`DotNodeViewer.Core.Tests`: 50, `DotNodeViewer.Layout.Tests`: 13, `DotNodeViewer.App.Tests`: 1), 0 failed, 0 skipped.
+- **Screenshots Taken:** None (no UI changes in Stage S04).
+- **Verification Commands Run:**
+  - `dotnet build dot-node-viewer.slnx -c Release --no-restore`
+  - `dotnet test --solution dot-node-viewer.slnx -c Release --no-build`
+  - `dotnet tool run docfx metadata docs/site/docfx.json --warningsAsErrors`
+  - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
+- **Next Stage:** Run **Stage S05** (`docs/roadmap/stages/S05-ui-iteration-1a-design-system-and-shell.md`).
