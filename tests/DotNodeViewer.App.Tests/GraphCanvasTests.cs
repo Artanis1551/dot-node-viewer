@@ -1,0 +1,191 @@
+using Avalonia;
+using Avalonia.Media.Imaging;
+using DotNodeViewer.App.Controls;
+using DotNodeViewer.App.ViewModels;
+using DotNodeViewer.Layout;
+
+namespace DotNodeViewer.App.Tests;
+
+/// <summary>
+/// Headless integration and rendering tests for <see cref="GraphCanvas"/> and the basic properties inspector.
+/// </summary>
+public sealed class GraphCanvasTests
+{
+    [Before(Test)]
+    public void SetUp()
+    {
+        HeadlessAppSession.EnsureInitialized();
+    }
+
+    [Test]
+    public async Task GraphCanvas_InitialState_HasExpectedDefaults()
+    {
+        await HeadlessAppSession.DispatchAsync(async () =>
+        {
+            GraphCanvas canvas = new();
+
+            await Assert.That(canvas.Layout).IsNull();
+            await Assert.That(canvas.SelectedNode).IsNull();
+            await Assert.That(canvas.HoveredNode).IsNull();
+            await Assert.That(canvas.Zoom).IsEqualTo(1.0);
+            await Assert.That(canvas.PanOffset.X).IsEqualTo(0.0);
+            await Assert.That(canvas.PanOffset.Y).IsEqualTo(0.0);
+            await Assert.That(canvas.ZoomPercentText).IsEqualTo("100%");
+        });
+    }
+
+    [Test]
+    public async Task GraphCanvas_ZoomCommands_UpdateScaleAndPercentText()
+    {
+        await HeadlessAppSession.DispatchAsync(async () =>
+        {
+            GraphCanvas canvas = new();
+            canvas.Measure(new Size(800, 600));
+            canvas.Arrange(new Rect(0, 0, 800, 600));
+
+            canvas.ZoomIn();
+            await Assert.That(canvas.Zoom).IsGreaterThan(1.0);
+            await Assert.That(canvas.ZoomPercentText).Contains("%");
+
+            canvas.ZoomOut();
+            await Assert.That(canvas.Zoom).IsLessThan(1.26);
+
+            canvas.ResetView();
+            await Assert.That(canvas.Zoom).IsEqualTo(1.0);
+            await Assert.That(canvas.ZoomPercentText).IsEqualTo("100%");
+        });
+    }
+
+    [Test]
+    public async Task GraphCanvas_ScreenToWorld_WorldToScreen_RoundTripsAccurately()
+    {
+        await HeadlessAppSession.DispatchAsync(async () =>
+        {
+            GraphCanvas canvas = new()
+            {
+                Zoom = 1.5,
+                PanOffset = new Vector(100, -50)
+            };
+
+            Point screenOrig = new(320, 240);
+            Point world = canvas.ScreenToWorld(screenOrig);
+            Point screenBack = canvas.WorldToScreen(world);
+
+            await Assert.That(Math.Abs(screenOrig.X - screenBack.X)).IsLessThan(1e-4);
+            await Assert.That(Math.Abs(screenOrig.Y - screenBack.Y)).IsLessThan(1e-4);
+        });
+    }
+
+    [Test]
+    public async Task GraphCanvas_Render_OnnxTinyMlp_RendersToBitmapAndSelectsNode()
+    {
+        string path = ResolveFixturePath("onnx/tiny_mlp.onnx");
+        MainWindowViewModel vm = new();
+        await vm.LoadModelAsync(path);
+
+        await Assert.That(vm.HasModel).IsTrue();
+        await Assert.That(vm.CurrentLayout).IsNotNull();
+
+        await HeadlessAppSession.DispatchAsync(async () =>
+        {
+            GraphCanvas canvas = new()
+            {
+                Layout = vm.CurrentLayout
+            };
+
+            canvas.Measure(new Size(800, 600));
+            canvas.Arrange(new Rect(0, 0, 800, 600));
+            canvas.ZoomToFit();
+
+            await Assert.That(canvas.Zoom).IsGreaterThan(0.0);
+
+            // Headless Bitmap Render
+            using RenderTargetBitmap bitmap = new(new PixelSize(800, 600));
+            bitmap.Render(canvas);
+
+            await Assert.That(bitmap.PixelSize.Width).IsEqualTo(800);
+            await Assert.That(bitmap.PixelSize.Height).IsEqualTo(600);
+
+            // Select an operator node on the canvas
+            VisualNode targetNode = vm.CurrentLayout!.Nodes.First(n => n.Kind == VisualNodeKind.Operator);
+            canvas.SelectedNode = targetNode;
+            vm.SelectedNode = targetNode;
+
+            await Assert.That(vm.HasSelectedNode).IsTrue();
+            await Assert.That(vm.SelectedNodeTitle).IsEqualTo(targetNode.Title);
+            await Assert.That(vm.SelectedNodeCategoryName).IsEqualTo(targetNode.Category.ToString());
+            await Assert.That(vm.SelectedNodeInputs).IsNotEmpty();
+            await Assert.That(vm.SelectedNodeOutputs).IsNotEmpty();
+
+            // Deselect node
+            vm.DeselectNodeCommand.Execute(null);
+            await Assert.That(vm.HasSelectedNode).IsFalse();
+            await Assert.That(vm.SelectedNode).IsNull();
+        });
+    }
+
+    [Test]
+    public async Task GraphCanvas_Render_TfliteInt8_RendersAndSelectsQuantizedNode()
+    {
+        string path = ResolveFixturePath("tflite/tiny_cnn_int8.tflite");
+        MainWindowViewModel vm = new();
+        await vm.LoadModelAsync(path);
+
+        await Assert.That(vm.HasModel).IsTrue();
+        await Assert.That(vm.CurrentLayout).IsNotNull();
+
+        await HeadlessAppSession.DispatchAsync(async () =>
+        {
+            GraphCanvas canvas = new()
+            {
+                Layout = vm.CurrentLayout
+            };
+
+            canvas.Measure(new Size(900, 700));
+            canvas.Arrange(new Rect(0, 0, 900, 700));
+            canvas.ZoomToFit();
+
+            // Headless Bitmap Render
+            using RenderTargetBitmap bitmap = new(new PixelSize(900, 700));
+            bitmap.Render(canvas);
+
+            await Assert.That(bitmap.PixelSize.Width).IsEqualTo(900);
+
+            // Select the CONV_2D node
+            VisualNode convNode = vm.CurrentLayout!.Nodes.First(n => n.Title.Contains("CONV", StringComparison.OrdinalIgnoreCase));
+            vm.SelectedNode = convNode;
+
+            await Assert.That(vm.HasSelectedNode).IsTrue();
+            await Assert.That(vm.SelectedNodeTitle).Contains("CONV");
+
+            // Verify quantized input weights are distinguished from activations
+            NodePortItem? weightPort = vm.SelectedNodeInputs.FirstOrDefault(i => i.KindBadge.Contains("Weight"));
+            await Assert.That(weightPort).IsNotNull();
+            await Assert.That(weightPort!.IsQuantized).IsTrue();
+            await Assert.That(weightPort.QuantizationBadge).Contains("8");
+            await Assert.That(weightPort.Details).IsNotNull();
+            await Assert.That(weightPort.Details!).Contains("Scale:");
+        });
+    }
+
+    private static string ResolveFixturePath(string relative)
+    {
+        string? dir = AppContext.BaseDirectory;
+        while (!string.IsNullOrEmpty(dir) && !File.Exists(Path.Combine(dir, "dot-node-viewer.slnx")))
+        {
+            dir = Path.GetDirectoryName(dir);
+        }
+
+        if (!string.IsNullOrEmpty(dir))
+        {
+            string candidate = Path.Combine(dir, "tests", "DotNodeViewer.Core.Tests", "Fixtures", relative);
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        throw new FileNotFoundException($"Could not locate fixture '{relative}' starting from '{AppContext.BaseDirectory}'");
+    }
+}
+
