@@ -115,18 +115,26 @@ dotnet run --project src/DotNodeViewer.Desktop -c Release -- tests/DotNodeViewer
 ```
 
 ### Visualizer Features
-- **File Opening & Loading Pipeline:** Open models via file picker (`Ctrl+O`), drag-and-drop onto the window, recent models list, or command-line path arguments.
-- **Background Pipeline:** Asynchronous streaming and parsing via `ModelFormatRegistry.Default` and layout computation via `DotNodeViewer.Layout` with responsive progress indicators.
-- **Model Architectural Overview:** Displays format badge, producer metadata, total node/edge/tensor counts, and highlights quantized tensors for embedded target verification.
-- **Tensor Telemetry:** Detailed inputs/outputs lists with tabular dimension shapes (including dynamic batch dims like `[batch, 3, 8, 8]`), element types, and quantization badges (`INT8`, `FP32`, `FP16`, `INT4`) with scale and zero-point parameters.
-- **Operator Category Breakdown:** Colorblind-checked semantic operator distribution (`Layer`, `Activation`, `Normalization`, `Pooling`, etc.).
-- **Dual Theme Support:** High-contrast dark instrumentation theme (`#12151B`) and titanium light theme (`#F8FAFC`).
+- **Interactive GraphCanvas:** High-performance immediate-mode rendering of neural network topologies directly via `DrawingContext` with 60 fps performance even on large models (`mobilenetv2`).
+- **Smooth Navigation & Pan/Zoom:** Drag canvas, middle-mouse pan, trackpad scroll, smooth zoom-around-cursor (`Ctrl` + wheel), and floating HUD controls (`+`, `-`, `Zoom to Fit`, `1:1 Reset`).
+- **Semantic Category Nodes:** Colorblind-checked header bands indicating operator categories (`Layer`, `Activation`, `Normalization`, `Pooling`, `Quantization`, etc.) with clean operator title and node name subtitles.
+- **Collapsed Initializer Rows:** Single-consumer parameter weights and biases are collapsed directly inside operator cards with tabular shape and data type callouts (e.g. `W · float32 [64, 3, 3, 3]` or `filter · uint8 [32, 3, 3, 3] Q`).
+- **Quantized Edge Indicators:** Smooth cubic Bézier spline routing with directional arrowheads, tensor shape labels (`[batch, 64, 112, 112]`), and green hardware acceleration indicators for quantized activations (`INT8` / `UINT8`).
+- **Viewport Culling & Level-of-Detail (LOD):** Seamlessly degrades text details at low zoom to sustain high frame rates on expansive graphs.
+- **Spatial Grid Hit-Testing ($O(1)$):** Hover highlight and click-to-select for interactive node inspection.
+- **Contextual Properties Sidebar (v1):**
+  - **Graph Overview (when no node is selected):** Format, producer, opset/version, subgraph selector, inputs/outputs lists, and category distribution.
+  - **Node Inspector (when a node is selected):** Operator title, category badge, domain/version, typed attributes list (`Int64`, `Float64`, `String`, `TensorShape`, etc.), runtime activations vs initializer weights, and output tensor descriptors with affine quantization parameters.
+- **Dual Theme Support:** High-contrast dark instrumentation theme (`#12151B`) and slate porcelain light theme (`#F8FAFC`).
 
-![Empty State](docs/screenshots/S05/01-empty-state-dark.png)
-*Figure 1: Application empty state with drag-and-drop target, recent models, and supported formats summary.*
+![Interactive Graph Canvas](docs/screenshots/S06/01-canvas-onnx-dynamic-batch.png)
+*Figure 1: Interactive GraphCanvas rendering an ONNX dynamic-batch network with collapsed weights and routed Bézier edges.*
 
-![Loaded Quantized TFLite Model](docs/screenshots/S05/03-loaded-tflite-int8-dark.png)
-*Figure 2: Architectural overview card of a quantized INT8 TensorFlow Lite model in Dark theme.*
+![Node Inspector Sidebar](docs/screenshots/S06/02-canvas-node-selected-properties.png)
+*Figure 2: Contextual Properties Sidebar (v1) inspecting selected node attributes, runtime activations, and weights.*
+
+![Quantized TFLite Model](docs/screenshots/S06/03-canvas-tflite-quantized-int8.png)
+*Figure 3: Interactive topology of a quantized INT8 TensorFlow Lite model showing quantized weights and parameters.*
 
 ---
 

@@ -12,7 +12,7 @@ Every stage agent MUST read this file before starting work and append a completi
 | **S03** | [`S03-tflite-parser-and-flatbuffers.md`](stages/S03-tflite-parser-and-flatbuffers.md) | `stage/S03-tflite-parser` | Complete | FlatBuffers support, TFLite detector & reader, quantization metadata, `tools/model-gen/tf` |
 | **S04** | [`S04-layout-engine.md`](stages/S04-layout-engine.md) | `stage/S04-layout-engine` | Complete | `DotNodeViewer.Layout` pure C# Sugiyama/dagre layered layout + `ModelGraphLayoutAdapter` |
 | **S05** | [`S05-ui-iteration-1a-design-system-and-shell.md`](stages/S05-ui-iteration-1a-design-system-and-shell.md) | `stage/S05-ui-design-and-shell` | Complete | `frontend-design` token system, Avalonia shell, file loading, `computer-use` screenshots |
-| **S06** | [`S06-ui-iteration-1b-graph-canvas-and-properties.md`](stages/S06-ui-iteration-1b-graph-canvas-and-properties.md) | `stage/S06-ui-graph-canvas` | Pending | Custom `GraphCanvas`, pan/zoom/hit-test, basic node properties sidebar, `computer-use` verification |
+| **S06** | [`S06-ui-iteration-1b-graph-canvas-and-properties.md`](stages/S06-ui-iteration-1b-graph-canvas-and-properties.md) | `stage/S06-ui-graph-canvas` | Complete | Custom `GraphCanvas`, pan/zoom/hit-test, basic node properties sidebar, `computer-use` verification |
 | **S07** | [`S07-executorch-parser.md`](stages/S07-executorch-parser.md) | `stage/S07-executorch-parser` | Pending | ExecuTorch `.pte` detector & reader, delegate payloads, `tools/model-gen/torch` |
 | **S08** | [`S08-pytorch-zip-pickle-and-torchscript.md`](stages/S08-pytorch-zip-pickle-and-torchscript.md) | `stage/S08-pytorch-torchscript` | Pending | `ZipDirectory`, safe `PickleMachine`, `state_dict` & TorchScript `.pt` reader |
 | **S09** | [`S09-pytorch-pt2-export.md`](stages/S09-pytorch-pt2-export.md) | `stage/S09-pytorch-pt2` | Pending | PyTorch `torch.export` `.pt2` archive & `ExportedProgram` JSON reader |
@@ -284,3 +284,62 @@ Every stage agent MUST read this file before starting work and append a completi
   - `dotnet tool run docfx metadata docs/site/docfx.json --warningsAsErrors`
   - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
 - **Next Stage:** Run **Stage S06** (`docs/roadmap/stages/S06-ui-iteration-1b-graph-canvas-and-properties.md`).
+
+### Stage S06 — UI Iteration 1b: Graph Canvas & Basic Node Properties
+- **Branch:** `stage/S06-ui-graph-canvas`
+- **Commits:**
+  - `087eae4` — `S06: implement custom GraphCanvas with pan/zoom and spatial hit-testing`
+  - `7c2020b` — `S06: add PropertiesPanelView v1 and wire to MainWindow`
+  - `b2fa2c7` — `S06: add headless render tests and computer-use screenshots`
+  - *(final commit)* — `S06: update README, DocFX site, and PROGRESS.md`
+- **What Was Built:**
+  - Implemented `AvaloniaTextMeasurer` (`src/DotNodeViewer.App/Rendering/AvaloniaTextMeasurer.cs`) implementing `ITextMeasurer` via Avalonia's `FormattedText` text engine with bounding cache and safe fallback, guaranteeing node widths in layout calculation match rendered font metrics on the active platform.
+  - Implemented `SpatialGridIndex` (`src/DotNodeViewer.App/Rendering/SpatialGridIndex.cs`) providing $O(1)$ spatial hash lookups over `VisualNode` bounding boxes for pointer hit-testing and viewport region culling.
+  - Implemented `GraphCanvas` (`src/DotNodeViewer.App/Controls/GraphCanvas.cs`):
+    - Renders layered graphs directly via immediate-mode `DrawingContext` with zero control-per-node instantiation.
+    - Viewport culling skips non-visible nodes and Bézier curves.
+    - Multi-tiered Level-of-Detail (LOD): degrades fine labels and subtitle strings at low zoom levels to sustain 60 fps rendering on large models (`mobilenetv2`).
+    - Smooth pan (drag canvas, middle mouse, trackpad) and zoom-around-cursor (`Ctrl` + wheel, pinch, and floating HUD buttons: `+`, `-`, `Zoom to Fit`, `1:1 Reset`).
+    - Rounded operator node cards using design tokens with colorblind-checked `OperatorCategory` header bands, titles, subtitles, collapsed initializer parameter rows (`W · float32 [64, 3, 3, 3] Q`), and fused activation badges (`+ RELU`).
+    - Cubic Bézier spline routing with directional arrowheads, tensor shape pills, and emerald green hardware acceleration indicators for quantized activations (`INT8` / `UINT8`).
+    - Spatial hit-testing for hover highlights and click-to-select.
+  - Implemented Basic Properties Sidebar v1 (`src/DotNodeViewer.App/Views/PropertiesPanelView.axaml` and `PropertiesPanelView.axaml.cs`):
+    - **When no node is selected (Graph Overview):** Displays format badge, producer, active subgraph, primary metrics (total nodes, edges, tensors, quantized tensors), inputs and outputs lists with dimensions and quantization parameters, and category distribution.
+    - **When a node is selected (Node Inspector v1):** Displays operator name, category badge, domain/version, typed attributes list (`Int64[]`, `Float64`, `String`, `TensorShape`), input connections distinguishing runtime activations from initializer weights, output tensor descriptors with affine quantization parameters, and a deselect action (`✕`).
+  - Added unit, integration, and headless rendering tests in `tests/DotNodeViewer.App.Tests/`:
+    - `SpatialGridIndexTests`: bounds checking, corner hits, miss detection, and region deduplication.
+    - `AvaloniaTextMeasurerTests`: positive metrics, bold weight widening, null/empty safety.
+    - `GraphCanvasTests`: default state, zoom commands and percent formatting, `ScreenToWorld` / `WorldToScreen` roundtrip accuracy, headless bitmap render of `tiny_mlp.onnx` and `tiny_cnn_int8.tflite` to `RenderTargetBitmap`, node selection, attributes inspection, and deselect reset.
+  - Extended live desktop verification harness (`tools/desktop_harness.py`) with `click-ratio`, `scroll`, and window navigation.
+- **`README.md` & `docs/site/` Updates:**
+  - Updated root [`README.md`](../../README.md) visualizer feature list and added interactive graph canvas and properties inspector screenshots.
+  - Updated [`docs/site/articles/visualizer/user-guide.md`](../site/articles/visualizer/user-guide.md) with canvas navigation instructions, semantic operator card visuals, edge callouts, and the contextual properties sidebar.
+  - Authored Diátaxis How-To article [`docs/site/articles/visualizer/embedding-controls.md`](../site/articles/visualizer/embedding-controls.md) demonstrating how .NET developers can embed `GraphCanvas` in their own Avalonia apps, and linked it in `docs/site/articles/toc.yml`.
+  - Mirrored live UI screenshots to `docs/site/images/s06/` and verified `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors` passes with 0 warnings.
+- **New ADRs Recorded:**
+  - None (strictly followed ADRs `0001`–`0007`).
+- **Deviations & Known Limitations:**
+  - None.
+- **Test Count:** 85 passed (`DotNodeViewer.Core.Tests`: 50, `DotNodeViewer.Layout.Tests`: 13, `DotNodeViewer.App.Tests`: 22), 0 failed, 0 skipped.
+- **Screenshots Taken:**
+  - [Interactive Graph Canvas Dark (ONNX Dynamic Batch)](../screenshots/S06/01-canvas-onnx-dynamic-batch.png)
+  - [Node Inspector Sidebar with Selected Node](../screenshots/S06/02-canvas-node-selected-properties.png)
+  - [Quantized TFLite INT8 Graph with Quantized Callouts](../screenshots/S06/03-canvas-tflite-quantized-int8.png)
+  - [Level-of-Detail (LOD) Zoomed Out Canvas](../screenshots/S06/04-canvas-lod-zoomed-out.png)
+  - [Light Theme Canvas](../screenshots/S06/05-canvas-light-theme.png)
+- **Verification Commands Run:**
+  - `dotnet build dot-node-viewer.slnx -c Release --no-restore`
+  - `dotnet test --solution dot-node-viewer.slnx -c Release --no-build`
+  - `DISPLAY=:0 dotnet run --project src/DotNodeViewer.Desktop -c Release --no-restore -- tests/DotNodeViewer.Core.Tests/Fixtures/onnx/tiny_cnn_dynamic_batch.onnx`
+  - `DISPLAY=:0 python3 tools/desktop_harness.py capture docs/screenshots/S06/01-canvas-onnx-dynamic-batch.png`
+  - `DISPLAY=:0 python3 tools/desktop_harness.py click-ratio 0.35 0.35`
+  - `DISPLAY=:0 python3 tools/desktop_harness.py capture docs/screenshots/S06/02-canvas-node-selected-properties.png`
+  - `DISPLAY=:0 python3 tools/desktop_harness.py scroll down 0.35 0.35 10`
+  - `DISPLAY=:0 python3 tools/desktop_harness.py capture docs/screenshots/S06/04-canvas-lod-zoomed-out.png`
+  - `DISPLAY=:0 python3 tools/desktop_harness.py click-ratio 0.94 0.03`
+  - `DISPLAY=:0 python3 tools/desktop_harness.py capture docs/screenshots/S06/05-canvas-light-theme.png`
+  - `DISPLAY=:0 dotnet run --project src/DotNodeViewer.Desktop -c Release --no-restore -- tests/DotNodeViewer.Core.Tests/Fixtures/tflite/tiny_cnn_int8.tflite`
+  - `DISPLAY=:0 python3 tools/desktop_harness.py capture docs/screenshots/S06/03-canvas-tflite-quantized-int8.png`
+  - `dotnet tool run docfx metadata docs/site/docfx.json --warningsAsErrors`
+  - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
+- **Next Stage:** Optional checkpoint: run `.agents/skills/improve-codebase-architecture/SKILL.md` before proceeding to **Stage S07** (`docs/roadmap/stages/S07-executorch-parser.md`).
