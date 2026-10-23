@@ -291,16 +291,24 @@ Every stage agent MUST read this file before starting work and append a completi
   - `087eae4` — `S06: implement custom GraphCanvas with pan/zoom and spatial hit-testing`
   - `7c2020b` — `S06: add PropertiesPanelView v1 and wire to MainWindow`
   - `b2fa2c7` — `S06: add headless render tests and computer-use screenshots`
-  - *(final commit)* — `S06: update README, DocFX site, and PROGRESS.md`
+  - `2deb3e8` — `S06: update README, DocFX site, and PROGRESS.md`
+  - *(current commit)* — `S06: dynamic sizing of node boxes, robust parameter row layouts, touchpad pinch, scroll wheel zoom/pan, and keyboard shortcuts`
 - **What Was Built:**
   - Implemented `AvaloniaTextMeasurer` (`src/DotNodeViewer.App/Rendering/AvaloniaTextMeasurer.cs`) implementing `ITextMeasurer` via Avalonia's `FormattedText` text engine with bounding cache and safe fallback, guaranteeing node widths in layout calculation match rendered font metrics on the active platform.
   - Implemented `SpatialGridIndex` (`src/DotNodeViewer.App/Rendering/SpatialGridIndex.cs`) providing $O(1)$ spatial hash lookups over `VisualNode` bounding boxes for pointer hit-testing and viewport region culling.
   - Implemented `GraphCanvas` (`src/DotNodeViewer.App/Controls/GraphCanvas.cs`):
-    - Renders layered graphs directly via immediate-mode `DrawingContext` with zero control-per-node instantiation.
+    - Direct immediate-mode rendering via Avalonia's `DrawingContext` with zero control-per-node allocations.
     - Viewport culling skips non-visible nodes and Bézier curves.
     - Multi-tiered Level-of-Detail (LOD): degrades fine labels and subtitle strings at low zoom levels to sustain 60 fps rendering on large models (`mobilenetv2`).
-    - Smooth pan (drag canvas, middle mouse, trackpad) and zoom-around-cursor (`Ctrl` + wheel, pinch, and floating HUD buttons: `+`, `-`, `Zoom to Fit`, `1:1 Reset`).
-    - Rounded operator node cards using design tokens with colorblind-checked `OperatorCategory` header bands, titles, subtitles, collapsed initializer parameter rows (`W · float32 [64, 3, 3, 3] Q`), and fused activation badges (`+ RELU`).
+    - Full interaction suite:
+      - Smooth panning via left-click canvas background drag, middle/right button drag anywhere, Shift + scroll wheel, two-finger scroll gesture, and keyboard arrow keys (`Left`, `Right`, `Up`, `Down`).
+      - Zoom-around-cursor via `Ctrl` + mouse wheel, unmodified mouse wheel, touchpad pinch gesture (`PinchGestureRecognizer` / `Gestures.PinchEvent` with `ScaleOrigin`), touchpad magnify (`PointerTouchPadGestureMagnifyEvent`), keyboard shortcuts (`Ctrl` + `+`/`=`, `Ctrl` + `-`, `Ctrl` + `0`), and floating HUD buttons.
+    - Dynamic sizing & visual clutter fixes in `ModelGraphLayoutAdapter.cs`:
+      - Dynamic node width calculation accurately measuring port name, margin, summary pill, and quantization badge to prevent line-wrapping or overlapping adjacent elements.
+      - Dynamic terminal pill height: expands to 46px when subtitle/shape is present to guarantee clean vertical clearance between title and subtitle.
+      - Increased layer separation to 68px for clean Bézier spline flow and edge shape callout breathing room.
+      - Clean single-badge quantization rendering without duplicate suffixes.
+    - Rounded operator node cards using design tokens with colorblind-checked `OperatorCategory` header bands, titles, subtitles, collapsed initializer parameter rows (`W · float32 [64, 3, 3, 3]`), and fused activation badges (`+ RELU`).
     - Cubic Bézier spline routing with directional arrowheads, tensor shape pills, and emerald green hardware acceleration indicators for quantized activations (`INT8` / `UINT8`).
     - Spatial hit-testing for hover highlights and click-to-select.
   - Implemented Basic Properties Sidebar v1 (`src/DotNodeViewer.App/Views/PropertiesPanelView.axaml` and `PropertiesPanelView.axaml.cs`):
@@ -309,8 +317,8 @@ Every stage agent MUST read this file before starting work and append a completi
   - Added unit, integration, and headless rendering tests in `tests/DotNodeViewer.App.Tests/`:
     - `SpatialGridIndexTests`: bounds checking, corner hits, miss detection, and region deduplication.
     - `AvaloniaTextMeasurerTests`: positive metrics, bold weight widening, null/empty safety.
-    - `GraphCanvasTests`: default state, zoom commands and percent formatting, `ScreenToWorld` / `WorldToScreen` roundtrip accuracy, headless bitmap render of `tiny_mlp.onnx` and `tiny_cnn_int8.tflite` to `RenderTargetBitmap`, node selection, attributes inspection, and deselect reset.
-  - Extended live desktop verification harness (`tools/desktop_harness.py`) with `click-ratio`, `scroll`, and window navigation.
+    - `GraphCanvasTests`: default state, zoom commands and percent formatting, `ScreenToWorld` / `WorldToScreen` roundtrip accuracy, headless bitmap render of `tiny_mlp.onnx` and `tiny_cnn_int8.tflite` to `RenderTargetBitmap`, node selection, attributes inspection, deselect reset, and keyboard (`Ctrl`+`+`, `Ctrl`+`-`, `Ctrl`+`0`, arrows) / pointer wheel / pinch gesture navigation tests.
+  - Extended live desktop verification harness (`tools/desktop_harness.py`) with `click-ratio`, `drag-ratio`, `scroll`, `key-combo`, and window navigation.
 - **`README.md` & `docs/site/` Updates:**
   - Updated root [`README.md`](../../README.md) visualizer feature list and added interactive graph canvas and properties inspector screenshots.
   - Updated [`docs/site/articles/visualizer/user-guide.md`](../site/articles/visualizer/user-guide.md) with canvas navigation instructions, semantic operator card visuals, edge callouts, and the contextual properties sidebar.
@@ -320,7 +328,7 @@ Every stage agent MUST read this file before starting work and append a completi
   - None (strictly followed ADRs `0001`–`0007`).
 - **Deviations & Known Limitations:**
   - None.
-- **Test Count:** 85 passed (`DotNodeViewer.Core.Tests`: 50, `DotNodeViewer.Layout.Tests`: 13, `DotNodeViewer.App.Tests`: 22), 0 failed, 0 skipped.
+- **Test Count:** 86 passed (`DotNodeViewer.Core.Tests`: 50, `DotNodeViewer.Layout.Tests`: 13, `DotNodeViewer.App.Tests`: 23), 0 failed, 0 skipped.
 - **Screenshots Taken:**
   - [Interactive Graph Canvas Dark (ONNX Dynamic Batch)](../screenshots/S06/01-canvas-onnx-dynamic-batch.png)
   - [Node Inspector Sidebar with Selected Node](../screenshots/S06/02-canvas-node-selected-properties.png)

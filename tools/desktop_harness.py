@@ -110,6 +110,57 @@ def scroll_window(win, disp, rx, ry, is_up=True, clicks=3):
         time.sleep(0.05)
     time.sleep(0.15)
 
+def drag_window_ratio(win, disp, rx1, ry1, rx2, ry2, button=1):
+    abs_x, abs_y, w, h = get_window_absolute_coordinates(win)
+    start_x = int(abs_x + (w * rx1))
+    start_y = int(abs_y + (h * ry1))
+    end_x = int(abs_x + (w * rx2))
+    end_y = int(abs_y + (h * ry2))
+
+    print(f"Dragging from ({start_x}, {start_y}) to ({end_x}, {end_y}) with button {button}")
+    Xlib.ext.xtest.fake_input(disp, Xlib.X.MotionNotify, x=start_x, y=start_y)
+    disp.sync()
+    time.sleep(0.05)
+    Xlib.ext.xtest.fake_input(disp, Xlib.X.ButtonPress, detail=button)
+    disp.sync()
+    time.sleep(0.05)
+
+    steps = 10
+    for s in range(1, steps + 1):
+        cur_x = int(start_x + (end_x - start_x) * (s / steps))
+        cur_y = int(start_y + (end_y - start_y) * (s / steps))
+        Xlib.ext.xtest.fake_input(disp, Xlib.X.MotionNotify, x=cur_x, y=cur_y)
+        disp.sync()
+        time.sleep(0.02)
+
+    Xlib.ext.xtest.fake_input(disp, Xlib.X.ButtonRelease, detail=button)
+    disp.sync()
+    time.sleep(0.15)
+
+def send_key_combo(disp, *keys):
+    import Xlib.XK
+    keycodes = []
+    for k in keys:
+        keysym = Xlib.XK.string_to_keysym(k)
+        if keysym == 0:
+            # Try lowercase or fallback
+            keysym = getattr(Xlib.XK, f"XK_{k}", 0)
+        kc = disp.keysym_to_keycode(keysym)
+        keycodes.append(kc)
+
+    for kc in keycodes:
+        if kc:
+            Xlib.ext.xtest.fake_input(disp, Xlib.X.KeyPress, kc)
+            disp.sync()
+            time.sleep(0.02)
+
+    for kc in reversed(keycodes):
+        if kc:
+            Xlib.ext.xtest.fake_input(disp, Xlib.X.KeyRelease, kc)
+            disp.sync()
+            time.sleep(0.02)
+    time.sleep(0.15)
+
 def dump_atspi_tree(app_name="DotNodeViewer"):
     reg = pyatspi.Registry
     target_app = None
@@ -192,3 +243,16 @@ if __name__ == "__main__":
         click_element_by_name("DotNodeViewer", "Zoom Out")
     elif cmd == "zoom-fit":
         click_element_by_name("DotNodeViewer", "Zoom to Fit")
+    elif cmd == "drag-ratio":
+        rx1 = float(sys.argv[2])
+        ry1 = float(sys.argv[3])
+        rx2 = float(sys.argv[4])
+        ry2 = float(sys.argv[5])
+        button = int(sys.argv[6]) if len(sys.argv) > 6 else 1
+        if not win:
+            print("DotNodeViewer window not found!")
+            sys.exit(1)
+        drag_window_ratio(win, disp, rx1, ry1, rx2, ry2, button=button)
+    elif cmd == "key-combo":
+        keys = sys.argv[2:]
+        send_key_combo(disp, *keys)

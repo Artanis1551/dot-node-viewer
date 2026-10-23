@@ -16,6 +16,15 @@
         FontFamily="{DynamicResource UiFontFamily}"
         DragDrop.AllowDrop="True">
 
+  <Window.KeyBindings>
+    <KeyBinding Gesture="Ctrl+Add" Command="{Binding #Canvas.ZoomInCommand}" />
+    <KeyBinding Gesture="Ctrl+OemPlus" Command="{Binding #Canvas.ZoomInCommand}" />
+    <KeyBinding Gesture="Ctrl+Subtract" Command="{Binding #Canvas.ZoomOutCommand}" />
+    <KeyBinding Gesture="Ctrl+OemMinus" Command="{Binding #Canvas.ZoomOutCommand}" />
+    <KeyBinding Gesture="Ctrl+D0" Command="{Binding #Canvas.ZoomToFitCommand}" />
+    <KeyBinding Gesture="Ctrl+NumPad0" Command="{Binding #Canvas.ZoomToFitCommand}" />
+  </Window.KeyBindings>
+
   <Window.Styles>
     <!-- Base button styling -->
     <Style Selector="Button.toolbar-btn">

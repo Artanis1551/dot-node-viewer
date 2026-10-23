@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Input;
 using Avalonia.Media.Imaging;
 using DotNodeViewer.App.Controls;
 using DotNodeViewer.App.ViewModels;
@@ -165,6 +166,90 @@ public sealed class GraphCanvasTests
             await Assert.That(weightPort.QuantizationBadge).Contains("8");
             await Assert.That(weightPort.Details).IsNotNull();
             await Assert.That(weightPort.Details!).Contains("Scale:");
+        });
+    }
+
+    [Test]
+    public async Task GraphCanvas_KeyboardAndWheelInteraction_AdjustsZoomAndPan()
+    {
+        string path = ResolveFixturePath("onnx/tiny_mlp.onnx");
+        MainWindowViewModel vm = new();
+        await vm.LoadModelAsync(path);
+
+        await HeadlessAppSession.DispatchAsync(async () =>
+        {
+            GraphCanvas canvas = new()
+            {
+                Layout = vm.CurrentLayout
+            };
+
+            canvas.Measure(new Size(800, 600));
+            canvas.Arrange(new Rect(0, 0, 800, 600));
+            canvas.ZoomToFit();
+
+            double initialZoom = canvas.Zoom;
+            Vector initialPan = canvas.PanOffset;
+
+            // 1. Zoom In via Ctrl+OemPlus KeyDown
+            KeyEventArgs zoomInKey = new()
+            {
+                RoutedEvent = InputElement.KeyDownEvent,
+                Key = Key.OemPlus,
+                KeyModifiers = KeyModifiers.Control,
+                Source = canvas
+            };
+            canvas.RaiseEvent(zoomInKey);
+            await Assert.That(canvas.Zoom).IsGreaterThan(initialZoom);
+
+            // 2. Zoom Out via Ctrl+OemMinus KeyDown
+            KeyEventArgs zoomOutKey = new()
+            {
+                RoutedEvent = InputElement.KeyDownEvent,
+                Key = Key.OemMinus,
+                KeyModifiers = KeyModifiers.Control,
+                Source = canvas
+            };
+            canvas.RaiseEvent(zoomOutKey);
+
+            // 3. Zoom To Fit via Ctrl+D0 KeyDown
+            KeyEventArgs fitKey = new()
+            {
+                RoutedEvent = InputElement.KeyDownEvent,
+                Key = Key.D0,
+                KeyModifiers = KeyModifiers.Control,
+                Source = canvas
+            };
+            canvas.RaiseEvent(fitKey);
+            await Assert.That(Math.Abs(canvas.Zoom - initialZoom) < 0.05).IsTrue();
+
+            // 4. Arrow keys pan
+            KeyEventArgs arrowLeftKey = new()
+            {
+                RoutedEvent = InputElement.KeyDownEvent,
+                Key = Key.Left,
+                Source = canvas
+            };
+            canvas.RaiseEvent(arrowLeftKey);
+            await Assert.That(canvas.PanOffset.X).IsGreaterThan(initialPan.X);
+
+            KeyEventArgs arrowDownKey = new()
+            {
+                RoutedEvent = InputElement.KeyDownEvent,
+                Key = Key.Down,
+                Source = canvas
+            };
+            canvas.RaiseEvent(arrowDownKey);
+            await Assert.That(canvas.PanOffset.Y).IsLessThan(initialPan.Y);
+
+            // 5. Pinch gesture zoom
+            PinchEventArgs pinchArgs = new(1.25, new Point(400, 300))
+            {
+                RoutedEvent = Gestures.PinchEvent,
+                Source = canvas
+            };
+            double beforePinch = canvas.Zoom;
+            canvas.RaiseEvent(pinchArgs);
+            await Assert.That(canvas.Zoom).IsGreaterThan(beforePinch);
         });
     }
 

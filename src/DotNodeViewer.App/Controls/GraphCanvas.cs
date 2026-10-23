@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Data;
 using Avalonia.Input;
+using Avalonia.Input.GestureRecognizers;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Styling;
@@ -93,6 +94,13 @@ public sealed class GraphCanvas : Control
         ZoomOutCommand = new RelayCommand(ZoomOut);
         ZoomToFitCommand = new RelayCommand(ZoomToFit);
         ResetViewCommand = new RelayCommand(ResetView);
+
+        GestureRecognizers.Add(new PinchGestureRecognizer());
+        GestureRecognizers.Add(new ScrollGestureRecognizer { CanHorizontallyScroll = true, CanVerticallyScroll = true });
+
+        AddHandler(Gestures.PinchEvent, OnPinch);
+        AddHandler(Gestures.ScrollGestureEvent, OnScrollGesture);
+        AddHandler(Gestures.PointerTouchPadGestureMagnifyEvent, OnTouchPadMagnify);
 
         ActualThemeVariantChanged += OnActualThemeVariantChanged;
     }
@@ -363,6 +371,84 @@ public sealed class GraphCanvas : Control
         InvalidateVisual();
     }
 
+    private void OnPinch(object? sender, PinchEventArgs e)
+    {
+        Point center = e.ScaleOrigin;
+        double scale = e.Scale;
+        if (scale > 0.001)
+        {
+            ZoomAroundPoint(center, scale);
+            e.Handled = true;
+        }
+    }
+
+    private void OnTouchPadMagnify(object? sender, PointerDeltaEventArgs e)
+    {
+        Point pos = e.GetPosition(this);
+        double delta = Math.Abs(e.Delta.Y) > 0.0001 ? e.Delta.Y : e.Delta.X;
+        double factor = 1.0 + delta;
+        if (Math.Abs(factor - 1.0) > 0.001)
+        {
+            ZoomAroundPoint(pos, factor);
+            e.Handled = true;
+        }
+    }
+
+    private void OnScrollGesture(object? sender, ScrollGestureEventArgs e)
+    {
+        PanOffset += e.Delta;
+        InvalidateVisual();
+        e.Handled = true;
+    }
+
+    /// <inheritdoc/>
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        base.OnKeyDown(e);
+
+        bool isCtrl = e.KeyModifiers.HasFlag(KeyModifiers.Control);
+
+        if (isCtrl && (e.Key == Key.OemPlus || e.Key == Key.Add))
+        {
+            ZoomIn();
+            e.Handled = true;
+        }
+        else if (isCtrl && (e.Key == Key.OemMinus || e.Key == Key.Subtract))
+        {
+            ZoomOut();
+            e.Handled = true;
+        }
+        else if (isCtrl && (e.Key == Key.D0 || e.Key == Key.NumPad0))
+        {
+            ZoomToFit();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Left)
+        {
+            PanOffset = new Vector(PanOffset.X + 48.0, PanOffset.Y);
+            InvalidateVisual();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Right)
+        {
+            PanOffset = new Vector(PanOffset.X - 48.0, PanOffset.Y);
+            InvalidateVisual();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Up)
+        {
+            PanOffset = new Vector(PanOffset.X, PanOffset.Y + 48.0);
+            InvalidateVisual();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Down)
+        {
+            PanOffset = new Vector(PanOffset.X, PanOffset.Y - 48.0);
+            InvalidateVisual();
+            e.Handled = true;
+        }
+    }
+
     /// <inheritdoc/>
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
@@ -392,7 +478,7 @@ public sealed class GraphCanvas : Control
             InvalidateVisual();
             e.Handled = true;
         }
-        else if (currentPoint.Properties.IsMiddleButtonPressed)
+        else if (currentPoint.Properties.IsMiddleButtonPressed || currentPoint.Properties.IsRightButtonPressed)
         {
             _isPanning = true;
             _panStartScreenPoint = pos;
@@ -446,20 +532,41 @@ public sealed class GraphCanvas : Control
 
         Point pos = e.GetPosition(this);
 
-        // Zoom with wheel (or Ctrl+wheel / trackpad pinch)
-        double deltaY = e.Delta.Y;
-        if (Math.Abs(deltaY) > 0.01)
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Control))
         {
-            double factor = deltaY > 0 ? 1.15 : (1.0 / 1.15);
-            ZoomAroundPoint(pos, factor);
-            e.Handled = true;
+            // Ctrl + wheel: Zoom around pointer cursor
+            double deltaY = e.Delta.Y;
+            if (Math.Abs(deltaY) > 0.01)
+            {
+                double factor = deltaY > 0 ? 1.15 : (1.0 / 1.15);
+                ZoomAroundPoint(pos, factor);
+                e.Handled = true;
+            }
         }
-        else if (Math.Abs(e.Delta.X) > 0.01)
+        else if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
         {
-            // Horizontal two-finger scroll
-            PanOffset = new Vector(PanOffset.X + (e.Delta.X * 24.0), PanOffset.Y);
+            // Shift + wheel: Pan horizontally
+            double delta = Math.Abs(e.Delta.Y) > 0.01 ? e.Delta.Y : e.Delta.X;
+            PanOffset = new Vector(PanOffset.X + (delta * 36.0), PanOffset.Y);
             InvalidateVisual();
             e.Handled = true;
+        }
+        else
+        {
+            // Standard scroll wheel:
+            // Vertical wheel scroll zooms around cursor (Netron / CAD / Maps convention)
+            if (Math.Abs(e.Delta.Y) > 0.01)
+            {
+                double factor = e.Delta.Y > 0 ? 1.15 : (1.0 / 1.15);
+                ZoomAroundPoint(pos, factor);
+                e.Handled = true;
+            }
+            else if (Math.Abs(e.Delta.X) > 0.01)
+            {
+                PanOffset = new Vector(PanOffset.X + (e.Delta.X * 36.0), PanOffset.Y);
+                InvalidateVisual();
+                e.Handled = true;
+            }
         }
     }
 
@@ -793,26 +900,31 @@ public sealed class GraphCanvas : Control
         context.DrawText(titleFt, new Point(b.X + 12.0, b.Y + 7.0));
 
         // Subtitle (Node Name) if space permits
-        if (!string.IsNullOrEmpty(node.Subtitle) && !isMediumLod && b.Width > 170.0)
+        if (!string.IsNullOrEmpty(node.Subtitle) && !isMediumLod)
         {
-            string subKey = $"sub:{node.Subtitle}:{brushes.IsDark}";
-            if (!_textCache.TryGetValue(subKey, out FormattedText? subFt))
+            double subLeft = b.X + titleFt.Width + 18.0;
+            double availSubW = Math.Max(0.0, b.Right - subLeft - 12.0);
+            if (availSubW > 20.0)
             {
-                Typeface tf = new(_codeFont, FontStyle.Normal, FontWeight.Normal);
-                subFt = new FormattedText(
-                    node.Subtitle,
-                    CultureInfo.InvariantCulture,
-                    FlowDirection.LeftToRight,
-                    tf,
-                    9.5,
-                    brushes.TextSecondaryBrush)
+                string subKey = $"sub:{node.Subtitle}:{availSubW:F0}:{brushes.IsDark}";
+                if (!_textCache.TryGetValue(subKey, out FormattedText? subFt))
                 {
-                    MaxTextWidth = Math.Max(40.0, b.Width - titleFt.Width - 28.0),
-                    Trimming = TextTrimming.CharacterEllipsis
-                };
-                _textCache[subKey] = subFt;
+                    Typeface tf = new(_codeFont, FontStyle.Normal, FontWeight.Normal);
+                    subFt = new FormattedText(
+                        node.Subtitle,
+                        CultureInfo.InvariantCulture,
+                        FlowDirection.LeftToRight,
+                        tf,
+                        9.5,
+                        brushes.TextSecondaryBrush)
+                    {
+                        MaxTextWidth = availSubW,
+                        Trimming = TextTrimming.CharacterEllipsis
+                    };
+                    _textCache[subKey] = subFt;
+                }
+                context.DrawText(subFt, new Point(subLeft, b.Y + 9.0));
             }
-            context.DrawText(subFt, new Point(b.X + titleFt.Width + 18.0, b.Y + 9.0));
         }
 
         if (isMediumLod)
@@ -822,17 +934,17 @@ public sealed class GraphCanvas : Control
         }
 
         // 4. Body: Collapsed Parameter Rows
-        double currentY = b.Y + headerHeight + 5.0;
+        double currentY = b.Y + headerHeight + 6.0;
         for (int p = 0; p < node.CollapsedParameters.Count; p++)
         {
-            if (currentY + 18.0 > b.Bottom)
+            if (currentY + 20.0 > b.Bottom)
             {
                 break;
             }
 
             CollapsedParameterSlot param = node.CollapsedParameters[p];
             DrawParameterRow(context, param, b.X + 8.0, currentY, b.Width - 16.0, brushes);
-            currentY += 19.0;
+            currentY += 22.0;
         }
 
         // 5. Fused Activation Badge (e.g. [+ RELU])
@@ -850,11 +962,11 @@ public sealed class GraphCanvas : Control
         double availableWidth,
         in ThemeBrushes brushes)
     {
-        // Parameter port label (e.g. "W", "B", "weights")
+        // 1. Parameter port label (e.g. "W", "B", "filter", "bias")
         string portKey = $"port:{param.PortName}:{brushes.IsDark}";
         if (!_textCache.TryGetValue(portKey, out FormattedText? portFt))
         {
-            Typeface tf = new(_codeFont, FontStyle.Normal, FontWeight.Medium);
+            Typeface tf = new(_codeFont, FontStyle.Normal, FontWeight.SemiBold);
             portFt = new FormattedText(
                 param.PortName,
                 CultureInfo.InvariantCulture,
@@ -864,40 +976,20 @@ public sealed class GraphCanvas : Control
                 brushes.TextSecondaryBrush);
             _textCache[portKey] = portFt;
         }
-        context.DrawText(portFt, new Point(x + 2.0, y + 1.0));
 
-        // Parameter summary pill (e.g. "float32 [64, 3, 3, 3]")
-        string summaryText = param.DisplaySummary;
-        string sumKey = $"psum:{summaryText}:{brushes.IsDark}";
-        if (!_textCache.TryGetValue(sumKey, out FormattedText? sumFt))
-        {
-            Typeface tf = new(_codeFont, FontStyle.Normal, FontWeight.Normal);
-            sumFt = new FormattedText(
-                summaryText,
-                CultureInfo.InvariantCulture,
-                FlowDirection.LeftToRight,
-                tf,
-                10.0,
-                brushes.TextPrimaryBrush)
-            {
-                MaxTextWidth = Math.Max(40.0, availableWidth - portFt.Width - 32.0),
-                Trimming = TextTrimming.CharacterEllipsis
-            };
-            _textCache[sumKey] = sumFt;
-        }
+        double portX = x + 4.0;
+        context.DrawText(portFt, new Point(portX, y + 2.0));
 
-        double pillWidth = sumFt.Width + 10.0;
-        double pillHeight = 15.0;
-        double pillX = x + availableWidth - pillWidth - (param.IsQuantized ? 24.0 : 0.0);
-        Rect pillRect = new(pillX, y + 1.0, pillWidth, pillHeight);
+        // 2. Quantization badge (if quantized) placed at rightmost position
+        double rightMargin = 4.0;
+        double qBadgeWidth = 18.0;
+        double qBadgeSpacing = 6.0;
+        double currentRight = x + availableWidth - rightMargin;
 
-        context.DrawRectangle(brushes.SurfaceElevatedBrush, brushes.BorderMutedPen, pillRect, 3.0, 3.0);
-        context.DrawText(sumFt, new Point(pillX + 5.0, y + 2.0));
-
-        // Quantization badge if quantized parameter
         if (param.IsQuantized)
         {
-            Rect qRect = new(x + availableWidth - 20.0, y + 1.0, 18.0, pillHeight);
+            double qX = currentRight - qBadgeWidth;
+            Rect qRect = new(qX, y + 2.0, qBadgeWidth, 16.0);
             context.DrawRectangle(brushes.SuccessSubtleBrush, brushes.EdgeQuantizedPen, qRect, 3.0, 3.0);
 
             string qKey = $"qbadge:{brushes.IsDark}";
@@ -913,7 +1005,44 @@ public sealed class GraphCanvas : Control
                     brushes.SuccessBrush);
                 _textCache[qKey] = qFt;
             }
-            context.DrawText(qFt, new Point(qRect.X + 4.5, y + 2.0));
+            context.DrawText(qFt, new Point(qX + 4.5, y + 3.0));
+            currentRight = qX - qBadgeSpacing;
+        }
+
+        // 3. Parameter summary pill (e.g. "float32 [64, 3, 3, 3]")
+        string summaryText = param.DisplaySummary;
+        string sumKey = $"psum:{summaryText}:{brushes.IsDark}";
+        if (!_textCache.TryGetValue(sumKey, out FormattedText? sumFt))
+        {
+            Typeface tf = new(_codeFont, FontStyle.Normal, FontWeight.Normal);
+            sumFt = new FormattedText(
+                summaryText,
+                CultureInfo.InvariantCulture,
+                FlowDirection.LeftToRight,
+                tf,
+                10.0,
+                brushes.TextPrimaryBrush)
+            {
+                Trimming = TextTrimming.CharacterEllipsis
+            };
+            _textCache[sumKey] = sumFt;
+        }
+
+        double minLeft = portX + portFt.Width + 12.0;
+        double pillDesiredWidth = sumFt.Width + 12.0;
+        double pillMaxWidth = Math.Max(20.0, currentRight - minLeft);
+        double pillActualWidth = Math.Min(pillDesiredWidth, pillMaxWidth);
+        double pillX = currentRight - pillActualWidth;
+
+        if (pillX >= minLeft)
+        {
+            Rect pillRect = new(pillX, y + 2.0, pillActualWidth, 16.0);
+            context.DrawRectangle(brushes.SurfaceElevatedBrush, brushes.BorderMutedPen, pillRect, 3.0, 3.0);
+
+            using (context.PushClip(pillRect))
+            {
+                context.DrawText(sumFt, new Point(pillX + 6.0, y + 3.0));
+            }
         }
     }
 
@@ -977,6 +1106,9 @@ public sealed class GraphCanvas : Control
             return;
         }
 
+        double textLeft = b.X + 26.0;
+        double maxTextW = Math.Max(20.0, b.Width - 36.0);
+
         // Pill Title (Port Name)
         string titleKey = $"term:{node.Title}:{brushes.IsDark}";
         if (!_textCache.TryGetValue(titleKey, out FormattedText? titleFt))
@@ -990,20 +1122,22 @@ public sealed class GraphCanvas : Control
                 11.0,
                 brushes.TextPrimaryBrush)
             {
-                MaxTextWidth = Math.Max(30.0, b.Width - 36.0),
+                MaxTextWidth = maxTextW,
                 Trimming = TextTrimming.CharacterEllipsis
             };
             _textCache[titleKey] = titleFt;
         }
 
-        double textY = string.IsNullOrEmpty(node.Subtitle)
-            ? b.Y + ((b.Height - titleFt.Height) * 0.5)
-            : b.Y + 5.0;
-        context.DrawText(titleFt, new Point(b.X + 24.0, textY));
-
-        // Subtitle (Shape string if space permits)
-        if (!string.IsNullOrEmpty(node.Subtitle) && b.Height >= 32.0)
+        if (string.IsNullOrEmpty(node.Subtitle))
         {
+            double singleTextY = b.Y + ((b.Height - titleFt.Height) * 0.5);
+            context.DrawText(titleFt, new Point(textLeft, singleTextY));
+        }
+        else
+        {
+            double titleY = b.Y + 6.0;
+            context.DrawText(titleFt, new Point(textLeft, titleY));
+
             string subKey = $"term_sub:{node.Subtitle}:{brushes.IsDark}";
             if (!_textCache.TryGetValue(subKey, out FormattedText? subFt))
             {
@@ -1016,12 +1150,13 @@ public sealed class GraphCanvas : Control
                     9.5,
                     brushes.TextSecondaryBrush)
                 {
-                    MaxTextWidth = Math.Max(30.0, b.Width - 36.0),
+                    MaxTextWidth = maxTextW,
                     Trimming = TextTrimming.CharacterEllipsis
                 };
                 _textCache[subKey] = subFt;
             }
-            context.DrawText(subFt, new Point(b.X + 24.0, b.Y + 18.0));
+            double subY = b.Y + 23.0;
+            context.DrawText(subFt, new Point(textLeft, subY));
         }
     }
 
