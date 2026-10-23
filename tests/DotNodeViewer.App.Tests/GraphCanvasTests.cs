@@ -243,8 +243,10 @@ public sealed class GraphCanvasTests
             canvas.RaiseEvent(arrowDownKey);
             await Assert.That(canvas.PanOffset.Y).IsLessThan(initialPan.Y);
 
-            // 5. Pinch gesture zoom
-            PinchEventArgs pinchArgs = new(1.25, new Point(400, 300))
+            // 5. Pinch gesture zoom centered on cursor
+            Point pinchCenter = new(400, 300);
+            Point worldBeforePinch = canvas.ScreenToWorld(pinchCenter);
+            PinchEventArgs pinchArgs = new(1.25, pinchCenter)
             {
                 RoutedEvent = Gestures.PinchEvent,
                 Source = canvas
@@ -252,6 +254,9 @@ public sealed class GraphCanvasTests
             double beforePinch = canvas.Zoom;
             canvas.RaiseEvent(pinchArgs);
             await Assert.That(canvas.Zoom).IsGreaterThan(beforePinch);
+            Point screenAfterPinch = canvas.WorldToScreen(worldBeforePinch);
+            await Assert.That(Math.Abs(screenAfterPinch.X - pinchCenter.X)).IsLessThan(1e-4);
+            await Assert.That(Math.Abs(screenAfterPinch.Y - pinchCenter.Y)).IsLessThan(1e-4);
 
             // 6. Verify LOD retains parameters at 54% zoom (user zoom level)
             canvas.Zoom = 0.54;

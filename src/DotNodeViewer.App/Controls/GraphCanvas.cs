@@ -79,6 +79,7 @@ public sealed class GraphCanvas : Control
     private bool _isPanning;
     private Point _panStartScreenPoint;
     private Vector _panStartOffset;
+    private Point? _lastPointerPosition;
     private bool _hasInitialFit;
 
     private readonly FontFamily _uiFont = new("Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Ubuntu, Cantarell, sans-serif");
@@ -195,19 +196,21 @@ public sealed class GraphCanvas : Control
     public IRelayCommand ResetViewCommand { get; }
 
     /// <summary>
-    /// Zooms in by a step of 25% around the canvas center.
+    /// Zooms in by a progressive step of 15% around the pointer cursor or canvas center.
     /// </summary>
     public void ZoomIn()
     {
-        ZoomAroundPoint(new Point(Bounds.Width * 0.5, Bounds.Height * 0.5), 1.25);
+        Point target = _lastPointerPosition ?? new Point(Bounds.Width * 0.5, Bounds.Height * 0.5);
+        ZoomAroundPoint(target, 1.15);
     }
 
     /// <summary>
-    /// Zooms out by a step of 20% around the canvas center.
+    /// Zooms out by a progressive step of 15% around the pointer cursor or canvas center.
     /// </summary>
     public void ZoomOut()
     {
-        ZoomAroundPoint(new Point(Bounds.Width * 0.5, Bounds.Height * 0.5), 0.8);
+        Point target = _lastPointerPosition ?? new Point(Bounds.Width * 0.5, Bounds.Height * 0.5);
+        ZoomAroundPoint(target, 1.0 / 1.15);
     }
 
     /// <summary>
@@ -388,10 +391,13 @@ public sealed class GraphCanvas : Control
     private void OnPinch(object? sender, PinchEventArgs e)
     {
         Point center = e.ScaleOrigin;
+        _lastPointerPosition = center;
         double scale = e.Scale;
         if (scale > 0.001)
         {
-            ZoomAroundPoint(center, scale);
+            // Smooth damping progression for pinch scaling
+            double dampedFactor = 1.0 + ((scale - 1.0) * 0.5);
+            ZoomAroundPoint(center, dampedFactor);
             e.Handled = true;
         }
     }
@@ -399,8 +405,10 @@ public sealed class GraphCanvas : Control
     private void OnTouchPadMagnify(object? sender, PointerDeltaEventArgs e)
     {
         Point pos = e.GetPosition(this);
+        _lastPointerPosition = pos;
         double delta = Math.Abs(e.Delta.Y) > 0.0001 ? e.Delta.Y : e.Delta.X;
-        double factor = 1.0 + delta;
+        // Smooth progressive scaling for continuous touchpad magnify
+        double factor = 1.0 + (delta * 0.4);
         if (Math.Abs(factor - 1.0) > 0.001)
         {
             ZoomAroundPoint(pos, factor);
@@ -518,6 +526,7 @@ public sealed class GraphCanvas : Control
         base.OnPointerMoved(e);
 
         Point pos = e.GetPosition(this);
+        _lastPointerPosition = pos;
 
         if (_isPanning)
         {
@@ -575,14 +584,16 @@ public sealed class GraphCanvas : Control
         base.OnPointerWheelChanged(e);
 
         Point pos = e.GetPosition(this);
+        _lastPointerPosition = pos;
 
         if (e.KeyModifiers.HasFlag(KeyModifiers.Control))
         {
-            // Ctrl + wheel: Zoom around pointer cursor
+            // Ctrl + wheel: Zoom around pointer cursor with smooth exponential progression
             double deltaY = e.Delta.Y;
-            if (Math.Abs(deltaY) > 0.01)
+            if (Math.Abs(deltaY) > 0.001)
             {
-                double factor = deltaY > 0 ? 1.15 : (1.0 / 1.15);
+                // Smooth exponential scaling progression: standard notch (+1.0) zooms +7.2%, continuous wheel scales proportionally
+                double factor = Math.Clamp(Math.Pow(2.0, deltaY * 0.10), 0.75, 1.35);
                 ZoomAroundPoint(pos, factor);
                 e.Handled = true;
             }
@@ -599,9 +610,9 @@ public sealed class GraphCanvas : Control
         {
             // Standard scroll wheel:
             // Vertical wheel scroll zooms around cursor (Netron / CAD / Maps convention)
-            if (Math.Abs(e.Delta.Y) > 0.01)
+            if (Math.Abs(e.Delta.Y) > 0.001)
             {
-                double factor = e.Delta.Y > 0 ? 1.15 : (1.0 / 1.15);
+                double factor = Math.Clamp(Math.Pow(2.0, e.Delta.Y * 0.10), 0.75, 1.35);
                 ZoomAroundPoint(pos, factor);
                 e.Handled = true;
             }
@@ -649,8 +660,11 @@ public sealed class GraphCanvas : Control
         // Fetch theme-aware brushes
         ThemeBrushes brushes = ResolveThemeBrushes();
 
-        // Push canvas world transform matrix (Translation * Scale)
-        Matrix worldMatrix = Matrix.CreateTranslation(PanOffset.X, PanOffset.Y) * Matrix.CreateScale(Zoom, Zoom);
+        // Push canvas world transform matrix (Scale * Translation):
+        // In Avalonia's row-vector math, Scale * Translation guarantees that world point (wx, wy)
+        // is mapped directly to screen coordinates (wx * Zoom + PanOffset.X, wy * Zoom + PanOffset.Y),
+        // exactly matching WorldToScreen, ScreenToWorld, and keeping cursor-centered zooms rock-solid.
+        Matrix worldMatrix = Matrix.CreateScale(Zoom, Zoom) * Matrix.CreateTranslation(PanOffset.X, PanOffset.Y);
         using (context.PushTransform(worldMatrix))
         {
             // 1. Render Edges (behind nodes)
