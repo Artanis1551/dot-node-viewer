@@ -272,6 +272,7 @@
         <!-- Left: Interactive GraphCanvas Viewport -->
         <Grid Grid.Column="0">
           <controls:GraphCanvas x:Name="Canvas"
+                                Background="Transparent"
                                 Layout="{Binding CurrentLayout}"
                                 SelectedNode="{Binding SelectedNode, Mode=TwoWay}"
                                 AutomationProperties.Name="Graph Canvas"

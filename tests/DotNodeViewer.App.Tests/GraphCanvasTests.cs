@@ -28,6 +28,8 @@ public sealed class GraphCanvasTests
             await Assert.That(canvas.Layout).IsNull();
             await Assert.That(canvas.SelectedNode).IsNull();
             await Assert.That(canvas.HoveredNode).IsNull();
+            await Assert.That(canvas.ClipToBounds).IsTrue();
+            await Assert.That(canvas.Background).IsNotNull();
             await Assert.That(canvas.Zoom).IsEqualTo(1.0);
             await Assert.That(canvas.PanOffset.X).IsEqualTo(0.0);
             await Assert.That(canvas.PanOffset.Y).IsEqualTo(0.0);
@@ -256,6 +258,11 @@ public sealed class GraphCanvasTests
             await Assert.That(canvas.Zoom).IsEqualTo(0.54);
             // Render at 54% to confirm no exceptions and parameters remain intact
             using RenderTargetBitmap bitmap = new(new PixelSize(800, 600));
+            bitmap.Render(canvas);
+
+            // 7. Verify LOD retains parameters even when zoomed out to 15%
+            canvas.Zoom = 0.15;
+            await Assert.That(canvas.Zoom).IsEqualTo(0.15);
             bitmap.Render(canvas);
         });
     }

@@ -23,10 +23,16 @@ public sealed class GraphCanvas : Control
 {
     private const double MinZoom = 0.05;
     private const double MaxZoom = 4.0;
-    private const double LodThresholdLow = 0.20;
-    private const double LodThresholdMedium = 0.20;
+    private const double LodThresholdLow = 0.08;
+    private const double LodThresholdMedium = 0.08;
 
     // Direct / Styled Avalonia properties
+    /// <summary>
+    /// Defines the <see cref="Background"/> property.
+    /// </summary>
+    public static readonly StyledProperty<IBrush?> BackgroundProperty =
+        AvaloniaProperty.Register<GraphCanvas, IBrush?>(nameof(Background), Brushes.Transparent);
+
     /// <summary>
     /// Defines the <see cref="Layout"/> property.
     /// </summary>
@@ -90,6 +96,7 @@ public sealed class GraphCanvas : Control
     /// </summary>
     public GraphCanvas()
     {
+        ClipToBounds = true;
         ZoomInCommand = new RelayCommand(ZoomIn);
         ZoomOutCommand = new RelayCommand(ZoomOut);
         ZoomToFitCommand = new RelayCommand(ZoomToFit);
@@ -101,6 +108,15 @@ public sealed class GraphCanvas : Control
         AddHandler(Gestures.PointerTouchPadGestureMagnifyEvent, OnTouchPadMagnify);
 
         ActualThemeVariantChanged += OnActualThemeVariantChanged;
+    }
+
+    /// <summary>
+    /// Gets or sets the background brush used to paint and hit-test the canvas viewport.
+    /// </summary>
+    public IBrush? Background
+    {
+        get => GetValue(BackgroundProperty);
+        set => SetValue(BackgroundProperty, value);
     }
 
     /// <summary>
@@ -603,14 +619,22 @@ public sealed class GraphCanvas : Control
     {
         base.Render(context);
 
-        if (Layout is null)
+        double width = Bounds.Width;
+        double height = Bounds.Height;
+        if (width <= 0 || height <= 0)
         {
             return;
         }
 
-        double width = Bounds.Width;
-        double height = Bounds.Height;
-        if (width <= 0 || height <= 0)
+        // Draw background rectangle across the entire bounds of the canvas.
+        // In Avalonia, a Control only hit-tests regions where visuals are drawn.
+        // Painting the background ensures that pointer pressed/moved, right-drag pans,
+        // mouse wheel zooming, and touchpad pinch gestures hit the canvas across its entire
+        // surface (empty space included), rather than only when hovering over node cards.
+        IBrush bg = Background ?? Brushes.Transparent;
+        context.DrawRectangle(bg, null, new Rect(0, 0, width, height));
+
+        if (Layout is null)
         {
             return;
         }

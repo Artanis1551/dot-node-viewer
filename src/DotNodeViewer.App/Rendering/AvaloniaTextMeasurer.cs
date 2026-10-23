@@ -23,7 +23,7 @@ public sealed class AvaloniaTextMeasurer : ITextMeasurer
     public AvaloniaTextMeasurer(FontFamily? uiFontFamily = null, FontFamily? codeFontFamily = null)
     {
         _uiFontFamily = uiFontFamily ?? new FontFamily("Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Ubuntu, Cantarell, sans-serif");
-        _codeFontFamily = codeFontFamily ?? new FontFamily("Consolas, Menlo, Monaco, DejaVu Sans Mono, monospace");
+        _codeFontFamily = codeFontFamily ?? new FontFamily("JetBrains Mono, Cascadia Code, Fira Code, DejaVu Sans Mono, Consolas, Menlo, Monaco, monospace");
     }
 
     /// <summary>
