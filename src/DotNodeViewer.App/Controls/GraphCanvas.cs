@@ -23,8 +23,8 @@ public sealed class GraphCanvas : Control
 {
     private const double MinZoom = 0.05;
     private const double MaxZoom = 4.0;
-    private const double LodThresholdLow = 0.35;
-    private const double LodThresholdMedium = 0.65;
+    private const double LodThresholdLow = 0.20;
+    private const double LodThresholdMedium = 0.20;
 
     // Direct / Styled Avalonia properties
     /// <summary>
@@ -96,10 +96,8 @@ public sealed class GraphCanvas : Control
         ResetViewCommand = new RelayCommand(ResetView);
 
         GestureRecognizers.Add(new PinchGestureRecognizer());
-        GestureRecognizers.Add(new ScrollGestureRecognizer { CanHorizontallyScroll = true, CanVerticallyScroll = true });
 
         AddHandler(Gestures.PinchEvent, OnPinch);
-        AddHandler(Gestures.ScrollGestureEvent, OnScrollGesture);
         AddHandler(Gestures.PointerTouchPadGestureMagnifyEvent, OnTouchPadMagnify);
 
         ActualThemeVariantChanged += OnActualThemeVariantChanged;
@@ -458,7 +456,25 @@ public sealed class GraphCanvas : Control
         Point pos = currentPoint.Position;
         Point world = ScreenToWorld(pos);
 
-        if (currentPoint.Properties.IsLeftButtonPressed)
+        // 1. Right button OR Middle button: ALWAYS PAN from anywhere on the canvas or nodes
+        bool isRightPress = currentPoint.Properties.IsRightButtonPressed
+            || currentPoint.Properties.PointerUpdateKind == PointerUpdateKind.RightButtonPressed;
+        bool isMiddlePress = currentPoint.Properties.IsMiddleButtonPressed
+            || currentPoint.Properties.PointerUpdateKind == PointerUpdateKind.MiddleButtonPressed;
+
+        if (isRightPress || isMiddlePress)
+        {
+            _isPanning = true;
+            _panStartScreenPoint = pos;
+            _panStartOffset = PanOffset;
+            e.Pointer.Capture(this);
+            e.Handled = true;
+            return;
+        }
+
+        // 2. Left button: Select node if clicked on one; otherwise deselect and pan canvas
+        if (currentPoint.Properties.IsLeftButtonPressed
+            || currentPoint.Properties.PointerUpdateKind == PointerUpdateKind.LeftButtonPressed)
         {
             VisualNode? hitNode = _spatialIndex.FindNodeAt(world.X, world.Y);
             if (hitNode is not null)
@@ -478,14 +494,6 @@ public sealed class GraphCanvas : Control
             InvalidateVisual();
             e.Handled = true;
         }
-        else if (currentPoint.Properties.IsMiddleButtonPressed || currentPoint.Properties.IsRightButtonPressed)
-        {
-            _isPanning = true;
-            _panStartScreenPoint = pos;
-            _panStartOffset = PanOffset;
-            e.Pointer.Capture(this);
-            e.Handled = true;
-        }
     }
 
     /// <inheritdoc/>
@@ -497,11 +505,24 @@ public sealed class GraphCanvas : Control
 
         if (_isPanning)
         {
-            Vector delta = pos - _panStartScreenPoint;
-            PanOffset = _panStartOffset + delta;
-            InvalidateVisual();
-            e.Handled = true;
-            return;
+            PointerPoint currentPoint = e.GetCurrentPoint(this);
+            bool isButtonDown = currentPoint.Properties.IsLeftButtonPressed
+                || currentPoint.Properties.IsRightButtonPressed
+                || currentPoint.Properties.IsMiddleButtonPressed;
+
+            if (isButtonDown)
+            {
+                Vector delta = pos - _panStartScreenPoint;
+                PanOffset = _panStartOffset + delta;
+                InvalidateVisual();
+                e.Handled = true;
+                return;
+            }
+            else
+            {
+                _isPanning = false;
+                e.Pointer.Capture(null);
+            }
         }
 
         Point world = ScreenToWorld(pos);
@@ -523,6 +544,13 @@ public sealed class GraphCanvas : Control
             e.Pointer.Capture(null);
             e.Handled = true;
         }
+    }
+
+    /// <inheritdoc/>
+    protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
+    {
+        base.OnPointerCaptureLost(e);
+        _isPanning = false;
     }
 
     /// <inheritdoc/>
@@ -894,13 +922,17 @@ public sealed class GraphCanvas : Control
                 FlowDirection.LeftToRight,
                 tf,
                 12.5,
-                brushes.TextPrimaryBrush);
+                brushes.TextPrimaryBrush)
+            {
+                MaxTextHeight = 18.0,
+                Trimming = TextTrimming.CharacterEllipsis
+            };
             _textCache[titleKey] = titleFt;
         }
         context.DrawText(titleFt, new Point(b.X + 12.0, b.Y + 7.0));
 
         // Subtitle (Node Name) if space permits
-        if (!string.IsNullOrEmpty(node.Subtitle) && !isMediumLod)
+        if (!string.IsNullOrEmpty(node.Subtitle))
         {
             double subLeft = b.X + titleFt.Width + 18.0;
             double availSubW = Math.Max(0.0, b.Right - subLeft - 12.0);
@@ -919,18 +951,13 @@ public sealed class GraphCanvas : Control
                         brushes.TextSecondaryBrush)
                     {
                         MaxTextWidth = availSubW,
+                        MaxTextHeight = 15.0,
                         Trimming = TextTrimming.CharacterEllipsis
                     };
                     _textCache[subKey] = subFt;
                 }
                 context.DrawText(subFt, new Point(subLeft, b.Y + 9.0));
             }
-        }
-
-        if (isMediumLod)
-        {
-            // At medium LOD, render title and skip parameter details
-            return;
         }
 
         // 4. Body: Collapsed Parameter Rows
@@ -973,7 +1000,11 @@ public sealed class GraphCanvas : Control
                 FlowDirection.LeftToRight,
                 tf,
                 10.5,
-                brushes.TextSecondaryBrush);
+                brushes.TextSecondaryBrush)
+            {
+                MaxTextHeight = 16.0,
+                Trimming = TextTrimming.CharacterEllipsis
+            };
             _textCache[portKey] = portFt;
         }
 
@@ -1023,6 +1054,7 @@ public sealed class GraphCanvas : Control
                 10.0,
                 brushes.TextPrimaryBrush)
             {
+                MaxTextHeight = 16.0,
                 Trimming = TextTrimming.CharacterEllipsis
             };
             _textCache[sumKey] = sumFt;
@@ -1064,7 +1096,11 @@ public sealed class GraphCanvas : Control
                 FlowDirection.LeftToRight,
                 tf,
                 9.5,
-                brushes.WarningBrush);
+                brushes.WarningBrush)
+            {
+                MaxTextHeight = 16.0,
+                Trimming = TextTrimming.CharacterEllipsis
+            };
             _textCache[cacheKey] = ft;
         }
 
@@ -1123,6 +1159,7 @@ public sealed class GraphCanvas : Control
                 brushes.TextPrimaryBrush)
             {
                 MaxTextWidth = maxTextW,
+                MaxTextHeight = 16.0,
                 Trimming = TextTrimming.CharacterEllipsis
             };
             _textCache[titleKey] = titleFt;
@@ -1151,6 +1188,7 @@ public sealed class GraphCanvas : Control
                     brushes.TextSecondaryBrush)
                 {
                     MaxTextWidth = maxTextW,
+                    MaxTextHeight = 15.0,
                     Trimming = TextTrimming.CharacterEllipsis
                 };
                 _textCache[subKey] = subFt;

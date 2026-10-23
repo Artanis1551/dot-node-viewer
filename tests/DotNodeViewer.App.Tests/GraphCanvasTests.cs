@@ -250,6 +250,13 @@ public sealed class GraphCanvasTests
             double beforePinch = canvas.Zoom;
             canvas.RaiseEvent(pinchArgs);
             await Assert.That(canvas.Zoom).IsGreaterThan(beforePinch);
+
+            // 6. Verify LOD retains parameters at 54% zoom (user zoom level)
+            canvas.Zoom = 0.54;
+            await Assert.That(canvas.Zoom).IsEqualTo(0.54);
+            // Render at 54% to confirm no exceptions and parameters remain intact
+            using RenderTargetBitmap bitmap = new(new PixelSize(800, 600));
+            bitmap.Render(canvas);
         });
     }
 

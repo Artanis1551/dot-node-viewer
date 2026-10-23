@@ -11,16 +11,19 @@ namespace DotNodeViewer.App.Rendering;
 /// </summary>
 public sealed class AvaloniaTextMeasurer : ITextMeasurer
 {
-    private readonly FontFamily _fontFamily;
+    private readonly FontFamily _uiFontFamily;
+    private readonly FontFamily _codeFontFamily;
     private readonly ConcurrentDictionary<(string Text, int FontSizeInt, bool IsBold), double> _measurementCache = new();
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="AvaloniaTextMeasurer"/> class with an optional custom font family.
+    /// Initializes a new instance of the <see cref="AvaloniaTextMeasurer"/> class with optional custom font families.
     /// </summary>
-    /// <param name="fontFamily">The font family to measure with; defaults to the application sans-serif stack.</param>
-    public AvaloniaTextMeasurer(FontFamily? fontFamily = null)
+    /// <param name="uiFontFamily">The font family used for UI text; defaults to the application sans-serif stack.</param>
+    /// <param name="codeFontFamily">The font family used for code/tensor text; defaults to the application monospace stack.</param>
+    public AvaloniaTextMeasurer(FontFamily? uiFontFamily = null, FontFamily? codeFontFamily = null)
     {
-        _fontFamily = fontFamily ?? new FontFamily("Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Ubuntu, Cantarell, sans-serif");
+        _uiFontFamily = uiFontFamily ?? new FontFamily("Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Ubuntu, Cantarell, sans-serif");
+        _codeFontFamily = codeFontFamily ?? new FontFamily("Consolas, Menlo, Monaco, DejaVu Sans Mono, monospace");
     }
 
     /// <summary>
@@ -48,20 +51,33 @@ public sealed class AvaloniaTextMeasurer : ITextMeasurer
         double width;
         try
         {
-            Typeface typeface = new(
-                _fontFamily,
+            Typeface uiTypeface = new(
+                _uiFontFamily,
                 FontStyle.Normal,
                 isBold ? FontWeight.SemiBold : FontWeight.Normal);
 
-            FormattedText formattedText = new(
+            FormattedText uiText = new(
                 text,
                 CultureInfo.InvariantCulture,
                 FlowDirection.LeftToRight,
-                typeface,
+                uiTypeface,
                 fontSize,
                 null);
 
-            width = formattedText.Width;
+            Typeface codeTypeface = new(
+                _codeFontFamily,
+                FontStyle.Normal,
+                isBold ? FontWeight.SemiBold : FontWeight.Normal);
+
+            FormattedText codeText = new(
+                text,
+                CultureInfo.InvariantCulture,
+                FlowDirection.LeftToRight,
+                codeTypeface,
+                fontSize,
+                null);
+
+            width = Math.Max(uiText.Width, codeText.Width);
         }
         catch
         {
