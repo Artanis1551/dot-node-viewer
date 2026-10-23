@@ -1,0 +1,42 @@
+{
+  "modelId": "executorch-tiny_mlp_portable",
+  "format": "ExecuTorch",
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "forward",
+    "nodeCount": 6,
+    "operatorHistogram": {
+      "aten::add.out": 1,
+      "aten::addmm.out": 2,
+      "aten::permute_copy.out": 2,
+      "aten::relu.out": 1
+    },
+    "inputs": [
+      {
+        "name": "v5",
+        "dataType": "Float32",
+        "shape": [
+          "1",
+          "4"
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "v21",
+        "dataType": "Float32",
+        "shape": [
+          "1",
+          "2"
+        ]
+      }
+    ],
+    "sampleWeightSlice": {
+      "tensorName": "v0",
+      "dataType": "Float32",
+      "streamOffset": 2432,
+      "byteLength": 48
+    }
+  }
+}
+
