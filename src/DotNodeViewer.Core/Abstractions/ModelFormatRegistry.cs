@@ -1,4 +1,5 @@
 using DotNodeViewer.Core.Formats.Onnx;
+using DotNodeViewer.Core.Formats.Tflite;
 using DotNodeViewer.Core.Ir;
 
 namespace DotNodeViewer.Core.Abstractions;
@@ -179,6 +180,7 @@ public sealed class ModelFormatRegistry
     private static ModelFormatRegistry CreateDefault()
     {
         ModelFormatRegistry registry = new();
+        registry.Register(TfliteFormatDetector.Instance, TfliteFormatReader.Instance);
         registry.Register(OnnxFormatDetector.Instance, OnnxFormatReader.Instance);
         return registry;
     }
