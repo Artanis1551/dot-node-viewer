@@ -153,6 +153,7 @@ dotnet tool run docfx docs/site/docfx.json --serve
   - [How-To & Reference: Layered Graph Layout Engine (`DotNodeViewer.Layout`)](docs/site/articles/library/layout-engine.md)
   - [Reference: Supported Model Formats](docs/site/articles/formats/overview.md)
   - [Reference: CLI Tool (`DotNodeViewer.Cli`)](docs/site/articles/cli/reference.md)
+  - [Reference: Domain Glossary](docs/site/articles/glossary.md)
   - [How-To: Visualizer User Guide](docs/site/articles/visualizer/user-guide.md)
 - [**Development Prerequisites (`PREREQUISITES.md`)**](PREREQUISITES.md)
 - [**Domain Glossary (`GLOSSARY.md`)**](GLOSSARY.md)

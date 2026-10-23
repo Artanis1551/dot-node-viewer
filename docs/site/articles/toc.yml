@@ -17,6 +17,8 @@
           href: formats/tflite.md
     - name: CLI Reference (DotNodeViewer.Cli)
       href: cli/reference.md
+    - name: Domain Glossary
+      href: glossary.md
 - name: Explanation
   items:
     - name: Unified Graph IR & Architecture

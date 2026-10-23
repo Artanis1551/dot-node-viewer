@@ -1,5 +1,8 @@
 # Domain Glossary (`dot-node-viewer`)
 
+> [!NOTE]
+> This glossary is published on the documentation website under [**Reference: Domain Glossary**](docs/site/articles/glossary.md).
+
 This glossary defines the ubiquitous language across `DotNodeViewer.Core`, `DotNodeViewer.Layout`, and `DotNodeViewer.App`. Use these exact terms in code, XML documentation, ADRs, and UI viewmodels.
 
 | Term | Definition | Core Type / Location |

@@ -17,6 +17,7 @@ Our documentation is organized around the four quadrants of the **Diátaxis** fr
 ### 3. Reference *(Information-oriented)*
 - [**Supported Model Formats Overview**](articles/formats/overview.md) — Format matrix, magic-byte detection rules, and operator/tensor mapping details across ONNX, TFLite, ExecuTorch, PyTorch, and Keras.
 - [**CLI Reference (`DotNodeViewer.Cli`)**](articles/cli/reference.md) — Command-line syntax and flags for `detect`, `inspect`, and `snapshot`.
+- [**Domain Glossary**](articles/glossary.md) — Ubiquitous language and domain definitions across `DotNodeViewer.Core`, `DotNodeViewer.Layout`, and `DotNodeViewer.App`.
 - [**C# API Reference**](api/index.md) — Generated XML API reference for `DotNodeViewer.Core` and `DotNodeViewer.Layout`.
 
 ### 4. Explanation *(Understanding-oriented)*
