@@ -44,6 +44,13 @@ public sealed class ModelManifestTests
     public static IEnumerable<ModelManifestEntry> GetRegisteredTfliteModels() =>
         ModelFixtureLoader.LoadManifest().Models.Where(m => m.Format == "tflite");
 
+    /// <summary>
+    /// Enumerates all ExecuTorch model entries registered in <c>Fixtures/models.manifest.json</c>.
+    /// </summary>
+    /// <returns>The sequence of registered ExecuTorch <see cref="ModelManifestEntry"/> instances.</returns>
+    public static IEnumerable<ModelManifestEntry> GetRegisteredExecuTorchModels() =>
+        ModelFixtureLoader.LoadManifest().Models.Where(m => m.Format == "executorch");
+
     [Test]
     [MethodDataSource(nameof(GetRegisteredOnnxModels))]
     public async Task ParseRegisteredOnnxModel_MatchesExpectedTopology(ModelManifestEntry entry) =>
@@ -52,6 +59,11 @@ public sealed class ModelManifestTests
     [Test]
     [MethodDataSource(nameof(GetRegisteredTfliteModels))]
     public async Task ParseRegisteredTfliteModel_MatchesExpectedTopology(ModelManifestEntry entry) =>
+        await AssertModelMatchesExpectedTopologyAsync(entry);
+
+    [Test]
+    [MethodDataSource(nameof(GetRegisteredExecuTorchModels))]
+    public async Task ParseRegisteredExecuTorchModel_MatchesExpectedTopology(ModelManifestEntry entry) =>
         await AssertModelMatchesExpectedTopologyAsync(entry);
 
     private static async Task AssertModelMatchesExpectedTopologyAsync(ModelManifestEntry entry)
