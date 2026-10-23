@@ -1,0 +1,110 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Default">
+      <!-- Operator Categories (Dark) -->
+      <SolidColorBrush x:Key="OpCategoryLayerBrush" Color="#6366F1" />
+      <SolidColorBrush x:Key="OpCategoryLayerSubtleBrush" Color="#22234B" />
+
+      <SolidColorBrush x:Key="OpCategoryActivationBrush" Color="#F59E0B" />
+      <SolidColorBrush x:Key="OpCategoryActivationSubtleBrush" Color="#3D2908" />
+
+      <SolidColorBrush x:Key="OpCategoryNormalizationBrush" Color="#A855F7" />
+      <SolidColorBrush x:Key="OpCategoryNormalizationSubtleBrush" Color="#341A50" />
+
+      <SolidColorBrush x:Key="OpCategoryPoolingBrush" Color="#14B8A6" />
+      <SolidColorBrush x:Key="OpCategoryPoolingSubtleBrush" Color="#0B3733" />
+
+      <SolidColorBrush x:Key="OpCategoryQuantizationBrush" Color="#F43F5E" />
+      <SolidColorBrush x:Key="OpCategoryQuantizationSubtleBrush" Color="#42141F" />
+
+      <SolidColorBrush x:Key="OpCategoryShapeBrush" Color="#0EA5E9" />
+      <SolidColorBrush x:Key="OpCategoryShapeSubtleBrush" Color="#0C2F46" />
+
+      <SolidColorBrush x:Key="OpCategoryTensorBrush" Color="#10B981" />
+      <SolidColorBrush x:Key="OpCategoryTensorSubtleBrush" Color="#0D3528" />
+
+      <SolidColorBrush x:Key="OpCategoryConstantBrush" Color="#94A3B8" />
+      <SolidColorBrush x:Key="OpCategoryConstantSubtleBrush" Color="#252D3B" />
+
+      <SolidColorBrush x:Key="OpCategoryControlFlowBrush" Color="#EC4899" />
+      <SolidColorBrush x:Key="OpCategoryControlFlowSubtleBrush" Color="#3F172B" />
+
+      <SolidColorBrush x:Key="OpCategoryDataBrush" Color="#3B82F6" />
+      <SolidColorBrush x:Key="OpCategoryDataSubtleBrush" Color="#13274A" />
+
+      <SolidColorBrush x:Key="OpCategoryCustomBrush" Color="#EAB308" />
+      <SolidColorBrush x:Key="OpCategoryCustomSubtleBrush" Color="#392C07" />
+
+      <SolidColorBrush x:Key="OpCategoryUnknownBrush" Color="#71717A" />
+      <SolidColorBrush x:Key="OpCategoryUnknownSubtleBrush" Color="#27272A" />
+
+      <!-- Quantization Pills (Dark) -->
+      <SolidColorBrush x:Key="QuantFp32BackgroundBrush" Color="#252E3E" />
+      <SolidColorBrush x:Key="QuantFp32ForegroundBrush" Color="#94A3B8" />
+
+      <SolidColorBrush x:Key="QuantFp16BackgroundBrush" Color="#13334F" />
+      <SolidColorBrush x:Key="QuantFp16ForegroundBrush" Color="#38BDF8" />
+
+      <SolidColorBrush x:Key="QuantInt8BackgroundBrush" Color="#14422A" />
+      <SolidColorBrush x:Key="QuantInt8ForegroundBrush" Color="#86EFAC" />
+
+      <SolidColorBrush x:Key="QuantInt4BackgroundBrush" Color="#37184F" />
+      <SolidColorBrush x:Key="QuantInt4ForegroundBrush" Color="#C084FC" />
+    </ResourceDictionary>
+
+    <ResourceDictionary x:Key="Light">
+      <!-- Operator Categories (Light) -->
+      <SolidColorBrush x:Key="OpCategoryLayerBrush" Color="#4F46E5" />
+      <SolidColorBrush x:Key="OpCategoryLayerSubtleBrush" Color="#EEF2FF" />
+
+      <SolidColorBrush x:Key="OpCategoryActivationBrush" Color="#D97706" />
+      <SolidColorBrush x:Key="OpCategoryActivationSubtleBrush" Color="#FEF3C7" />
+
+      <SolidColorBrush x:Key="OpCategoryNormalizationBrush" Color="#9333EA" />
+      <SolidColorBrush x:Key="OpCategoryNormalizationSubtleBrush" Color="#F3E8FF" />
+
+      <SolidColorBrush x:Key="OpCategoryPoolingBrush" Color="#0D9488" />
+      <SolidColorBrush x:Key="OpCategoryPoolingSubtleBrush" Color="#CCFBF1" />
+
+      <SolidColorBrush x:Key="OpCategoryQuantizationBrush" Color="#E11D48" />
+      <SolidColorBrush x:Key="OpCategoryQuantizationSubtleBrush" Color="#FFE4E6" />
+
+      <SolidColorBrush x:Key="OpCategoryShapeBrush" Color="#0284C7" />
+      <SolidColorBrush x:Key="OpCategoryShapeSubtleBrush" Color="#E0F2FE" />
+
+      <SolidColorBrush x:Key="OpCategoryTensorBrush" Color="#059669" />
+      <SolidColorBrush x:Key="OpCategoryTensorSubtleBrush" Color="#D1FAE5" />
+
+      <SolidColorBrush x:Key="OpCategoryConstantBrush" Color="#475569" />
+      <SolidColorBrush x:Key="OpCategoryConstantSubtleBrush" Color="#F1F5F9" />
+
+      <SolidColorBrush x:Key="OpCategoryControlFlowBrush" Color="#DB2777" />
+      <SolidColorBrush x:Key="OpCategoryControlFlowSubtleBrush" Color="#FCE7F3" />
+
+      <SolidColorBrush x:Key="OpCategoryDataBrush" Color="#2563EB" />
+      <SolidColorBrush x:Key="OpCategoryDataSubtleBrush" Color="#DBEAFE" />
+
+      <SolidColorBrush x:Key="OpCategoryCustomBrush" Color="#CA8A04" />
+      <SolidColorBrush x:Key="OpCategoryCustomSubtleBrush" Color="#FEF9C3" />
+
+      <SolidColorBrush x:Key="OpCategoryUnknownBrush" Color="#52525B" />
+      <SolidColorBrush x:Key="OpCategoryUnknownSubtleBrush" Color="#F4F4F5" />
+
+      <!-- Quantization Pills (Light) -->
+      <SolidColorBrush x:Key="QuantFp32BackgroundBrush" Color="#F1F5F9" />
+      <SolidColorBrush x:Key="QuantFp32ForegroundBrush" Color="#475569" />
+
+      <SolidColorBrush x:Key="QuantFp16BackgroundBrush" Color="#E0F2FE" />
+      <SolidColorBrush x:Key="QuantFp16ForegroundBrush" Color="#0369A1" />
+
+      <SolidColorBrush x:Key="QuantInt8BackgroundBrush" Color="#DCFCE7" />
+      <SolidColorBrush x:Key="QuantInt8ForegroundBrush" Color="#15803D" />
+
+      <SolidColorBrush x:Key="QuantInt4BackgroundBrush" Color="#F3E8FF" />
+      <SolidColorBrush x:Key="QuantInt4ForegroundBrush" Color="#7E22CE" />
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
+
+</ResourceDictionary>

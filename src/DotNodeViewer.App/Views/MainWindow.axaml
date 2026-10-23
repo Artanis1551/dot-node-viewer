@@ -1,0 +1,673 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:DotNodeViewer.App.ViewModels"
+        xmlns:ir="using:DotNodeViewer.Core.Ir"
+        mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="750"
+        x:Class="DotNodeViewer.App.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="{Binding Title}"
+        MinWidth="800" MinHeight="560"
+        Width="1100" Height="750"
+        Background="{DynamicResource ShellCanvasBackgroundBrush}"
+        FontFamily="{DynamicResource UiFontFamily}"
+        DragDrop.AllowDrop="True">
+
+  <Window.Styles>
+    <!-- Base button styling -->
+    <Style Selector="Button.toolbar-btn">
+      <Setter Property="Background" Value="{DynamicResource ShellSurfaceElevatedBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource ShellTextPrimaryBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ShellBorderMutedBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{DynamicResource RadiusSmall}" />
+      <Setter Property="Padding" Value="12,6" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.toolbar-btn:pointerover">
+      <Setter Property="Background" Value="{DynamicResource ShellCardHoverBrush}" />
+    </Style>
+
+    <Style Selector="Button.primary-btn">
+      <Setter Property="Background" Value="{DynamicResource ShellAccentPrimaryBrush}" />
+      <Setter Property="Foreground" Value="#FFFFFF" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="{DynamicResource RadiusMedium}" />
+      <Setter Property="Padding" Value="16,8" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.primary-btn:pointerover">
+      <Setter Property="Opacity" Value="0.9" />
+    </Style>
+
+    <Style Selector="Button.sample-btn">
+      <Setter Property="Background" Value="{DynamicResource ShellSurfaceElevatedBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource ShellTextPrimaryBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ShellBorderMutedBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{DynamicResource RadiusSmall}" />
+      <Setter Property="Padding" Value="10,6" />
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+    </Style>
+    <Style Selector="Button.sample-btn:pointerover">
+      <Setter Property="Background" Value="{DynamicResource ShellCardHoverBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ShellAccentPrimaryBrush}" />
+    </Style>
+  </Window.Styles>
+
+  <Grid RowDefinitions="Auto,*,Auto">
+
+    <!-- Top Toolbar / Header Strip -->
+    <Border Grid.Row="0"
+            Background="{DynamicResource ShellSurfaceBaseBrush}"
+            BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+            BorderThickness="0,0,0,1"
+            Padding="14,10">
+      <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">
+
+        <!-- Logo / Brand Mark -->
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,16,0">
+          <Border Background="{DynamicResource ShellAccentPrimaryBrush}"
+                  CornerRadius="6"
+                  Width="24" Height="24">
+            <TextBlock Text="D"
+                       Foreground="#FFFFFF"
+                       FontWeight="Bold"
+                       FontSize="13"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center" />
+          </Border>
+          <TextBlock Text="dot-node-viewer"
+                     FontWeight="SemiBold"
+                     FontSize="14"
+                     Foreground="{DynamicResource ShellTextPrimaryBrush}"
+                     VerticalAlignment="Center" />
+        </StackPanel>
+
+        <!-- Open File Action -->
+        <Button Grid.Column="1"
+                Classes="toolbar-btn"
+                Command="{Binding OpenModelCommand}"
+                AutomationProperties.Name="Open Model"
+                AutomationProperties.AutomationId="OpenModelButton"
+                VerticalAlignment="Center">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <TextBlock Text="Open Model..." VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+
+        <!-- Subgraph Selector (when model loaded) -->
+        <StackPanel Grid.Column="2"
+                    Orientation="Horizontal"
+                    Spacing="8"
+                    Margin="24,0,0,0"
+                    VerticalAlignment="Center"
+                    IsVisible="{Binding HasModel}">
+          <TextBlock Text="Subgraph:"
+                     Foreground="{DynamicResource ShellTextSecondaryBrush}"
+                     FontSize="12"
+                     VerticalAlignment="Center" />
+          <ComboBox AutomationProperties.Name="Subgraph Selector"
+                    AutomationProperties.AutomationId="SubgraphSelector"
+                    ItemsSource="{Binding Subgraphs}"
+                    SelectedItem="{Binding SelectedSubgraph}"
+                    DisplayMemberBinding="{Binding Name}"
+                    MinWidth="140"
+                    FontSize="12"
+                    CornerRadius="{DynamicResource RadiusSmall}"
+                    VerticalAlignment="Center" />
+        </StackPanel>
+
+        <!-- Theme Toggle -->
+        <Button Grid.Column="3"
+                Classes="toolbar-btn"
+                Command="{Binding ToggleThemeCommand}"
+                AutomationProperties.Name="Theme Toggle"
+                AutomationProperties.AutomationId="ThemeToggleButton"
+                Margin="8,0"
+                VerticalAlignment="Center">
+          <TextBlock Text="{Binding ThemeDisplayName}"
+                     FontSize="12" />
+        </Button>
+
+      </Grid>
+    </Border>
+
+    <!-- Main Viewport Area -->
+    <Grid Grid.Row="1">
+
+      <!-- 1. EMPTY STATE -->
+      <Border IsVisible="{Binding !HasModel}"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center"
+              MaxWidth="640"
+              Margin="24"
+              Padding="32"
+              Background="{DynamicResource ShellSurfaceBaseBrush}"
+              BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+              BorderThickness="1"
+              CornerRadius="{DynamicResource RadiusLarge}">
+        <StackPanel Spacing="20" HorizontalAlignment="Center">
+
+          <!-- Dropzone Icon Target -->
+          <Border Background="{DynamicResource ShellSurfaceElevatedBrush}"
+                  BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                  BorderThickness="2"
+                  CornerRadius="16"
+                  Width="68" Height="68"
+                  HorizontalAlignment="Center">
+            <TextBlock Text="+"
+                       FontSize="36"
+                       FontWeight="Light"
+                       Foreground="{DynamicResource ShellAccentPrimaryBrush}"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center" />
+          </Border>
+
+          <StackPanel Spacing="6" HorizontalAlignment="Center">
+            <TextBlock Text="Open a Neural Network"
+                       FontSize="20"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource ShellTextPrimaryBrush}"
+                       HorizontalAlignment="Center" />
+            <TextBlock Text="Drop an ONNX or TensorFlow Lite model file here to inspect its architecture."
+                       FontSize="13"
+                       Foreground="{DynamicResource ShellTextSecondaryBrush}"
+                       HorizontalAlignment="Center" />
+          </StackPanel>
+
+          <!-- Primary Open Action -->
+          <Button Classes="primary-btn"
+                  HorizontalAlignment="Center"
+                  Command="{Binding OpenModelCommand}"
+                  AutomationProperties.Name="Open Model Button"
+                  AutomationProperties.AutomationId="EmptyStateOpenButton">
+            <TextBlock Text="Browse Model File..." />
+          </Button>
+
+          <!-- Recent / Quick Sample Fixtures -->
+          <Border BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                  BorderThickness="0,1,0,0"
+                  Padding="0,16,0,0"
+                  Margin="0,8,0,0">
+            <StackPanel Spacing="10">
+              <TextBlock Text="Quick Samples &amp; Recent Models"
+                         FontSize="12"
+                         FontWeight="SemiBold"
+                         Foreground="{DynamicResource ShellTextSecondaryBrush}" />
+
+              <ItemsControl ItemsSource="{Binding RecentFiles}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="x:String">
+                    <Button Classes="sample-btn"
+                            Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).LoadModelCommand}"
+                            CommandParameter="{Binding}"
+                            Margin="0,2"
+                            HorizontalAlignment="Stretch">
+                      <TextBlock Text="{Binding}"
+                                 FontFamily="{DynamicResource CodeFontFamily}"
+                                 FontSize="11"
+                                 TextTrimming="CharacterEllipsis" />
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Border>
+
+          <!-- Supported Formats Badge Strip -->
+          <StackPanel Orientation="Horizontal"
+                      Spacing="8"
+                      HorizontalAlignment="Center"
+                      Margin="0,8,0,0">
+            <TextBlock Text="Supported Formats:"
+                       FontSize="11"
+                       Foreground="{DynamicResource ShellTextSecondaryBrush}"
+                       VerticalAlignment="Center" />
+            <Border Background="{DynamicResource ShellSurfaceElevatedBrush}"
+                    BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                    BorderThickness="1"
+                    CornerRadius="{DynamicResource RadiusPill}"
+                    Padding="10,3">
+              <TextBlock Text="ONNX (.onnx)"
+                         FontSize="11"
+                         FontWeight="Medium"
+                         Foreground="{DynamicResource ShellTextPrimaryBrush}" />
+            </Border>
+            <Border Background="{DynamicResource ShellSurfaceElevatedBrush}"
+                    BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                    BorderThickness="1"
+                    CornerRadius="{DynamicResource RadiusPill}"
+                    Padding="10,3">
+              <TextBlock Text="TensorFlow Lite (.tflite)"
+                         FontSize="11"
+                         FontWeight="Medium"
+                         Foreground="{DynamicResource ShellTextPrimaryBrush}" />
+            </Border>
+          </StackPanel>
+
+        </StackPanel>
+      </Border>
+
+      <!-- 2. MODEL OVERVIEW CARD (Viewport Placeholder for S05) -->
+      <ScrollViewer IsVisible="{Binding HasModel}"
+                    AutomationProperties.Name="Model Summary Panel"
+                    AutomationProperties.AutomationId="ModelSummaryPanel"
+                    Padding="24">
+        <StackPanel Spacing="20" MaxWidth="1000" HorizontalAlignment="Stretch">
+
+          <!-- Header Summary Banner -->
+          <Border Background="{DynamicResource ShellSurfaceBaseBrush}"
+                  BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                  BorderThickness="1"
+                  CornerRadius="{DynamicResource RadiusMedium}"
+                  Padding="20">
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel Grid.Column="0" Spacing="6">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <TextBlock Text="{Binding ModelName}"
+                             FontSize="20"
+                             FontWeight="SemiBold"
+                             Foreground="{DynamicResource ShellTextPrimaryBrush}" />
+                  <Border Background="{DynamicResource ShellAccentSubtleBrush}"
+                          BorderBrush="{DynamicResource ShellAccentPrimaryBrush}"
+                          BorderThickness="1"
+                          CornerRadius="{DynamicResource RadiusPill}"
+                          Padding="10,2"
+                          VerticalAlignment="Center">
+                    <TextBlock Text="{Binding FormatDisplayName}"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource ShellAccentPrimaryBrush}" />
+                  </Border>
+                </StackPanel>
+                <TextBlock Text="{Binding ProducerName, StringFormat='Producer: {0}'}"
+                           FontSize="12"
+                           Foreground="{DynamicResource ShellTextSecondaryBrush}" />
+              </StackPanel>
+
+              <!-- High-level Metric Pills -->
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                <StackPanel HorizontalAlignment="Center">
+                  <TextBlock Text="{Binding TotalNodeCount}"
+                             FontFamily="{DynamicResource CodeFontFamily}"
+                             FontSize="20"
+                             FontWeight="Bold"
+                             Foreground="{DynamicResource ShellTextPrimaryBrush}"
+                             HorizontalAlignment="Center" />
+                  <TextBlock Text="Nodes"
+                             FontSize="11"
+                             Foreground="{DynamicResource ShellTextSecondaryBrush}"
+                             HorizontalAlignment="Center" />
+                </StackPanel>
+                <StackPanel HorizontalAlignment="Center">
+                  <TextBlock Text="{Binding TotalEdgeCount}"
+                             FontFamily="{DynamicResource CodeFontFamily}"
+                             FontSize="20"
+                             FontWeight="Bold"
+                             Foreground="{DynamicResource ShellTextPrimaryBrush}"
+                             HorizontalAlignment="Center" />
+                  <TextBlock Text="Edges"
+                             FontSize="11"
+                             Foreground="{DynamicResource ShellTextSecondaryBrush}"
+                             HorizontalAlignment="Center" />
+                </StackPanel>
+                <StackPanel HorizontalAlignment="Center">
+                  <TextBlock Text="{Binding TotalTensorCount}"
+                             FontFamily="{DynamicResource CodeFontFamily}"
+                             FontSize="20"
+                             FontWeight="Bold"
+                             Foreground="{DynamicResource ShellTextPrimaryBrush}"
+                             HorizontalAlignment="Center" />
+                  <TextBlock Text="Tensors"
+                             FontSize="11"
+                             Foreground="{DynamicResource ShellTextSecondaryBrush}"
+                             HorizontalAlignment="Center" />
+                </StackPanel>
+                <StackPanel HorizontalAlignment="Center">
+                  <TextBlock Text="{Binding QuantizedTensorCount}"
+                             FontFamily="{DynamicResource CodeFontFamily}"
+                             FontSize="20"
+                             FontWeight="Bold"
+                             Foreground="{DynamicResource ShellSuccessBrush}"
+                             HorizontalAlignment="Center" />
+                  <TextBlock Text="Quantized"
+                             FontSize="11"
+                             Foreground="{DynamicResource ShellTextSecondaryBrush}"
+                             HorizontalAlignment="Center" />
+                </StackPanel>
+              </StackPanel>
+            </Grid>
+          </Border>
+
+          <!-- Two Column Telemetry Breakdown -->
+          <Grid ColumnDefinitions="*,*">
+
+            <!-- Left Column: Inputs and Outputs -->
+            <StackPanel Grid.Column="0" Spacing="16" Margin="0,0,10,0">
+
+              <!-- Model Inputs -->
+              <Border Background="{DynamicResource ShellSurfaceBaseBrush}"
+                      BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                      BorderThickness="1"
+                      CornerRadius="{DynamicResource RadiusMedium}"
+                      Padding="16">
+                <StackPanel Spacing="12">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="Model Inputs"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource ShellTextPrimaryBrush}" />
+                    <Border Background="{DynamicResource ShellSurfaceElevatedBrush}"
+                            CornerRadius="{DynamicResource RadiusPill}"
+                            Padding="6,2">
+                      <TextBlock Text="{Binding Inputs.Count}"
+                                 FontFamily="{DynamicResource CodeFontFamily}"
+                                 FontSize="10"
+                                 Foreground="{DynamicResource ShellTextSecondaryBrush}" />
+                    </Border>
+                  </StackPanel>
+
+                  <ItemsControl ItemsSource="{Binding Inputs}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:TensorSummaryItem">
+                        <Border Background="{DynamicResource ShellSurfaceElevatedBrush}"
+                                BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{DynamicResource RadiusSmall}"
+                                Padding="10,8"
+                                Margin="0,3">
+                          <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Grid.Column="0" Spacing="2">
+                              <TextBlock Text="{Binding Name}"
+                                         FontWeight="Medium"
+                                         FontSize="12"
+                                         Foreground="{DynamicResource ShellTextPrimaryBrush}" />
+                              <TextBlock Text="{Binding ShapeText}"
+                                         FontFamily="{DynamicResource CodeFontFamily}"
+                                         FontSize="11"
+                                         Foreground="{DynamicResource ShellTextSecondaryBrush}" />
+                              <TextBlock Text="{Binding Details}"
+                                         FontSize="10"
+                                         Foreground="{DynamicResource ShellAccentPrimaryBrush}"
+                                         IsVisible="{Binding Details, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            </StackPanel>
+                            <Border Grid.Column="1"
+                                    Background="{DynamicResource ShellCanvasBackgroundBrush}"
+                                    BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="{DynamicResource RadiusPill}"
+                                    Padding="8,3"
+                                    VerticalAlignment="Center">
+                              <TextBlock Text="{Binding QuantizationBadge}"
+                                         FontFamily="{DynamicResource CodeFontFamily}"
+                                         FontSize="10"
+                                         FontWeight="SemiBold"
+                                         Foreground="{DynamicResource ShellTextPrimaryBrush}" />
+                            </Border>
+                          </Grid>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Border>
+
+              <!-- Model Outputs -->
+              <Border Background="{DynamicResource ShellSurfaceBaseBrush}"
+                      BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                      BorderThickness="1"
+                      CornerRadius="{DynamicResource RadiusMedium}"
+                      Padding="16">
+                <StackPanel Spacing="12">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="Model Outputs"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource ShellTextPrimaryBrush}" />
+                    <Border Background="{DynamicResource ShellSurfaceElevatedBrush}"
+                            CornerRadius="{DynamicResource RadiusPill}"
+                            Padding="6,2">
+                      <TextBlock Text="{Binding Outputs.Count}"
+                                 FontFamily="{DynamicResource CodeFontFamily}"
+                                 FontSize="10"
+                                 Foreground="{DynamicResource ShellTextSecondaryBrush}" />
+                    </Border>
+                  </StackPanel>
+
+                  <ItemsControl ItemsSource="{Binding Outputs}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:TensorSummaryItem">
+                        <Border Background="{DynamicResource ShellSurfaceElevatedBrush}"
+                                BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{DynamicResource RadiusSmall}"
+                                Padding="10,8"
+                                Margin="0,3">
+                          <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Grid.Column="0" Spacing="2">
+                              <TextBlock Text="{Binding Name}"
+                                         FontWeight="Medium"
+                                         FontSize="12"
+                                         Foreground="{DynamicResource ShellTextPrimaryBrush}" />
+                              <TextBlock Text="{Binding ShapeText}"
+                                         FontFamily="{DynamicResource CodeFontFamily}"
+                                         FontSize="11"
+                                         Foreground="{DynamicResource ShellTextSecondaryBrush}" />
+                              <TextBlock Text="{Binding Details}"
+                                         FontSize="10"
+                                         Foreground="{DynamicResource ShellAccentPrimaryBrush}"
+                                         IsVisible="{Binding Details, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            </StackPanel>
+                            <Border Grid.Column="1"
+                                    Background="{DynamicResource ShellCanvasBackgroundBrush}"
+                                    BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="{DynamicResource RadiusPill}"
+                                    Padding="8,3"
+                                    VerticalAlignment="Center">
+                              <TextBlock Text="{Binding QuantizationBadge}"
+                                         FontFamily="{DynamicResource CodeFontFamily}"
+                                         FontSize="10"
+                                         FontWeight="SemiBold"
+                                         Foreground="{DynamicResource ShellTextPrimaryBrush}" />
+                            </Border>
+                          </Grid>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Border>
+
+            </StackPanel>
+
+            <!-- Right Column: Operator Categories Breakdown -->
+            <Border Grid.Column="1"
+                    Background="{DynamicResource ShellSurfaceBaseBrush}"
+                    BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                    BorderThickness="1"
+                    CornerRadius="{DynamicResource RadiusMedium}"
+                    Padding="16"
+                    Margin="10,0,0,0">
+              <StackPanel Spacing="12">
+                <TextBlock Text="Operator Category Distribution"
+                           FontSize="14"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource ShellTextPrimaryBrush}" />
+
+                <ItemsControl ItemsSource="{Binding OperatorCategories}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:OperatorCategorySummaryItem">
+                      <Border Background="{DynamicResource ShellSurfaceElevatedBrush}"
+                              BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                              BorderThickness="1"
+                              CornerRadius="{DynamicResource RadiusSmall}"
+                              Padding="12,8"
+                              Margin="0,3">
+                        <Grid ColumnDefinitions="*,Auto">
+                          <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                            <Border Background="{DynamicResource ShellAccentPrimaryBrush}"
+                                    CornerRadius="4"
+                                    Width="8" Height="8"
+                                    VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Name}"
+                                       FontSize="12"
+                                       FontWeight="Medium"
+                                       Foreground="{DynamicResource ShellTextPrimaryBrush}"
+                                       VerticalAlignment="Center" />
+                          </StackPanel>
+                          <Border Grid.Column="1"
+                                  Background="{DynamicResource ShellCanvasBackgroundBrush}"
+                                  CornerRadius="{DynamicResource RadiusPill}"
+                                  Padding="8,2"
+                                  VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Count}"
+                                       FontFamily="{DynamicResource CodeFontFamily}"
+                                       FontSize="11"
+                                       FontWeight="Bold"
+                                       Foreground="{DynamicResource ShellTextPrimaryBrush}" />
+                          </Border>
+                        </Grid>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+
+          </Grid>
+
+        </StackPanel>
+      </ScrollViewer>
+
+      <!-- 3. ERROR BANNER / OVERLAY -->
+      <Border IsVisible="{Binding HasError}"
+              AutomationProperties.Name="Error Banner"
+              AutomationProperties.AutomationId="ErrorBanner"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center"
+              MaxWidth="560"
+              Padding="24"
+              Background="{DynamicResource ShellDangerSubtleBrush}"
+              BorderBrush="{DynamicResource ShellDangerBrush}"
+              BorderThickness="1"
+              CornerRadius="{DynamicResource RadiusLarge}">
+        <StackPanel Spacing="14">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock Text="/!\"
+                       FontSize="18"
+                       FontWeight="Bold"
+                       Foreground="{DynamicResource ShellDangerBrush}" />
+            <TextBlock Text="Could Not Parse Model File"
+                       FontSize="16"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource ShellDangerBrush}" />
+          </StackPanel>
+
+          <TextBlock Text="{Binding ErrorMessage}"
+                     FontSize="13"
+                     Foreground="{DynamicResource ShellTextPrimaryBrush}"
+                     TextWrapping="Wrap" />
+
+          <StackPanel Spacing="4" IsVisible="{Binding ErrorOffsetHex, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+            <TextBlock Text="File Offset:"
+                       FontSize="11"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource ShellTextSecondaryBrush}" />
+            <TextBlock Text="{Binding ErrorOffsetHex}"
+                       FontFamily="{DynamicResource CodeFontFamily}"
+                       FontSize="12"
+                       Foreground="{DynamicResource ShellDangerBrush}" />
+          </StackPanel>
+
+          <StackPanel Spacing="4" IsVisible="{Binding ErrorContext, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+            <TextBlock Text="Context:"
+                       FontSize="11"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource ShellTextSecondaryBrush}" />
+            <TextBlock Text="{Binding ErrorContext}"
+                       FontSize="12"
+                       Foreground="{DynamicResource ShellTextPrimaryBrush}"
+                       TextWrapping="Wrap" />
+          </StackPanel>
+
+          <Button Classes="toolbar-btn"
+                  HorizontalAlignment="Right"
+                  Command="{Binding ClearErrorCommand}"
+                  Margin="0,8,0,0">
+            <TextBlock Text="Dismiss" />
+          </Button>
+        </StackPanel>
+      </Border>
+
+      <!-- 4. LOADING OVERLAY -->
+      <Border IsVisible="{Binding IsLoading}"
+              Background="#80000000"
+              HorizontalAlignment="Stretch"
+              VerticalAlignment="Stretch">
+        <Border HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Background="{DynamicResource ShellSurfaceBaseBrush}"
+                BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                BorderThickness="1"
+                CornerRadius="{DynamicResource RadiusMedium}"
+                Padding="28"
+                MinWidth="280">
+          <StackPanel Spacing="16" HorizontalAlignment="Center">
+            <ProgressBar IsIndeterminate="True"
+                         Width="200"
+                         Foreground="{DynamicResource ShellAccentPrimaryBrush}" />
+            <TextBlock Text="{Binding LoadingStatus}"
+                       FontSize="13"
+                       FontWeight="Medium"
+                       Foreground="{DynamicResource ShellTextPrimaryBrush}"
+                       HorizontalAlignment="Center" />
+          </StackPanel>
+        </Border>
+      </Border>
+
+    </Grid>
+
+    <!-- Bottom Status Bar -->
+    <Border Grid.Row="2"
+            Background="{DynamicResource ShellSurfaceBaseBrush}"
+            BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+            BorderThickness="0,1,0,0"
+            Padding="14,6">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <TextBlock Grid.Column="0"
+                   Text="{Binding StatusText}"
+                   FontSize="11"
+                   Foreground="{DynamicResource ShellTextSecondaryBrush}"
+                   VerticalAlignment="Center" />
+
+        <TextBlock Grid.Column="1"
+                   Text="{Binding ModelPath}"
+                   FontSize="11"
+                   FontFamily="{DynamicResource CodeFontFamily}"
+                   Foreground="{DynamicResource ShellTextSecondaryBrush}"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   TextTrimming="CharacterEllipsis"
+                   Margin="16,0" />
+
+        <TextBlock Grid.Column="2"
+                   Text="{Binding LayoutDurationMs, StringFormat='Layout: {0:F1}ms'}"
+                   FontSize="11"
+                   FontFamily="{DynamicResource CodeFontFamily}"
+                   Foreground="{DynamicResource ShellTextSecondaryBrush}"
+                   VerticalAlignment="Center"
+                   IsVisible="{Binding HasModel}" />
+      </Grid>
+    </Border>
+
+  </Grid>
+
+</Window>
