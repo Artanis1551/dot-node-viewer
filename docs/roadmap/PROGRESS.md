@@ -13,7 +13,7 @@ Every stage agent MUST read this file before starting work and append a completi
 | **S04** | [`S04-layout-engine.md`](stages/S04-layout-engine.md) | `stage/S04-layout-engine` | Complete | `DotNodeViewer.Layout` pure C# Sugiyama/dagre layered layout + `ModelGraphLayoutAdapter` |
 | **S05** | [`S05-ui-iteration-1a-design-system-and-shell.md`](stages/S05-ui-iteration-1a-design-system-and-shell.md) | `stage/S05-ui-design-and-shell` | Complete | `frontend-design` token system, Avalonia shell, file loading, `computer-use` screenshots |
 | **S06** | [`S06-ui-iteration-1b-graph-canvas-and-properties.md`](stages/S06-ui-iteration-1b-graph-canvas-and-properties.md) | `stage/S06-ui-graph-canvas` | Complete | Custom `GraphCanvas`, pan/zoom/hit-test, basic node properties sidebar, `computer-use` verification |
-| **S07** | [`S07-executorch-parser.md`](stages/S07-executorch-parser.md) | `stage/S07-executorch-parser` | Pending | ExecuTorch `.pte` detector & reader, delegate payloads, `tools/model-gen/torch` |
+| **S07** | [`S07-executorch-parser.md`](stages/S07-executorch-parser.md) | `stage/S07-executorch-parser` | Complete | ExecuTorch `.pte` detector & reader, delegate payloads, `tools/model-gen/torch` |
 | **S08** | [`S08-pytorch-zip-pickle-and-torchscript.md`](stages/S08-pytorch-zip-pickle-and-torchscript.md) | `stage/S08-pytorch-torchscript` | Pending | `ZipDirectory`, safe `PickleMachine`, `state_dict` & TorchScript `.pt` reader |
 | **S09** | [`S09-pytorch-pt2-export.md`](stages/S09-pytorch-pt2-export.md) | `stage/S09-pytorch-pt2` | Pending | PyTorch `torch.export` `.pt2` archive & `ExportedProgram` JSON reader |
 | **S10** | [`S10-keras-and-hdf5.md`](stages/S10-keras-and-hdf5.md) | `stage/S10-keras-and-hdf5` | Pending | Keras v3 `.keras` + legacy `.h5` reader |
@@ -351,3 +351,48 @@ Every stage agent MUST read this file before starting work and append a completi
   - `dotnet tool run docfx metadata docs/site/docfx.json --warningsAsErrors`
   - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
 - **Next Stage:** Optional checkpoint: run `.agents/skills/improve-codebase-architecture/SKILL.md` before proceeding to **Stage S07** (`docs/roadmap/stages/S07-executorch-parser.md`).
+
+### Stage S07 — ExecuTorch Parser (`.pte`)
+- **Branch:** `stage/S07-executorch-parser`
+- **Commits:**
+  - `S07: add ExecuTorch detector, reader, and operator catalog`
+  - `S07: add torch/executorch model-gen, fixtures, and golden snapshots`
+  - `S07: add synthetic and model integration tests`
+  - `S07: update README, DocFX site, CI, and PROGRESS.md`
+- **What Was Built:**
+  - Implemented the ExecuTorch format parser under `src/DotNodeViewer.Core/Formats/ExecuTorch/` (`internal`) and registered it in `ModelFormatRegistry.Default`:
+    - `ExecuTorchFormatDetector`: detects `ET12` (and `ET1x` with version diagnostic) file identifiers at bytes `4..8`, validates FlatBuffer root table and vtable offsets, and inspects optional extended headers (`eh00` at byte offset `8`) without modifying `stream.Position`.
+    - `ExecuTorchFormatReader`:
+      - Decodes `Program.execution_plan[]` into `Subgraph` instances.
+      - Decodes `Program.values[]` (`EValue` union: `Tensor`, `Int`, `Double`, `Bool`, `String`, `IntList`, `DoubleList`, `BoolList`, `TensorList`).
+      - Resolves `Tensor` metadata: scalar type mapping, static vs. dynamic/symbolic shapes (`STATIC` -> `Fixed`, `DYNAMIC_BOUND` with `-1` or `DYNAMIC_UNBOUND` -> `Dynamic`).
+      - Resolves zero-allocation lazy weights into `TensorDataSlice`: inline `constant_buffer` and segmented `constant_segment` with `DataSegment` offsets rebased by `segment_base_offset`, as well as `ExternalTensorDataReference` for external data references.
+      - Maps `chains[].instructions[]`: `KernelCall` (resolving out-variant formal arguments, operator inputs/outputs, and scalar hyperparameters into `NodeAttribute`s), `DelegateCall` (`OperatorCategory.Custom`, `Delegate (<backend_id>)`, with compiled delegate payloads captured as lazy `AttributeValue.Bytes(TensorDataSlice)` under `processed`), `MoveCall` (identity tensor op), `JumpFalseCall` (`OperatorCategory.ControlFlow`), and `FreeCall` (omitted from visual topology).
+    - `ExecuTorchOperatorCatalog`: maps ATen operators and ExecuTorch primitives to `OperatorCategory`, scalar types to `DataType`, and computes element storage byte sizes.
+  - Extended `FlatBufferTable`: added bounds-checked `ReadDouble`, `ReadDoubleVector`, and `ReadBoolVector` methods over `RandomAccessSource`.
+  - Set up `tools/model-gen/torch/`: configured `requirements.txt` with `executorch==1.5.1` and `torch==2.14.1` and created deterministic generator `gen_executorch.py` emitting `.pte` models and independent ground-truth `.truth.json` metadata.
+  - Staged and registered 2 committed fixtures in `tests/DotNodeViewer.Core.Tests/Fixtures/models.manifest.json`:
+    - `tiny_mlp_portable.pte`: portable ATen kernels (`aten::permute_copy.out`, `aten::addmm.out`, `aten::relu.out`, `aten::add.out`) and lazy weight slices.
+    - `tiny_cnn_xnnpack.pte`: lowered to `XnnpackPartitioner` delegate (`Delegate (XnnpackBackend)`) verifying delegate payload slicing.
+  - Added unit, synthetic, and integration tests in `tests/DotNodeViewer.Core.Tests/`:
+    - `Synthetic/ExecuTorchSyntheticTests.cs`: the 4 mandatory tests (header probing & position restoration, dynamic bound shapes and XNNPACK delegate payload slicing, zero heap allocation lazy weight slices, and corrupted/truncated stream resilience).
+    - `Formats/ExecuTorchModelTests.cs`: portable ops and weight slices verification, XNNPACK delegate payload verification, and `.truth.json` parity.
+    - `ModelManifestTests`: added `GetRegisteredExecuTorchModels` and `ParseRegisteredExecuTorchModel_MatchesExpectedTopology`.
+    - `.github/workflows/ci.yml`: added `model-tests-executorch` job and updated synthetic test filter.
+- **`README.md` & `docs/site/` Updates:**
+  - Updated root [`README.md`](../../README.md) supported-formats table with ExecuTorch (`.pte`).
+  - Added Diátaxis Reference article [`docs/site/articles/formats/executorch.md`](../site/articles/formats/executorch.md) covering ExecuTorch architecture, extended headers, segmented weights, and backend delegate payloads, and linked it in `toc.yml` and `overview.md`.
+  - Built DocFX metadata and site cleanly with 0 warnings.
+- **New ADRs Recorded:** None (strictly followed ADRs `0001`–`0007`).
+- **Deviations & Known Limitations:**
+  - Upgraded PyTorch virtual environment to `executorch==1.5.1` and `torch==2.14.1` per user request and compatibility with Python 3.12.
+- **Test Count:** 94 passed (`DotNodeViewer.Core.Tests`: 58, `DotNodeViewer.Layout.Tests`: 13, `DotNodeViewer.App.Tests`: 23), 0 failed, 0 skipped.
+- **Screenshots Taken:** None (format parser stage, no UI alterations).
+- **Verification Commands Run:**
+  - `tools/model-gen/torch/.venv/bin/python tools/model-gen/torch/gen_executorch.py`
+  - `dotnet build dot-node-viewer.slnx -c Release --no-restore`
+  - `dotnet test --solution dot-node-viewer.slnx -c Release --no-build`
+  - `dotnet publish tools/DotNodeViewer.Cli/DotNodeViewer.Cli.csproj -c Release -p:PublishAot=true -r linux-x64`
+  - `dotnet tool run docfx metadata docs/site/docfx.json --warningsAsErrors`
+  - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
+- **Next Stage:** Run **Stage S08** (`docs/roadmap/stages/S08-pytorch-zip-pickle-and-torchscript.md`).
