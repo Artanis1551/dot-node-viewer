@@ -1,0 +1,61 @@
+{
+  "modelId": "tflite-mobilenet_v2_1.0_224_quant",
+  "format": "TensorFlow Lite v3",
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "main",
+    "nodeCount": 66,
+    "operatorHistogram": {
+      "CONV_2D": 36,
+      "DEPTHWISE_CONV_2D": 17,
+      "ADD": 10,
+      "AVERAGE_POOL_2D": 1,
+      "RESHAPE": 1,
+      "SOFTMAX": 1
+    },
+    "inputs": [
+      {
+        "name": "input",
+        "dataType": "UInt8",
+        "shape": [
+          "1",
+          "224",
+          "224",
+          "3"
+        ],
+        "quantization": {
+          "scale": [
+            0.0078125
+          ],
+          "zeroPoint": [
+            128
+          ]
+        }
+      }
+    ],
+    "outputs": [
+      {
+        "name": "MobilenetV2/Predictions/Softmax",
+        "dataType": "UInt8",
+        "shape": [
+          "1",
+          "1001"
+        ],
+        "quantization": {
+          "scale": [
+            0.00390625
+          ],
+          "zeroPoint": [
+            0
+          ]
+        }
+      }
+    ],
+    "sampleWeightSlice": {
+      "tensorName": "MobilenetV2/Logits/Squeeze",
+      "dataType": "Int32",
+      "streamOffset": 3546420,
+      "byteLength": 8
+    }
+  }
+}

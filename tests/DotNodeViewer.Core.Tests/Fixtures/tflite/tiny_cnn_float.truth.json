@@ -1,0 +1,79 @@
+{
+  "modelId": "tflite-tiny_cnn_float",
+  "format": "TensorFlow Lite v3",
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "main",
+    "nodeCount": 5,
+    "operatorHistogram": {
+      "CONV_2D": 1,
+      "DEPTHWISE_CONV_2D": 1,
+      "AVERAGE_POOL_2D": 1,
+      "FULLY_CONNECTED": 1,
+      "SOFTMAX": 1
+    },
+    "inputs": [
+      {
+        "name": "serving_default_input:0",
+        "dataType": "Float32",
+        "shape": [
+          "1",
+          "8",
+          "8",
+          "3"
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "StatefulPartitionedCall_1:0",
+        "dataType": "Float32",
+        "shape": [
+          "1",
+          "3"
+        ]
+      }
+    ],
+    "initializers": [
+      {
+        "name": "arith.constant",
+        "dataType": "Float32",
+        "shape": [
+          "1",
+          "3",
+          "3",
+          "4"
+        ],
+        "byteLength": 144
+      },
+      {
+        "name": "arith.constant1",
+        "dataType": "Float32",
+        "shape": [
+          "3",
+          "4"
+        ],
+        "byteLength": 48
+      },
+      {
+        "name": "arith.constant2",
+        "dataType": "Float32",
+        "shape": [
+          "4"
+        ],
+        "byteLength": 16
+      },
+      {
+        "name": "tiny_cnn_1/conv2d_1/convolution",
+        "dataType": "Float32",
+        "shape": [
+          "4",
+          "3",
+          "3",
+          "3"
+        ],
+        "byteLength": 432
+      }
+    ]
+  }
+}

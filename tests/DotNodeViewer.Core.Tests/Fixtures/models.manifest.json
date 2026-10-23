@@ -55,6 +55,50 @@
       "sha256": "c1c513582d56afceff8516c73804e484c81c6a830712ab6d682253f4a3cd042f",
       "byteLength": 14246826,
       "expectedSnapshot": "Fixtures/onnx/mobilenetv2-7.expected.json"
+    },
+    {
+      "id": "tflite-tiny_cnn_float",
+      "format": "tflite",
+      "fileName": "tiny_cnn_float.tflite",
+      "tier": "committed",
+      "relativePath": "Fixtures/tflite/tiny_cnn_float.tflite",
+      "sourceUrl": null,
+      "sha256": "2524e349577e9dd17b8b7b227f45f3fc0735818408c33707880745755f4769d6",
+      "byteLength": 2668,
+      "expectedSnapshot": "Fixtures/tflite/tiny_cnn_float.expected.json"
+    },
+    {
+      "id": "tflite-tiny_cnn_int8",
+      "format": "tflite",
+      "fileName": "tiny_cnn_int8.tflite",
+      "tier": "committed",
+      "relativePath": "Fixtures/tflite/tiny_cnn_int8.tflite",
+      "sourceUrl": null,
+      "sha256": "334153324f3fb5b6b2e3e6dfd7760b7f1087fc8f363a5771400c09fa28485e94",
+      "byteLength": 2968,
+      "expectedSnapshot": "Fixtures/tflite/tiny_cnn_int8.expected.json"
+    },
+    {
+      "id": "tflite-tiny_while",
+      "format": "tflite",
+      "fileName": "tiny_while.tflite",
+      "tier": "committed",
+      "relativePath": "Fixtures/tflite/tiny_while.tflite",
+      "sourceUrl": null,
+      "sha256": "b319ae341b46d68a444f2600c7a2e9d280520d81682fdbd089b7e6a5cc7da774",
+      "byteLength": 2204,
+      "expectedSnapshot": "Fixtures/tflite/tiny_while.expected.json"
+    },
+    {
+      "id": "tflite-mobilenet_v2_1.0_224_quant",
+      "format": "tflite",
+      "fileName": "mobilenet_v2_1.0_224_quant.tflite",
+      "tier": "cached",
+      "relativePath": ".model-cache/tflite/mobilenet_v2_1.0_224_quant.tflite",
+      "sourceUrl": "https://raw.githubusercontent.com/google-coral/test_data/master/mobilenet_v2_1.0_224_quant.tflite",
+      "sha256": "7aad0c74c5e3c06e5eb3c827e13304fdd68a83da6087d92ee169c24ff9fd4776",
+      "byteLength": 3610798,
+      "expectedSnapshot": "Fixtures/tflite/mobilenet_v2_1.0_224_quant.expected.json"
     }
   ]
 }

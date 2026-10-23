@@ -1,0 +1,178 @@
+{
+  "modelId": "tflite-tiny_cnn_int8",
+  "format": "TensorFlow Lite v3",
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "main",
+    "nodeCount": 5,
+    "operatorHistogram": {
+      "CONV_2D": 1,
+      "DEPTHWISE_CONV_2D": 1,
+      "AVERAGE_POOL_2D": 1,
+      "FULLY_CONNECTED": 1,
+      "SOFTMAX": 1
+    },
+    "inputs": [
+      {
+        "name": "serving_default_input:0",
+        "dataType": "Int8",
+        "shape": [
+          "1",
+          "8",
+          "8",
+          "3"
+        ],
+        "quantization": {
+          "scale": [
+            0.007838830351829529
+          ],
+          "zeroPoint": [
+            -1
+          ],
+          "quantizedDimension": 0
+        }
+      }
+    ],
+    "outputs": [
+      {
+        "name": "StatefulPartitionedCall_1:0",
+        "dataType": "Int8",
+        "shape": [
+          "1",
+          "3"
+        ],
+        "quantization": {
+          "scale": [
+            0.00390625
+          ],
+          "zeroPoint": [
+            -128
+          ],
+          "quantizedDimension": 0
+        }
+      }
+    ],
+    "initializers": [
+      {
+        "name": "tfl.pseudo_qconst",
+        "dataType": "Int8",
+        "shape": [
+          "3",
+          "4"
+        ],
+        "byteLength": 12,
+        "quantization": {
+          "scale": [
+            0.0058864811435341835,
+            0.0023524563293904066,
+            0.006271244026720524
+          ],
+          "zeroPoint": [
+            0,
+            0,
+            0
+          ],
+          "quantizedDimension": 0
+        }
+      },
+      {
+        "name": "tfl.pseudo_qconst1",
+        "dataType": "Int8",
+        "shape": [
+          "1",
+          "3",
+          "3",
+          "4"
+        ],
+        "byteLength": 36,
+        "quantization": {
+          "scale": [
+            0.00275532272644341,
+            0.0026742196641862392,
+            0.0022244255524128675,
+            0.0026547329034656286
+          ],
+          "zeroPoint": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "quantizedDimension": 3
+        }
+      },
+      {
+        "name": "tfl.pseudo_qconst2",
+        "dataType": "Int32",
+        "shape": [
+          "4"
+        ],
+        "byteLength": 16,
+        "quantization": {
+          "scale": [
+            1.8330803868593648e-05,
+            1.8006054233410396e-05,
+            1.792431066860445e-05,
+            1.8635339074535295e-05
+          ],
+          "zeroPoint": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "quantizedDimension": 0
+        }
+      },
+      {
+        "name": "tfl.pseudo_qconst3",
+        "dataType": "Int32",
+        "shape": [
+          "4"
+        ],
+        "byteLength": 16,
+        "quantization": {
+          "scale": [
+            2.731499625951983e-05,
+            2.6510977477300912e-05,
+            2.205192686233204e-05,
+            2.631779534567613e-05
+          ],
+          "zeroPoint": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "quantizedDimension": 0
+        }
+      },
+      {
+        "name": "tfl.pseudo_qconst4",
+        "dataType": "Int8",
+        "shape": [
+          "4",
+          "3",
+          "3",
+          "3"
+        ],
+        "byteLength": 108,
+        "quantization": {
+          "scale": [
+            0.0023384615778923035,
+            0.0022970333229750395,
+            0.00228660530410707,
+            0.002377311233431101
+          ],
+          "zeroPoint": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "quantizedDimension": 0
+        }
+      }
+    ]
+  }
+}

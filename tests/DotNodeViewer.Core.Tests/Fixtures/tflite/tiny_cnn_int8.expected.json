@@ -1,0 +1,60 @@
+{
+  "modelId": "tflite-tiny_cnn_int8",
+  "format": "TensorFlow Lite v3",
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "main",
+    "nodeCount": 5,
+    "operatorHistogram": {
+      "CONV_2D": 1,
+      "DEPTHWISE_CONV_2D": 1,
+      "AVERAGE_POOL_2D": 1,
+      "FULLY_CONNECTED": 1,
+      "SOFTMAX": 1
+    },
+    "inputs": [
+      {
+        "name": "serving_default_input:0",
+        "dataType": "Int8",
+        "shape": [
+          "1",
+          "8",
+          "8",
+          "3"
+        ],
+        "quantization": {
+          "scale": [
+            0.00783883
+          ],
+          "zeroPoint": [
+            -1
+          ]
+        }
+      }
+    ],
+    "outputs": [
+      {
+        "name": "StatefulPartitionedCall_1:0",
+        "dataType": "Int8",
+        "shape": [
+          "1",
+          "3"
+        ],
+        "quantization": {
+          "scale": [
+            0.00390625
+          ],
+          "zeroPoint": [
+            -128
+          ]
+        }
+      }
+    ],
+    "sampleWeightSlice": {
+      "tensorName": "tfl.pseudo_qconst",
+      "dataType": "Int8",
+      "streamOffset": 772,
+      "byteLength": 12
+    }
+  }
+}
