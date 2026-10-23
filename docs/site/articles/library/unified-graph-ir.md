@@ -17,6 +17,66 @@ This article explains the design of `DotNodeViewer.Core`, the immutable **Unifie
 
 ## The Unified Graph IR (`DotNodeViewer.Core.Ir`)
 
+```mermaid
+classDiagram
+    direction TB
+    class ModelGraph {
+        +ModelFormatInfo Format
+        +string Producer
+        +IReadOnlyList~Subgraph~ Subgraphs
+        +IReadOnlyDictionary~string, string~ Metadata
+        +IReadOnlyList~ParseDiagnostic~ Diagnostics
+    }
+
+    class Subgraph {
+        +string Name
+        +IReadOnlyList~GraphNode~ Nodes
+        +IReadOnlyList~TensorEdge~ Tensors
+        +IReadOnlyList~GraphPort~ Inputs
+        +IReadOnlyList~GraphPort~ Outputs
+    }
+
+    class GraphNode {
+        +string Name
+        +OperatorInfo Operator
+        +IReadOnlyList~NodePort~ Inputs
+        +IReadOnlyList~NodePort~ Outputs
+        +IReadOnlyList~NodeAttribute~ Attributes
+    }
+
+    class NodePort {
+        +string Name
+        +IReadOnlyList~TensorEdge~ Tensors
+    }
+
+    class TensorEdge {
+        +string Name
+        +TensorDescriptor Descriptor
+        +TensorKind Kind
+        +TensorDataSource Data
+    }
+
+    class TensorDescriptor {
+        +DataType DataType
+        +TensorShape Shape
+        +QuantizationInfo Quantization
+        +string Layout
+    }
+
+    class TensorShape {
+        +IReadOnlyList~TensorDimension~ Dimensions
+        +int Rank
+    }
+
+    ModelGraph *-- Subgraph : contains 1..*
+    Subgraph *-- GraphNode : contains 0..*
+    Subgraph *-- TensorEdge : catalogs 0..*
+    GraphNode *-- NodePort : has Inputs/Outputs
+    NodePort o-- TensorEdge : references
+    TensorEdge *-- TensorDescriptor : defines
+    TensorDescriptor *-- TensorShape : specifies
+```
+
 ### 1. `ModelGraph` and `Subgraph`
 
 - **`ModelGraph`** is the root record returned by `IModelFormatReader.ReadAsync`:

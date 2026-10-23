@@ -7,10 +7,51 @@ This tutorial walks you through setting up your development environment, buildin
 ## What You Will Learn
 
 By completing this tutorial, you will:
-1. Verify your `.NET 10` SDK and local tool manifest (`docfx`).
-2. Build `dot-node-viewer.slnx` in `Release` configuration with zero warnings.
-3. Run the automated `TUnit` tests across `DotNodeViewer.Core.Tests`, `DotNodeViewer.Layout.Tests`, and `DotNodeViewer.App.Tests`.
-4. Generate the static documentation website and C# API reference using DocFX.
+1. Understand the high-level architecture of `dot-node-viewer`.
+2. Verify your `.NET 10` SDK and local tool manifest (`docfx`).
+3. Build `dot-node-viewer.slnx` in `Release` configuration with zero warnings.
+4. Run the automated `TUnit` tests across `DotNodeViewer.Core.Tests`, `DotNodeViewer.Layout.Tests`, and `DotNodeViewer.App.Tests`.
+5. Generate the static documentation website and C# API reference using DocFX.
+
+---
+
+## High-Level Architecture
+
+`dot-node-viewer` follows a strict unidirected layered architecture:
+
+```mermaid
+flowchart TD
+    subgraph Models["Model Files"]
+        ONNX[".onnx"]
+        TFLITE[".tflite"]
+        OTHER["Future (.pt, .pte, .gguf)"]
+    end
+
+    subgraph Core["DotNodeViewer.Core (Pure C#, AOT &amp; WASM Safe)"]
+        Registry["ModelFormatRegistry / ModelProbe"]
+        Readers["Format Readers (OnnxFormatReader, TfliteFormatReader)"]
+        IR["Unified Graph IR (ModelGraph, Subgraph, GraphNode, TensorEdge)"]
+        Registry --> Readers --> IR
+    end
+
+    subgraph Layout["DotNodeViewer.Layout (Pure C#)"]
+        Adapter["ModelGraphLayoutAdapter"]
+        Engine["Sugiyama Layout Engine (Cycle Breaking, Layering, Crossings, Coordinates)"]
+        Adapter --> Engine
+    end
+
+    subgraph Heads["Presentation &amp; Harness Heads"]
+        CLI["DotNodeViewer.Cli (NativeAOT CLI: detect / inspect / snapshot)"]
+        Desktop["DotNodeViewer.Desktop (Cross-Platform Avalonia App)"]
+        Browser["DotNodeViewer.Browser (WebAssembly Head)"]
+    end
+
+    Models --> Core
+    IR --> Layout
+    IR --> CLI
+    Layout --> Desktop
+    Layout --> Browser
+```
 
 ---
 

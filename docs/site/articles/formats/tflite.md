@@ -16,6 +16,32 @@
 
 ---
 
+## FlatBuffers Schema & Parsing Architecture
+
+```mermaid
+flowchart TD
+    File["TFLite Stream (bytes 0..N)"] --> Header["FlatBuffer Header: Root Offset + 'TFL3' Magic"]
+    Header --> Model["Root Model Table (vtable traversal)"]
+
+    Model --> OpCodes["operator_codes (Vector of OperatorCode tables)"]
+    Model --> Buffers["buffers (Vector of Buffer tables)"]
+    Model --> Subgraphs["subgraphs (Vector of SubGraph tables)"]
+
+    Buffers --> Slice["CaptureByteVectorSlice (Offset = vectorPos + 4, Length = count)"]
+    Slice --> TensorDataSlice["TensorDataSlice (Zero-Copy Lazy Weights)"]
+
+    Subgraphs --> SG["SubGraph (tensors, operators, inputs, outputs)"]
+    SG --> Tensors["Tensor (name, type, shape, buffer, quantization)"]
+    SG --> Operators["Operator (opcode_index, inputs, outputs, builtin_options)"]
+
+    Tensors --> Quant["QuantizationParameters -> AffineQuantization (Scale, ZeroPoint, Dim)"]
+    Operators --> Fused["Fused Activation Badges &amp; Hyperparameter Attributes"]
+
+    Model --> IR["ModelGraph (Unified Graph IR)"]
+```
+
+---
+
 ## Unified Graph IR Mapping
 
 ### 1. Model Header, Operator Codes & Subgraphs
