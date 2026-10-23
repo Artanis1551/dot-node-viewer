@@ -10,6 +10,7 @@ import subprocess
 from PIL import Image
 import Xlib.display
 import Xlib.X
+import Xlib.ext.xtest
 import pyatspi
 
 def get_x11_display():
@@ -56,6 +57,109 @@ def capture_window(win, output_path, disp):
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
     img.save(output_path)
     print(f"Captured screenshot to: {output_path} ({w}x{h})")
+
+def get_window_absolute_coordinates(win):
+    geom = win.get_geometry()
+    cur = win
+    abs_x = 0
+    abs_y = 0
+    while cur:
+        try:
+            g = cur.get_geometry()
+            abs_x += g.x
+            abs_y += g.y
+            query = cur.query_tree()
+            if query.parent and query.parent.id == cur.id:
+                break
+            cur = query.parent
+        except Exception:
+            break
+    return abs_x, abs_y, geom.width, geom.height
+
+def click_window_ratio(win, disp, rx, ry):
+    abs_x, abs_y, w, h = get_window_absolute_coordinates(win)
+    target_x = int(abs_x + (w * rx))
+    target_y = int(abs_y + (h * ry))
+    
+    print(f"Clicking at window ratio ({rx:.2f}, {ry:.2f}) -> absolute screen ({target_x}, {target_y})")
+    Xlib.ext.xtest.fake_input(disp, Xlib.X.MotionNotify, x=target_x, y=target_y)
+    disp.sync()
+    time.sleep(0.05)
+    Xlib.ext.xtest.fake_input(disp, Xlib.X.ButtonPress, detail=1)
+    disp.sync()
+    time.sleep(0.05)
+    Xlib.ext.xtest.fake_input(disp, Xlib.X.ButtonRelease, detail=1)
+    disp.sync()
+    time.sleep(0.15)
+
+def scroll_window(win, disp, rx, ry, is_up=True, clicks=3):
+    abs_x, abs_y, w, h = get_window_absolute_coordinates(win)
+    target_x = int(abs_x + (w * rx))
+    target_y = int(abs_y + (h * ry))
+    
+    button = 4 if is_up else 5
+    Xlib.ext.xtest.fake_input(disp, Xlib.X.MotionNotify, x=target_x, y=target_y)
+    disp.sync()
+    time.sleep(0.05)
+    for _ in range(clicks):
+        Xlib.ext.xtest.fake_input(disp, Xlib.X.ButtonPress, detail=button)
+        disp.sync()
+        time.sleep(0.02)
+        Xlib.ext.xtest.fake_input(disp, Xlib.X.ButtonRelease, detail=button)
+        disp.sync()
+        time.sleep(0.05)
+    time.sleep(0.15)
+
+def drag_window_ratio(win, disp, rx1, ry1, rx2, ry2, button=1):
+    abs_x, abs_y, w, h = get_window_absolute_coordinates(win)
+    start_x = int(abs_x + (w * rx1))
+    start_y = int(abs_y + (h * ry1))
+    end_x = int(abs_x + (w * rx2))
+    end_y = int(abs_y + (h * ry2))
+
+    print(f"Dragging from ({start_x}, {start_y}) to ({end_x}, {end_y}) with button {button}")
+    Xlib.ext.xtest.fake_input(disp, Xlib.X.MotionNotify, x=start_x, y=start_y)
+    disp.sync()
+    time.sleep(0.05)
+    Xlib.ext.xtest.fake_input(disp, Xlib.X.ButtonPress, detail=button)
+    disp.sync()
+    time.sleep(0.05)
+
+    steps = 10
+    for s in range(1, steps + 1):
+        cur_x = int(start_x + (end_x - start_x) * (s / steps))
+        cur_y = int(start_y + (end_y - start_y) * (s / steps))
+        Xlib.ext.xtest.fake_input(disp, Xlib.X.MotionNotify, x=cur_x, y=cur_y)
+        disp.sync()
+        time.sleep(0.02)
+
+    Xlib.ext.xtest.fake_input(disp, Xlib.X.ButtonRelease, detail=button)
+    disp.sync()
+    time.sleep(0.15)
+
+def send_key_combo(disp, *keys):
+    import Xlib.XK
+    keycodes = []
+    for k in keys:
+        keysym = Xlib.XK.string_to_keysym(k)
+        if keysym == 0:
+            # Try lowercase or fallback
+            keysym = getattr(Xlib.XK, f"XK_{k}", 0)
+        kc = disp.keysym_to_keycode(keysym)
+        keycodes.append(kc)
+
+    for kc in keycodes:
+        if kc:
+            Xlib.ext.xtest.fake_input(disp, Xlib.X.KeyPress, kc)
+            disp.sync()
+            time.sleep(0.02)
+
+    for kc in reversed(keycodes):
+        if kc:
+            Xlib.ext.xtest.fake_input(disp, Xlib.X.KeyRelease, kc)
+            disp.sync()
+            time.sleep(0.02)
+    time.sleep(0.15)
 
 def dump_atspi_tree(app_name="DotNodeViewer"):
     reg = pyatspi.Registry
@@ -105,15 +209,50 @@ def click_element_by_name(app_name, name_substring):
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "dump"
     disp = get_x11_display()
+    win = find_dotnodeviewer_window(disp)
     
     if cmd == "capture":
         out_path = sys.argv[2] if len(sys.argv) > 2 else "screenshot.png"
-        win = find_dotnodeviewer_window(disp)
         if not win:
             print("DotNodeViewer window not found!")
             sys.exit(1)
         capture_window(win, out_path, disp)
     elif cmd == "dump":
         dump_atspi_tree()
+    elif cmd == "click-ratio":
+        rx = float(sys.argv[2])
+        ry = float(sys.argv[3])
+        if not win:
+            print("DotNodeViewer window not found!")
+            sys.exit(1)
+        click_window_ratio(win, disp, rx, ry)
+    elif cmd == "scroll":
+        direction = sys.argv[2] if len(sys.argv) > 2 else "up"
+        rx = float(sys.argv[3]) if len(sys.argv) > 3 else 0.4
+        ry = float(sys.argv[4]) if len(sys.argv) > 4 else 0.5
+        clicks = int(sys.argv[5]) if len(sys.argv) > 5 else 3
+        if not win:
+            print("DotNodeViewer window not found!")
+            sys.exit(1)
+        scroll_window(win, disp, rx, ry, is_up=(direction == "up"), clicks=clicks)
     elif cmd == "toggle-theme":
         click_element_by_name("DotNodeViewer", "Theme")
+    elif cmd == "zoom-in":
+        click_element_by_name("DotNodeViewer", "Zoom In")
+    elif cmd == "zoom-out":
+        click_element_by_name("DotNodeViewer", "Zoom Out")
+    elif cmd == "zoom-fit":
+        click_element_by_name("DotNodeViewer", "Zoom to Fit")
+    elif cmd == "drag-ratio":
+        rx1 = float(sys.argv[2])
+        ry1 = float(sys.argv[3])
+        rx2 = float(sys.argv[4])
+        ry2 = float(sys.argv[5])
+        button = int(sys.argv[6]) if len(sys.argv) > 6 else 1
+        if not win:
+            print("DotNodeViewer window not found!")
+            sys.exit(1)
+        drag_window_ratio(win, disp, rx1, ry1, rx2, ry2, button=button)
+    elif cmd == "key-combo":
+        keys = sys.argv[2:]
+        send_key_combo(disp, *keys)

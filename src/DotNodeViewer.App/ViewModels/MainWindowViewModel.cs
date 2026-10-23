@@ -3,8 +3,10 @@ using System.Diagnostics;
 using System.Globalization;
 using Avalonia;
 using Avalonia.Styling;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using DotNodeViewer.App.Rendering;
 using DotNodeViewer.Core.Abstractions;
 using DotNodeViewer.Core.Ir;
 using DotNodeViewer.Layout;
@@ -62,6 +64,36 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     [ObservableProperty]
     private Subgraph? _selectedSubgraph;
+
+    [ObservableProperty]
+    private VisualNode? _selectedNode;
+
+    [ObservableProperty]
+    private bool _hasSelectedNode;
+
+    [ObservableProperty]
+    private string _selectedNodeTitle = string.Empty;
+
+    [ObservableProperty]
+    private string? _selectedNodeSubtitle;
+
+    [ObservableProperty]
+    private string _selectedNodeCategoryName = string.Empty;
+
+    [ObservableProperty]
+    private string _selectedNodeCategoryBrushKey = "OpCategoryUnknownBrush";
+
+    [ObservableProperty]
+    private string _selectedNodeCategorySubtleBrushKey = "OpCategoryUnknownSubtleBrush";
+
+    [ObservableProperty]
+    private string? _selectedNodeDomain;
+
+    [ObservableProperty]
+    private string? _selectedNodeVersion;
+
+    [ObservableProperty]
+    private string? _selectedNodeDocSummary;
 
     [ObservableProperty]
     private string _formatDisplayName = string.Empty;
@@ -124,9 +156,38 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public ObservableCollection<OperatorCategorySummaryItem> OperatorCategories { get; } = new();
 
     /// <summary>
+    /// Gets the typed attribute items for the currently selected node in the Node Inspector.
+    /// </summary>
+    public ObservableCollection<NodeAttributeItem> SelectedNodeAttributes { get; } = new();
+
+    /// <summary>
+    /// Gets the input connection items for the currently selected node in the Node Inspector.
+    /// </summary>
+    public ObservableCollection<NodePortItem> SelectedNodeInputs { get; } = new();
+
+    /// <summary>
+    /// Gets the output connection items for the currently selected node in the Node Inspector.
+    /// </summary>
+    public ObservableCollection<NodePortItem> SelectedNodeOutputs { get; } = new();
+
+    /// <summary>
     /// Gets or sets an optional file-picker delegate used by <see cref="OpenModelAsync"/> in desktop environments.
     /// </summary>
     public Func<Task<string?>>? FilePickerAsync { get; set; }
+
+    partial void OnSelectedNodeChanged(VisualNode? value)
+    {
+        UpdateSelectedNodeDetails(value);
+    }
+
+    /// <summary>
+    /// Clears the current node selection, returning the properties sidebar to the Graph Overview state.
+    /// </summary>
+    [RelayCommand]
+    public void DeselectNode()
+    {
+        SelectedNode = null;
+    }
 
     /// <summary>
     /// Prompts the user to pick a model file using <see cref="FilePickerAsync"/> and loads it.
@@ -172,6 +233,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ErrorMessage = null;
         ErrorOffsetHex = null;
         ErrorContext = null;
+        SelectedNode = null;
         LoadingStatus = "Reading model stream...";
         StatusText = $"Opening {Path.GetFileName(path)}...";
 
@@ -192,7 +254,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 model = await ModelFormatRegistry.Default.ReadAsync(stream, options: null, ct).ConfigureAwait(true);
 
                 LoadingStatus = "Computing layered layout...";
-                layout = await Task.Run(() => ModelGraphLayoutAdapter.Default.CreateLayout(model, options: null, ct), ct).ConfigureAwait(true);
+                ModelGraphLayoutAdapter layoutAdapter = new(textMeasurer: AvaloniaTextMeasurer.Default);
+                layout = await Task.Run(() => layoutAdapter.CreateLayout(model, options: null, ct), ct).ConfigureAwait(true);
             }
 
             sw.Stop();
@@ -267,7 +330,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
         IsDarkTheme = !IsDarkTheme;
         if (Application.Current is not null)
         {
-            Application.Current.RequestedThemeVariant = IsDarkTheme ? ThemeVariant.Dark : ThemeVariant.Light;
+            ThemeVariant target = IsDarkTheme ? ThemeVariant.Dark : ThemeVariant.Light;
+            if (Dispatcher.UIThread.CheckAccess())
+            {
+                Application.Current.RequestedThemeVariant = target;
+            }
+            else
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    Application.Current.RequestedThemeVariant = target;
+                });
+            }
         }
     }
 
@@ -297,6 +371,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
 
         SelectedSubgraph = subgraph;
+        SelectedNode = null;
         PopulateSubgraphSummaries(subgraph);
 
         if (CurrentModel is not null)
@@ -304,7 +379,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
             try
             {
                 Stopwatch sw = Stopwatch.StartNew();
-                CurrentLayout = ModelGraphLayoutAdapter.Default.CreateLayout(subgraph);
+                ModelGraphLayoutAdapter layoutAdapter = new(textMeasurer: AvaloniaTextMeasurer.Default);
+                CurrentLayout = layoutAdapter.CreateLayout(subgraph);
                 sw.Stop();
                 LayoutDurationMs = sw.Elapsed.TotalMilliseconds;
                 TotalEdgeCount = CurrentLayout.Edges.Count;
@@ -316,6 +392,179 @@ public sealed partial class MainWindowViewModel : ObservableObject
             }
         }
     }
+
+    private void UpdateSelectedNodeDetails(VisualNode? node)
+    {
+        SelectedNodeAttributes.Clear();
+        SelectedNodeInputs.Clear();
+        SelectedNodeOutputs.Clear();
+
+        if (node is null)
+        {
+            HasSelectedNode = false;
+            SelectedNodeTitle = string.Empty;
+            SelectedNodeSubtitle = null;
+            SelectedNodeCategoryName = string.Empty;
+            SelectedNodeCategoryBrushKey = "OpCategoryUnknownBrush";
+            SelectedNodeCategorySubtleBrushKey = "OpCategoryUnknownSubtleBrush";
+            SelectedNodeDomain = null;
+            SelectedNodeVersion = null;
+            SelectedNodeDocSummary = null;
+            return;
+        }
+
+        HasSelectedNode = true;
+        SelectedNodeTitle = node.Title;
+        SelectedNodeSubtitle = node.Subtitle;
+        SelectedNodeCategoryName = node.Category.ToString();
+        SelectedNodeCategoryBrushKey = $"OpCategory{node.Category}Brush";
+        SelectedNodeCategorySubtleBrushKey = $"OpCategory{node.Category}SubtleBrush";
+
+        if (node.GraphNode is not null)
+        {
+            GraphNode gn = node.GraphNode;
+            SelectedNodeDomain = gn.Operator.Domain;
+            SelectedNodeVersion = gn.Operator.Version.HasValue
+                ? gn.Operator.Version.Value.ToString(CultureInfo.InvariantCulture)
+                : null;
+            SelectedNodeDocSummary = $"{gn.Operator.Name} ({gn.Operator.Category})";
+
+            // Attributes
+            for (int i = 0; i < gn.Attributes.Count; i++)
+            {
+                NodeAttribute attr = gn.Attributes[i];
+                string typeName = GetAttributeTypeName(attr.Value);
+                string valText = FormatAttributeValue(attr.Value);
+                SelectedNodeAttributes.Add(new NodeAttributeItem(attr.Name, typeName, valText));
+            }
+
+            // Inputs
+            for (int p = 0; p < gn.Inputs.Count; p++)
+            {
+                NodePort inPort = gn.Inputs[p];
+                for (int t = 0; t < inPort.Tensors.Count; t++)
+                {
+                    TensorEdge tensor = inPort.Tensors[t];
+                    bool isParam = tensor.Kind == TensorKind.Initializer || tensor.Kind == TensorKind.Constant;
+                    string kindBadge = isParam ? "Weight / Parameter" : "Runtime Activation";
+
+                    TensorSummaryItem item = CreateTensorSummaryItem(tensor.Name, tensor);
+                    SelectedNodeInputs.Add(new NodePortItem(
+                        portName: inPort.Name,
+                        tensorName: tensor.Name,
+                        kindBadge: kindBadge,
+                        shapeText: item.ShapeText,
+                        dataTypeText: item.DataTypeText,
+                        quantizationBadge: item.QuantizationBadge,
+                        quantizationBrushKey: item.QuantizationBrushKey,
+                        quantizationTextBrushKey: item.QuantizationTextBrushKey,
+                        isQuantized: item.IsQuantized,
+                        details: item.Details));
+                }
+            }
+
+            // Outputs
+            for (int p = 0; p < gn.Outputs.Count; p++)
+            {
+                NodePort outPort = gn.Outputs[p];
+                for (int t = 0; t < outPort.Tensors.Count; t++)
+                {
+                    TensorEdge tensor = outPort.Tensors[t];
+                    TensorSummaryItem item = CreateTensorSummaryItem(tensor.Name, tensor);
+                    SelectedNodeOutputs.Add(new NodePortItem(
+                        portName: outPort.Name,
+                        tensorName: tensor.Name,
+                        kindBadge: "Output",
+                        shapeText: item.ShapeText,
+                        dataTypeText: item.DataTypeText,
+                        quantizationBadge: item.QuantizationBadge,
+                        quantizationBrushKey: item.QuantizationBrushKey,
+                        quantizationTextBrushKey: item.QuantizationTextBrushKey,
+                        isQuantized: item.IsQuantized,
+                        details: item.Details));
+                }
+            }
+        }
+        else if (node.BoundaryPort is not null)
+        {
+            SelectedNodeDomain = null;
+            SelectedNodeVersion = null;
+            SelectedNodeDocSummary = node.Kind == VisualNodeKind.GraphInput
+                ? "Graph boundary input tensor feeding downstream operators."
+                : "Graph boundary output tensor produced by upstream operators.";
+
+            for (int t = 0; t < node.BoundaryPort.Tensors.Count; t++)
+            {
+                TensorEdge tensor = node.BoundaryPort.Tensors[t];
+                TensorSummaryItem item = CreateTensorSummaryItem(tensor.Name, tensor);
+
+                if (node.Kind == VisualNodeKind.GraphInput)
+                {
+                    SelectedNodeInputs.Add(new NodePortItem(
+                        portName: node.BoundaryPort.Name,
+                        tensorName: tensor.Name,
+                        kindBadge: "Graph Input",
+                        shapeText: item.ShapeText,
+                        dataTypeText: item.DataTypeText,
+                        quantizationBadge: item.QuantizationBadge,
+                        quantizationBrushKey: item.QuantizationBrushKey,
+                        quantizationTextBrushKey: item.QuantizationTextBrushKey,
+                        isQuantized: item.IsQuantized,
+                        details: item.Details));
+                }
+                else
+                {
+                    SelectedNodeOutputs.Add(new NodePortItem(
+                        portName: node.BoundaryPort.Name,
+                        tensorName: tensor.Name,
+                        kindBadge: "Graph Output",
+                        shapeText: item.ShapeText,
+                        dataTypeText: item.DataTypeText,
+                        quantizationBadge: item.QuantizationBadge,
+                        quantizationBrushKey: item.QuantizationBrushKey,
+                        quantizationTextBrushKey: item.QuantizationTextBrushKey,
+                        isQuantized: item.IsQuantized,
+                        details: item.Details));
+                }
+            }
+        }
+    }
+
+    private static string GetAttributeTypeName(AttributeValue value) => value switch
+    {
+        AttributeValue.Int64 => "Int64",
+        AttributeValue.Float64 => "Float64",
+        AttributeValue.Bool => "Bool",
+        AttributeValue.String => "String",
+        AttributeValue.Int64List => "Int64[]",
+        AttributeValue.Float64List => "Float64[]",
+        AttributeValue.StringList => "String[]",
+        AttributeValue.DataTypeValue => "DataType",
+        AttributeValue.ShapeValue => "TensorShape",
+        AttributeValue.Tensor => "Tensor",
+        AttributeValue.Graph => "Graph",
+        AttributeValue.GraphList => "Graph[]",
+        AttributeValue.Bytes => "Bytes",
+        _ => "Attribute"
+    };
+
+    private static string FormatAttributeValue(AttributeValue value) => value switch
+    {
+        AttributeValue.Int64 v => v.Value.ToString(CultureInfo.InvariantCulture),
+        AttributeValue.Float64 v => v.Value.ToString("G6", CultureInfo.InvariantCulture),
+        AttributeValue.Bool v => v.Value ? "true" : "false",
+        AttributeValue.String v => $"\"{v.Value}\"",
+        AttributeValue.Int64List v => $"[{string.Join(", ", v.Values)}]",
+        AttributeValue.Float64List v => $"[{string.Join(", ", v.Values.Select(x => x.ToString("G4", CultureInfo.InvariantCulture)))}]",
+        AttributeValue.StringList v => $"[{string.Join(", ", v.Values.Select(s => $"\"{s}\""))}]",
+        AttributeValue.DataTypeValue v => v.Value.ToString(),
+        AttributeValue.ShapeValue v => v.Value.ToDisplayString(),
+        AttributeValue.Tensor v => $"Tensor<{v.Value.Descriptor.DataType}>{v.Value.Descriptor.Shape?.ToDisplayString() ?? "[]"}",
+        AttributeValue.Graph v => $"Graph '{v.Value.Name}'",
+        AttributeValue.GraphList v => $"Graphs ({v.Values.Count})",
+        AttributeValue.Bytes v => $"Bytes ({v.Slice.ByteLength} bytes)",
+        _ => value.ToString() ?? string.Empty
+    };
 
     private void PopulateSubgraphSummaries(Subgraph subgraph)
     {

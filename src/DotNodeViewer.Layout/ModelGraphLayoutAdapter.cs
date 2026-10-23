@@ -9,18 +9,17 @@ namespace DotNodeViewer.Layout;
 /// </summary>
 public sealed class ModelGraphLayoutAdapter
 {
-    private const double MinOperatorNodeWidth = 148.0;
-    private const double MaxOperatorNodeWidth = 380.0;
-    private const double MinTerminalPillWidth = 108.0;
-    private const double MaxTerminalPillWidth = 300.0;
-    private const double HorizontalPadding = 28.0;
+    private const double MinOperatorNodeWidth = 160.0;
+    private const double MaxOperatorNodeWidth = 600.0;
+    private const double MinTerminalPillWidth = 110.0;
+    private const double MaxTerminalPillWidth = 460.0;
 
-    private const double BaseOperatorHeaderHeight = 36.0;
-    private const double SubtitleRowHeight = 16.0;
-    private const double ParameterRowHeight = 20.0;
-    private const double ActivationBadgeRowHeight = 22.0;
-    private const double OperatorVerticalPadding = 10.0;
-    private const double TerminalPillHeight = 36.0;
+    private const double BaseOperatorHeaderHeight = 34.0;
+    private const double ParameterRowHeight = 22.0;
+    private const double ActivationBadgeRowHeight = 24.0;
+    private const double OperatorVerticalPadding = 12.0;
+    private const double TerminalPillHeightSingle = 32.0;
+    private const double TerminalPillHeightWithSubtitle = 46.0;
 
     private const double TitleFontSize = 13.0;
     private const double SubtitleFontSize = 11.0;
@@ -101,12 +100,13 @@ public sealed class ModelGraphLayoutAdapter
             string? subtitle = primaryTensor is not null ? FormatTensorSummary(primaryTensor) : null;
 
             double width = MeasureTerminalWidth(title, subtitle);
+            double height = !string.IsNullOrEmpty(subtitle) ? TerminalPillHeightWithSubtitle : TerminalPillHeightSingle;
             LayoutPort outPort = new("out");
 
             LayoutNode layoutNode = new(
                 Id: nodeId,
                 Width: width,
-                Height: TerminalPillHeight,
+                Height: height,
                 InputPorts: [],
                 OutputPorts: [outPort]);
 
@@ -259,12 +259,13 @@ public sealed class ModelGraphLayoutAdapter
             string? subtitle = primaryTensor is not null ? FormatTensorSummary(primaryTensor) : null;
 
             double width = MeasureTerminalWidth(title, subtitle);
+            double height = !string.IsNullOrEmpty(subtitle) ? TerminalPillHeightWithSubtitle : TerminalPillHeightSingle;
             LayoutPort inPort = new("in");
 
             layoutNodes.Add(new LayoutNode(
                 Id: nodeId,
                 Width: width,
-                Height: TerminalPillHeight,
+                Height: height,
                 InputPorts: [inPort],
                 OutputPorts: []));
 
@@ -298,8 +299,15 @@ public sealed class ModelGraphLayoutAdapter
         }
 
         // 5. Run Sugiyama layout engine
+        LayoutOptions effectiveOptions = options ?? new LayoutOptions
+        {
+            LayerSeparation = 68.0,
+            NodeSeparation = 36.0,
+            Margin = 32.0
+        };
+
         LayoutGraph layoutGraph = new(layoutNodes, layoutEdges);
-        PositionedGraph positioned = _layoutEngine.ComputeLayout(layoutGraph, options, cancellationToken);
+        PositionedGraph positioned = _layoutEngine.ComputeLayout(layoutGraph, effectiveOptions, cancellationToken);
 
         // 6. Zip PositionedNodes and PositionedEdges into VisualNodes and VisualEdges
         VisualNode[] visualNodes = new VisualNode[pendingNodes.Count];
@@ -369,12 +377,10 @@ public sealed class ModelGraphLayoutAdapter
     {
         string typeStr = tensor.Descriptor.DataType.ToString().ToLowerInvariant();
         string? shapeStr = tensor.Descriptor.Shape?.ToDisplayString();
-        bool isQuant = tensor.Descriptor.Quantization is not null;
-        string quantSuffix = isQuant ? " Q" : string.Empty;
 
         return string.IsNullOrEmpty(shapeStr)
-            ? $"{typeStr}{quantSuffix}"
-            : $"{typeStr} {shapeStr}{quantSuffix}";
+            ? typeStr
+            : $"{typeStr} {shapeStr}";
     }
 
     private static string FormatEdgeShapeLabel(TensorEdge tensor)
@@ -405,9 +411,9 @@ public sealed class ModelGraphLayoutAdapter
         bool isQuant = tensor.Descriptor.Quantization is not null;
 
         double labelWidth = !string.IsNullOrEmpty(shapeLabel)
-            ? _textMeasurer.MeasureTextWidth(shapeLabel, EdgeLabelFontSize) + 10.0
+            ? _textMeasurer.MeasureTextWidth(shapeLabel, EdgeLabelFontSize) + 12.0
             : 0.0;
-        double labelHeight = !string.IsNullOrEmpty(shapeLabel) ? 16.0 : 0.0;
+        double labelHeight = !string.IsNullOrEmpty(shapeLabel) ? 18.0 : 0.0;
 
         layoutEdges.Add(new LayoutEdge(
             Id: edgeId,
@@ -433,7 +439,8 @@ public sealed class ModelGraphLayoutAdapter
             ? _textMeasurer.MeasureTextWidth(subtitle, SubtitleFontSize)
             : 0.0;
 
-        double rawWidth = Math.Max(titleW, subW) + HorizontalPadding;
+        // Reserve 28px on left for circle indicator and spacing, plus 20px on right for border margin
+        double rawWidth = Math.Max(titleW, subW) + 48.0;
         return Math.Clamp(rawWidth, MinTerminalPillWidth, MaxTerminalPillWidth);
     }
 
@@ -443,48 +450,46 @@ public sealed class ModelGraphLayoutAdapter
         List<CollapsedParameterSlot> collapsedParams,
         string? fusedBadge)
     {
-        double maxTextW = _textMeasurer.MeasureTextWidth(title, TitleFontSize, isBold: true);
+        double titleW = _textMeasurer.MeasureTextWidth(title, TitleFontSize, isBold: true);
+        double headerTotalW = titleW + 28.0;
 
         if (!string.IsNullOrEmpty(subtitle))
         {
             double subW = _textMeasurer.MeasureTextWidth(subtitle, SubtitleFontSize);
-            if (subW > maxTextW)
-            {
-                maxTextW = subW;
-            }
+            // Title and subtitle sit side-by-side in header with 16px gap
+            headerTotalW = titleW + 16.0 + subW + 28.0;
         }
+
+        double maxContentW = headerTotalW;
 
         for (int i = 0; i < collapsedParams.Count; i++)
         {
             CollapsedParameterSlot slot = collapsedParams[i];
-            string rowText = $"{slot.PortName} · {slot.DisplaySummary}";
-            double rowW = _textMeasurer.MeasureTextWidth(rowText, ParameterFontSize);
-            if (rowW > maxTextW)
+            double portW = _textMeasurer.MeasureTextWidth(slot.PortName, ParameterFontSize, isBold: true);
+            double sumW = _textMeasurer.MeasureTextWidth(slot.DisplaySummary, ParameterFontSize);
+            // port text (portW) + gap (18) + summary pill (sumW + 12 pill padding) + optional Q badge (26) + node margins (24)
+            double rowW = portW + 18.0 + sumW + 12.0 + (slot.IsQuantized ? 26.0 : 0.0) + 24.0;
+            if (rowW > maxContentW)
             {
-                maxTextW = rowW;
+                maxContentW = rowW;
             }
         }
 
         if (!string.IsNullOrEmpty(fusedBadge))
         {
-            double badgeW = _textMeasurer.MeasureTextWidth($"ƒ {fusedBadge}", ParameterFontSize, isBold: true);
-            if (badgeW > maxTextW)
+            double badgeW = _textMeasurer.MeasureTextWidth($"+ {fusedBadge}", ParameterFontSize, isBold: true) + 32.0;
+            if (badgeW > maxContentW)
             {
-                maxTextW = badgeW;
+                maxContentW = badgeW;
             }
         }
 
-        double width = Math.Clamp(maxTextW + HorizontalPadding, MinOperatorNodeWidth, MaxOperatorNodeWidth);
+        double width = Math.Clamp(maxContentW, MinOperatorNodeWidth, MaxOperatorNodeWidth);
 
         double height = BaseOperatorHeaderHeight;
-        if (!string.IsNullOrEmpty(subtitle))
-        {
-            height += SubtitleRowHeight;
-        }
-
         if (collapsedParams.Count > 0)
         {
-            height += (collapsedParams.Count * ParameterRowHeight) + 6.0;
+            height += (collapsedParams.Count * ParameterRowHeight) + 8.0;
         }
 
         if (!string.IsNullOrEmpty(fusedBadge))

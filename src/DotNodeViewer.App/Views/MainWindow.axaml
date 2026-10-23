@@ -3,6 +3,8 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:DotNodeViewer.App.ViewModels"
+        xmlns:controls="using:DotNodeViewer.App.Controls"
+        xmlns:views="using:DotNodeViewer.App.Views"
         xmlns:ir="using:DotNodeViewer.Core.Ir"
         mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="750"
         x:Class="DotNodeViewer.App.Views.MainWindow"
@@ -13,6 +15,15 @@
         Background="{DynamicResource ShellCanvasBackgroundBrush}"
         FontFamily="{DynamicResource UiFontFamily}"
         DragDrop.AllowDrop="True">
+
+  <Window.KeyBindings>
+    <KeyBinding Gesture="Ctrl+Add" Command="{Binding #Canvas.ZoomInCommand}" />
+    <KeyBinding Gesture="Ctrl+OemPlus" Command="{Binding #Canvas.ZoomInCommand}" />
+    <KeyBinding Gesture="Ctrl+Subtract" Command="{Binding #Canvas.ZoomOutCommand}" />
+    <KeyBinding Gesture="Ctrl+OemMinus" Command="{Binding #Canvas.ZoomOutCommand}" />
+    <KeyBinding Gesture="Ctrl+D0" Command="{Binding #Canvas.ZoomToFitCommand}" />
+    <KeyBinding Gesture="Ctrl+NumPad0" Command="{Binding #Canvas.ZoomToFitCommand}" />
+  </Window.KeyBindings>
 
   <Window.Styles>
     <!-- Base button styling -->
@@ -255,297 +266,91 @@
         </StackPanel>
       </Border>
 
-      <!-- 2. MODEL OVERVIEW CARD (Viewport Placeholder for S05) -->
-      <ScrollViewer IsVisible="{Binding HasModel}"
-                    AutomationProperties.Name="Model Summary Panel"
-                    AutomationProperties.AutomationId="ModelSummaryPanel"
-                    Padding="24">
-        <StackPanel Spacing="20" MaxWidth="1000" HorizontalAlignment="Stretch">
+      <!-- 2. CENTRAL GRAPH VIEWPORT & PROPERTIES SIDEBAR -->
+      <Grid IsVisible="{Binding HasModel}" ColumnDefinitions="*,Auto,360">
 
-          <!-- Header Summary Banner -->
-          <Border Background="{DynamicResource ShellSurfaceBaseBrush}"
+        <!-- Left: Interactive GraphCanvas Viewport -->
+        <Grid Grid.Column="0">
+          <controls:GraphCanvas x:Name="Canvas"
+                                Background="Transparent"
+                                Layout="{Binding CurrentLayout}"
+                                SelectedNode="{Binding SelectedNode, Mode=TwoWay}"
+                                AutomationProperties.Name="Graph Canvas"
+                                AutomationProperties.AutomationId="GraphCanvas" />
+
+          <!-- Canvas Floating Controls Overlay (Bottom-Right) -->
+          <Border HorizontalAlignment="Right"
+                  VerticalAlignment="Bottom"
+                  Margin="16"
+                  Background="{DynamicResource ShellSurfaceBaseBrush}"
                   BorderBrush="{DynamicResource ShellBorderMutedBrush}"
                   BorderThickness="1"
                   CornerRadius="{DynamicResource RadiusMedium}"
-                  Padding="20">
-            <Grid ColumnDefinitions="*,Auto">
-              <StackPanel Grid.Column="0" Spacing="6">
-                <StackPanel Orientation="Horizontal" Spacing="10">
-                  <TextBlock Text="{Binding ModelName}"
-                             FontSize="20"
-                             FontWeight="SemiBold"
-                             Foreground="{DynamicResource ShellTextPrimaryBrush}" />
-                  <Border Background="{DynamicResource ShellAccentSubtleBrush}"
-                          BorderBrush="{DynamicResource ShellAccentPrimaryBrush}"
-                          BorderThickness="1"
-                          CornerRadius="{DynamicResource RadiusPill}"
-                          Padding="10,2"
-                          VerticalAlignment="Center">
-                    <TextBlock Text="{Binding FormatDisplayName}"
-                               FontSize="11"
-                               FontWeight="SemiBold"
-                               Foreground="{DynamicResource ShellAccentPrimaryBrush}" />
-                  </Border>
-                </StackPanel>
-                <TextBlock Text="{Binding ProducerName, StringFormat='Producer: {0}'}"
-                           FontSize="12"
-                           Foreground="{DynamicResource ShellTextSecondaryBrush}" />
-              </StackPanel>
-
-              <!-- High-level Metric Pills -->
-              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
-                <StackPanel HorizontalAlignment="Center">
-                  <TextBlock Text="{Binding TotalNodeCount}"
-                             FontFamily="{DynamicResource CodeFontFamily}"
-                             FontSize="20"
-                             FontWeight="Bold"
-                             Foreground="{DynamicResource ShellTextPrimaryBrush}"
-                             HorizontalAlignment="Center" />
-                  <TextBlock Text="Nodes"
-                             FontSize="11"
-                             Foreground="{DynamicResource ShellTextSecondaryBrush}"
-                             HorizontalAlignment="Center" />
-                </StackPanel>
-                <StackPanel HorizontalAlignment="Center">
-                  <TextBlock Text="{Binding TotalEdgeCount}"
-                             FontFamily="{DynamicResource CodeFontFamily}"
-                             FontSize="20"
-                             FontWeight="Bold"
-                             Foreground="{DynamicResource ShellTextPrimaryBrush}"
-                             HorizontalAlignment="Center" />
-                  <TextBlock Text="Edges"
-                             FontSize="11"
-                             Foreground="{DynamicResource ShellTextSecondaryBrush}"
-                             HorizontalAlignment="Center" />
-                </StackPanel>
-                <StackPanel HorizontalAlignment="Center">
-                  <TextBlock Text="{Binding TotalTensorCount}"
-                             FontFamily="{DynamicResource CodeFontFamily}"
-                             FontSize="20"
-                             FontWeight="Bold"
-                             Foreground="{DynamicResource ShellTextPrimaryBrush}"
-                             HorizontalAlignment="Center" />
-                  <TextBlock Text="Tensors"
-                             FontSize="11"
-                             Foreground="{DynamicResource ShellTextSecondaryBrush}"
-                             HorizontalAlignment="Center" />
-                </StackPanel>
-                <StackPanel HorizontalAlignment="Center">
-                  <TextBlock Text="{Binding QuantizedTensorCount}"
-                             FontFamily="{DynamicResource CodeFontFamily}"
-                             FontSize="20"
-                             FontWeight="Bold"
-                             Foreground="{DynamicResource ShellSuccessBrush}"
-                             HorizontalAlignment="Center" />
-                  <TextBlock Text="Quantized"
-                             FontSize="11"
-                             Foreground="{DynamicResource ShellTextSecondaryBrush}"
-                             HorizontalAlignment="Center" />
-                </StackPanel>
-              </StackPanel>
-            </Grid>
+                  Padding="4">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <Button Classes="toolbar-btn"
+                      Command="{Binding #Canvas.ZoomInCommand}"
+                      ToolTip.Tip="Zoom In"
+                      AutomationProperties.Name="Zoom In"
+                      AutomationProperties.AutomationId="ZoomInButton"
+                      Padding="8,4">
+                <TextBlock Text="+" FontSize="13" FontWeight="Bold" />
+              </Button>
+              <Button Classes="toolbar-btn"
+                      Command="{Binding #Canvas.ZoomOutCommand}"
+                      ToolTip.Tip="Zoom Out"
+                      AutomationProperties.Name="Zoom Out"
+                      AutomationProperties.AutomationId="ZoomOutButton"
+                      Padding="8,4">
+                <TextBlock Text="-" FontSize="13" FontWeight="Bold" />
+              </Button>
+              <Button Classes="toolbar-btn"
+                      Command="{Binding #Canvas.ZoomToFitCommand}"
+                      ToolTip.Tip="Zoom to Fit Entire Graph"
+                      AutomationProperties.Name="Zoom to Fit"
+                      AutomationProperties.AutomationId="ZoomToFitButton"
+                      Padding="8,4">
+                <TextBlock Text="Fit" FontSize="11" />
+              </Button>
+              <Button Classes="toolbar-btn"
+                      Command="{Binding #Canvas.ResetViewCommand}"
+                      ToolTip.Tip="Reset Zoom (100%)"
+                      AutomationProperties.Name="Reset View"
+                      AutomationProperties.AutomationId="ResetViewButton"
+                      Padding="8,4">
+                <TextBlock Text="1:1" FontSize="11" />
+              </Button>
+            </StackPanel>
           </Border>
 
-          <!-- Two Column Telemetry Breakdown -->
-          <Grid ColumnDefinitions="*,*">
+          <!-- Zoom Percentage HUD Indicator (Bottom-Left) -->
+          <Border HorizontalAlignment="Left"
+                  VerticalAlignment="Bottom"
+                  Margin="16"
+                  Background="{DynamicResource ShellSurfaceBaseBrush}"
+                  BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                  BorderThickness="1"
+                  CornerRadius="{DynamicResource RadiusSmall}"
+                  Padding="8,4">
+            <TextBlock Text="{Binding #Canvas.ZoomPercentText}"
+                       FontFamily="{DynamicResource CodeFontFamily}"
+                       FontSize="11"
+                       Foreground="{DynamicResource ShellTextSecondaryBrush}" />
+          </Border>
+        </Grid>
 
-            <!-- Left Column: Inputs and Outputs -->
-            <StackPanel Grid.Column="0" Spacing="16" Margin="0,0,10,0">
+        <!-- Vertical Divider Splitter -->
+        <GridSplitter Grid.Column="1"
+                      Width="1"
+                      Background="{DynamicResource ShellBorderMutedBrush}"
+                      ResizeDirection="Columns" />
 
-              <!-- Model Inputs -->
-              <Border Background="{DynamicResource ShellSurfaceBaseBrush}"
-                      BorderBrush="{DynamicResource ShellBorderMutedBrush}"
-                      BorderThickness="1"
-                      CornerRadius="{DynamicResource RadiusMedium}"
-                      Padding="16">
-                <StackPanel Spacing="12">
-                  <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBlock Text="Model Inputs"
-                               FontSize="14"
-                               FontWeight="SemiBold"
-                               Foreground="{DynamicResource ShellTextPrimaryBrush}" />
-                    <Border Background="{DynamicResource ShellSurfaceElevatedBrush}"
-                            CornerRadius="{DynamicResource RadiusPill}"
-                            Padding="6,2">
-                      <TextBlock Text="{Binding Inputs.Count}"
-                                 FontFamily="{DynamicResource CodeFontFamily}"
-                                 FontSize="10"
-                                 Foreground="{DynamicResource ShellTextSecondaryBrush}" />
-                    </Border>
-                  </StackPanel>
-
-                  <ItemsControl ItemsSource="{Binding Inputs}">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="vm:TensorSummaryItem">
-                        <Border Background="{DynamicResource ShellSurfaceElevatedBrush}"
-                                BorderBrush="{DynamicResource ShellBorderMutedBrush}"
-                                BorderThickness="1"
-                                CornerRadius="{DynamicResource RadiusSmall}"
-                                Padding="10,8"
-                                Margin="0,3">
-                          <Grid ColumnDefinitions="*,Auto">
-                            <StackPanel Grid.Column="0" Spacing="2">
-                              <TextBlock Text="{Binding Name}"
-                                         FontWeight="Medium"
-                                         FontSize="12"
-                                         Foreground="{DynamicResource ShellTextPrimaryBrush}" />
-                              <TextBlock Text="{Binding ShapeText}"
-                                         FontFamily="{DynamicResource CodeFontFamily}"
-                                         FontSize="11"
-                                         Foreground="{DynamicResource ShellTextSecondaryBrush}" />
-                              <TextBlock Text="{Binding Details}"
-                                         FontSize="10"
-                                         Foreground="{DynamicResource ShellAccentPrimaryBrush}"
-                                         IsVisible="{Binding Details, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                            </StackPanel>
-                            <Border Grid.Column="1"
-                                    Background="{DynamicResource ShellCanvasBackgroundBrush}"
-                                    BorderBrush="{DynamicResource ShellBorderMutedBrush}"
-                                    BorderThickness="1"
-                                    CornerRadius="{DynamicResource RadiusPill}"
-                                    Padding="8,3"
-                                    VerticalAlignment="Center">
-                              <TextBlock Text="{Binding QuantizationBadge}"
-                                         FontFamily="{DynamicResource CodeFontFamily}"
-                                         FontSize="10"
-                                         FontWeight="SemiBold"
-                                         Foreground="{DynamicResource ShellTextPrimaryBrush}" />
-                            </Border>
-                          </Grid>
-                        </Border>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                </StackPanel>
-              </Border>
-
-              <!-- Model Outputs -->
-              <Border Background="{DynamicResource ShellSurfaceBaseBrush}"
-                      BorderBrush="{DynamicResource ShellBorderMutedBrush}"
-                      BorderThickness="1"
-                      CornerRadius="{DynamicResource RadiusMedium}"
-                      Padding="16">
-                <StackPanel Spacing="12">
-                  <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBlock Text="Model Outputs"
-                               FontSize="14"
-                               FontWeight="SemiBold"
-                               Foreground="{DynamicResource ShellTextPrimaryBrush}" />
-                    <Border Background="{DynamicResource ShellSurfaceElevatedBrush}"
-                            CornerRadius="{DynamicResource RadiusPill}"
-                            Padding="6,2">
-                      <TextBlock Text="{Binding Outputs.Count}"
-                                 FontFamily="{DynamicResource CodeFontFamily}"
-                                 FontSize="10"
-                                 Foreground="{DynamicResource ShellTextSecondaryBrush}" />
-                    </Border>
-                  </StackPanel>
-
-                  <ItemsControl ItemsSource="{Binding Outputs}">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="vm:TensorSummaryItem">
-                        <Border Background="{DynamicResource ShellSurfaceElevatedBrush}"
-                                BorderBrush="{DynamicResource ShellBorderMutedBrush}"
-                                BorderThickness="1"
-                                CornerRadius="{DynamicResource RadiusSmall}"
-                                Padding="10,8"
-                                Margin="0,3">
-                          <Grid ColumnDefinitions="*,Auto">
-                            <StackPanel Grid.Column="0" Spacing="2">
-                              <TextBlock Text="{Binding Name}"
-                                         FontWeight="Medium"
-                                         FontSize="12"
-                                         Foreground="{DynamicResource ShellTextPrimaryBrush}" />
-                              <TextBlock Text="{Binding ShapeText}"
-                                         FontFamily="{DynamicResource CodeFontFamily}"
-                                         FontSize="11"
-                                         Foreground="{DynamicResource ShellTextSecondaryBrush}" />
-                              <TextBlock Text="{Binding Details}"
-                                         FontSize="10"
-                                         Foreground="{DynamicResource ShellAccentPrimaryBrush}"
-                                         IsVisible="{Binding Details, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                            </StackPanel>
-                            <Border Grid.Column="1"
-                                    Background="{DynamicResource ShellCanvasBackgroundBrush}"
-                                    BorderBrush="{DynamicResource ShellBorderMutedBrush}"
-                                    BorderThickness="1"
-                                    CornerRadius="{DynamicResource RadiusPill}"
-                                    Padding="8,3"
-                                    VerticalAlignment="Center">
-                              <TextBlock Text="{Binding QuantizationBadge}"
-                                         FontFamily="{DynamicResource CodeFontFamily}"
-                                         FontSize="10"
-                                         FontWeight="SemiBold"
-                                         Foreground="{DynamicResource ShellTextPrimaryBrush}" />
-                            </Border>
-                          </Grid>
-                        </Border>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                </StackPanel>
-              </Border>
-
-            </StackPanel>
-
-            <!-- Right Column: Operator Categories Breakdown -->
-            <Border Grid.Column="1"
-                    Background="{DynamicResource ShellSurfaceBaseBrush}"
-                    BorderBrush="{DynamicResource ShellBorderMutedBrush}"
-                    BorderThickness="1"
-                    CornerRadius="{DynamicResource RadiusMedium}"
-                    Padding="16"
-                    Margin="10,0,0,0">
-              <StackPanel Spacing="12">
-                <TextBlock Text="Operator Category Distribution"
-                           FontSize="14"
-                           FontWeight="SemiBold"
-                           Foreground="{DynamicResource ShellTextPrimaryBrush}" />
-
-                <ItemsControl ItemsSource="{Binding OperatorCategories}">
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:OperatorCategorySummaryItem">
-                      <Border Background="{DynamicResource ShellSurfaceElevatedBrush}"
-                              BorderBrush="{DynamicResource ShellBorderMutedBrush}"
-                              BorderThickness="1"
-                              CornerRadius="{DynamicResource RadiusSmall}"
-                              Padding="12,8"
-                              Margin="0,3">
-                        <Grid ColumnDefinitions="*,Auto">
-                          <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                            <Border Background="{DynamicResource ShellAccentPrimaryBrush}"
-                                    CornerRadius="4"
-                                    Width="8" Height="8"
-                                    VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding Name}"
-                                       FontSize="12"
-                                       FontWeight="Medium"
-                                       Foreground="{DynamicResource ShellTextPrimaryBrush}"
-                                       VerticalAlignment="Center" />
-                          </StackPanel>
-                          <Border Grid.Column="1"
-                                  Background="{DynamicResource ShellCanvasBackgroundBrush}"
-                                  CornerRadius="{DynamicResource RadiusPill}"
-                                  Padding="8,2"
-                                  VerticalAlignment="Center">
-                            <TextBlock Text="{Binding Count}"
-                                       FontFamily="{DynamicResource CodeFontFamily}"
-                                       FontSize="11"
-                                       FontWeight="Bold"
-                                       Foreground="{DynamicResource ShellTextPrimaryBrush}" />
-                          </Border>
-                        </Grid>
-                      </Border>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-              </StackPanel>
-            </Border>
-
-          </Grid>
-
-        </StackPanel>
-      </ScrollViewer>
+        <!-- Right: Basic Properties Sidebar (v1) -->
+        <views:PropertiesPanelView Grid.Column="2"
+                                   DataContext="{Binding}"
+                                   AutomationProperties.Name="Properties Panel"
+                                   AutomationProperties.AutomationId="PropertiesPanel" />
+      </Grid>
 
       <!-- 3. ERROR BANNER / OVERLAY -->
       <Border IsVisible="{Binding HasError}"

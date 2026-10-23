@@ -6,6 +6,8 @@
   items:
     - name: Visualizer User Guide
       href: visualizer/user-guide.md
+    - name: Embedding GraphCanvas in Avalonia
+      href: visualizer/embedding-controls.md
 - name: Reference
   items:
     - name: Supported Model Formats

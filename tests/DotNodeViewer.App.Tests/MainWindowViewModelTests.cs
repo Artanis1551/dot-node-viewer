@@ -123,14 +123,17 @@ public sealed class MainWindowViewModelTests
     [Test]
     public async Task ToggleTheme_TogglesThemeFlag()
     {
-        MainWindowViewModel vm = new();
-        await Assert.That(vm.IsDarkTheme).IsTrue();
+        await HeadlessAppSession.DispatchAsync(async () =>
+        {
+            MainWindowViewModel vm = new();
+            await Assert.That(vm.IsDarkTheme).IsTrue();
 
-        vm.ToggleTheme();
-        await Assert.That(vm.IsDarkTheme).IsFalse();
+            vm.ToggleTheme();
+            await Assert.That(vm.IsDarkTheme).IsFalse();
 
-        vm.ToggleTheme();
-        await Assert.That(vm.IsDarkTheme).IsTrue();
+            vm.ToggleTheme();
+            await Assert.That(vm.IsDarkTheme).IsTrue();
+        });
     }
 
     [Test]

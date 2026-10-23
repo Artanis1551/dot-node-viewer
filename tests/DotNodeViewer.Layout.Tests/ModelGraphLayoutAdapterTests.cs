@@ -74,7 +74,7 @@ public sealed class ModelGraphLayoutAdapterTests
         await Assert.That(convVisualNode.CollapsedParameters.Count).IsEqualTo(2);
         await Assert.That(convVisualNode.CollapsedParameters[0].PortName).IsEqualTo("filter");
         await Assert.That(convVisualNode.CollapsedParameters[0].IsQuantized).IsTrue();
-        await Assert.That(convVisualNode.CollapsedParameters[0].DisplaySummary.Contains('Q', StringComparison.Ordinal)).IsTrue();
+        await Assert.That(convVisualNode.CollapsedParameters[0].DisplaySummary).IsEqualTo("int8 [4, 3, 3, 3]");
 
         // Activation edges in INT8 model are marked IsQuantized == true
         await Assert.That(layout.Edges.All(e => e.IsQuantized)).IsTrue();
