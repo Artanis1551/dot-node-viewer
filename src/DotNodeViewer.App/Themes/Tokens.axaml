@@ -1,0 +1,50 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <FontFamily x:Key="UiFontFamily">Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Ubuntu, Cantarell, sans-serif</FontFamily>
+  <FontFamily x:Key="CodeFontFamily">JetBrains Mono, Cascadia Code, Fira Code, DejaVu Sans Mono, Consolas, monospace</FontFamily>
+
+  <CornerRadius x:Key="RadiusSmall">4</CornerRadius>
+  <CornerRadius x:Key="RadiusMedium">8</CornerRadius>
+  <CornerRadius x:Key="RadiusLarge">12</CornerRadius>
+  <CornerRadius x:Key="RadiusPill">999</CornerRadius>
+
+  <Thickness x:Key="ThicknessBorder">1</Thickness>
+
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Default">
+      <SolidColorBrush x:Key="ShellCanvasBackgroundBrush" Color="#12151B" />
+      <SolidColorBrush x:Key="ShellSurfaceBaseBrush" Color="#1A1F29" />
+      <SolidColorBrush x:Key="ShellSurfaceElevatedBrush" Color="#232A37" />
+      <SolidColorBrush x:Key="ShellBorderMutedBrush" Color="#333C4D" />
+      <SolidColorBrush x:Key="ShellTextPrimaryBrush" Color="#F1F5F9" />
+      <SolidColorBrush x:Key="ShellTextSecondaryBrush" Color="#94A3B8" />
+      <SolidColorBrush x:Key="ShellAccentPrimaryBrush" Color="#38BDF8" />
+      <SolidColorBrush x:Key="ShellAccentSubtleBrush" Color="#163B54" />
+      <SolidColorBrush x:Key="ShellCardHoverBrush" Color="#2C3545" />
+      <SolidColorBrush x:Key="ShellDangerBrush" Color="#F43F5E" />
+      <SolidColorBrush x:Key="ShellDangerSubtleBrush" Color="#3F1924" />
+      <SolidColorBrush x:Key="ShellSuccessBrush" Color="#10B981" />
+      <SolidColorBrush x:Key="ShellSuccessSubtleBrush" Color="#133827" />
+      <SolidColorBrush x:Key="ShellWarningBrush" Color="#F59E0B" />
+    </ResourceDictionary>
+
+    <ResourceDictionary x:Key="Light">
+      <SolidColorBrush x:Key="ShellCanvasBackgroundBrush" Color="#F8FAFC" />
+      <SolidColorBrush x:Key="ShellSurfaceBaseBrush" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="ShellSurfaceElevatedBrush" Color="#F1F5F9" />
+      <SolidColorBrush x:Key="ShellBorderMutedBrush" Color="#CBD5E1" />
+      <SolidColorBrush x:Key="ShellTextPrimaryBrush" Color="#0F172A" />
+      <SolidColorBrush x:Key="ShellTextSecondaryBrush" Color="#475569" />
+      <SolidColorBrush x:Key="ShellAccentPrimaryBrush" Color="#0284C7" />
+      <SolidColorBrush x:Key="ShellAccentSubtleBrush" Color="#E0F2FE" />
+      <SolidColorBrush x:Key="ShellCardHoverBrush" Color="#E2E8F0" />
+      <SolidColorBrush x:Key="ShellDangerBrush" Color="#E11D48" />
+      <SolidColorBrush x:Key="ShellDangerSubtleBrush" Color="#FFE4E6" />
+      <SolidColorBrush x:Key="ShellSuccessBrush" Color="#059669" />
+      <SolidColorBrush x:Key="ShellSuccessSubtleBrush" Color="#DCFCE7" />
+      <SolidColorBrush x:Key="ShellWarningBrush" Color="#D97706" />
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
+
+</ResourceDictionary>

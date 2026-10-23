@@ -1,3 +1,5 @@
+using Avalonia;
+
 namespace DotNodeViewer.Desktop;
 
 /// <summary>
@@ -10,10 +12,19 @@ public static class Program
     /// </summary>
     /// <param name="args">The command-line arguments passed to the process.</param>
     /// <returns>The process exit code.</returns>
+    [STAThread]
     public static int Main(string[] args)
     {
         ArgumentNullException.ThrowIfNull(args);
-        return 0;
+        return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
-}
 
+    /// <summary>
+    /// Builds and configures the Avalonia application instance.
+    /// </summary>
+    /// <returns>A configured <see cref="AppBuilder"/> instance.</returns>
+    public static AppBuilder BuildAvaloniaApp()
+        => AppBuilder.Configure<App.App>()
+            .UsePlatformDetect()
+            .LogToTrace();
+}
