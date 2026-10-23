@@ -11,7 +11,7 @@ Every stage agent MUST read this file before starting work and append a completi
 | **S02** | [`S02-onnx-parser-and-model-gen.md`](stages/S02-onnx-parser-and-model-gen.md) | `stage/S02-onnx-parser` | Complete | `ProtoReader`, ONNX detector & streaming reader, `tools/model-gen/onnx`, base ONNX models |
 | **S03** | [`S03-tflite-parser-and-flatbuffers.md`](stages/S03-tflite-parser-and-flatbuffers.md) | `stage/S03-tflite-parser` | Complete | FlatBuffers support, TFLite detector & reader, quantization metadata, `tools/model-gen/tf` |
 | **S04** | [`S04-layout-engine.md`](stages/S04-layout-engine.md) | `stage/S04-layout-engine` | Complete | `DotNodeViewer.Layout` pure C# Sugiyama/dagre layered layout + `ModelGraphLayoutAdapter` |
-| **S05** | [`S05-ui-iteration-1a-design-system-and-shell.md`](stages/S05-ui-iteration-1a-design-system-and-shell.md) | `stage/S05-ui-design-and-shell` | Pending | `frontend-design` token system, Avalonia shell, file loading, `computer-use` screenshots |
+| **S05** | [`S05-ui-iteration-1a-design-system-and-shell.md`](stages/S05-ui-iteration-1a-design-system-and-shell.md) | `stage/S05-ui-design-and-shell` | Complete | `frontend-design` token system, Avalonia shell, file loading, `computer-use` screenshots |
 | **S06** | [`S06-ui-iteration-1b-graph-canvas-and-properties.md`](stages/S06-ui-iteration-1b-graph-canvas-and-properties.md) | `stage/S06-ui-graph-canvas` | Pending | Custom `GraphCanvas`, pan/zoom/hit-test, basic node properties sidebar, `computer-use` verification |
 | **S07** | [`S07-executorch-parser.md`](stages/S07-executorch-parser.md) | `stage/S07-executorch-parser` | Pending | ExecuTorch `.pte` detector & reader, delegate payloads, `tools/model-gen/torch` |
 | **S08** | [`S08-pytorch-zip-pickle-and-torchscript.md`](stages/S08-pytorch-zip-pickle-and-torchscript.md) | `stage/S08-pytorch-torchscript` | Pending | `ZipDirectory`, safe `PickleMachine`, `state_dict` & TorchScript `.pt` reader |
@@ -229,3 +229,58 @@ Every stage agent MUST read this file before starting work and append a completi
   - `dotnet tool run docfx metadata docs/site/docfx.json --warningsAsErrors`
   - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
 - **Next Stage:** Run **Stage S05** (`docs/roadmap/stages/S05-ui-iteration-1a-design-system-and-shell.md`).
+
+### Stage S05 — UI Iteration 1a: Design System & Avalonia App Shell
+- **Branch:** `stage/S05-ui-design-and-shell`
+- **Commits:**
+  - `9ad2120` — `S05: author design-system.md`
+  - `ed36764` — `S05: implement Avalonia theme tokens, MainWindow shell, and headless tests`
+  - `eb88d13` — `S05: add live desktop verification harness and screenshots`
+  - *(final commit)* — `S05: update README, DocFX site, and PROGRESS.md`
+- **What Was Built:**
+  - Authored the Design System and UI identity specification in [`docs/design/design-system.md`](../design/design-system.md) following `frontend-design` and Avalonia token architecture, calibrated against common AI cliches, reviewed with user approval, and tailored for both ML and edge/embedded firmware engineers:
+    - Base palette tokens: Deep Graphite (`#12151B`) / Charcoal Slate (`#1A1F29`) for Dark theme and Slate Porcelain (`#F8FAFC`) / White (`#FFFFFF`) for Light theme.
+    - Colorblind-checked semantic palette for all 12 `OperatorCategory` enum values (`Layer`, `Activation`, `Normalization`, `Pooling`, `Quantization`, `Shape`, `Tensor`, `Constant`, `ControlFlow`, `Data`, `Custom`, `Unknown`).
+    - Dedicated quantization scheme badges: `INT8`/`UINT8` (hardware acceleration green), `FP32` (slate), `FP16`/`BF16` (cyan), and `INT4` (purple).
+    - Proportional sans-serif and tabular monospace font stacks and explicit type scale.
+  - Implemented the theme token dictionaries in `src/DotNodeViewer.App/Themes/`:
+    - `Tokens.axaml`: Canvas background, surface base/elevated, border, text primary/secondary, accent, and danger/warning/success brushes with `ThemeDictionaries` (`Default` for Dark and `Light`).
+    - `NodePalette.axaml`: SolidColorBrush tokens for all 12 operator categories and quantization badges.
+  - Implemented the Avalonia application shell (`src/DotNodeViewer.App/` and `src/DotNodeViewer.Desktop/`):
+    - `App.axaml` and `App.axaml.cs`: Configures `FluentTheme`, merges theme token dictionaries, and wires desktop lifetime to `MainWindow` and `MainWindowViewModel`.
+    - CLI Model Launch Argument: Passing a model file path to `DotNodeViewer.Desktop` (e.g., `dotnet run --project src/DotNodeViewer.Desktop -- <path-to-model>`) automatically streams, parses, and renders that model upon window launch.
+    - `MainWindowViewModel`: Built with `CommunityToolkit.Mvvm` (`[ObservableProperty]`, `[RelayCommand]`), background model loading pipeline with `FileStream`, `ModelFormatRegistry.Default.ReadAsync`, and `ModelGraphLayoutAdapter.Default.CreateLayout`, dynamic theme toggling (`Dark` vs `Light`), error handling, recent models tracking, and subgraph switching.
+    - `MainWindow.axaml` and `MainWindow.axaml.cs`: Top toolbar (brand mark, `Open Model...`, subgraph dropdown, theme toggle), drop target with drag-and-drop handling via `e.DataTransfer.TryGetFiles()`, inviting empty state with quick sample launchers, actionable error overlay with hex byte offsets, and Model Overview Card (format badge, producer, metrics grid, inputs/outputs lists with shapes and quantization badges, and operator category distribution).
+    - Accessibility / AT-SPI: Assigned `AutomationProperties.Name` and `AutomationProperties.AutomationId` across interactive controls (`OpenModelButton`, `ThemeToggleButton`, `SubgraphSelector`, `ModelSummaryPanel`, `ErrorBanner`).
+  - Added unit and headless integration tests in `tests/DotNodeViewer.App.Tests/MainWindowViewModelTests.cs`:
+    - Verified initial empty state contract.
+    - Verified opening committed ONNX models (`tiny_mlp.onnx`, `tiny_cnn_dynamic_batch.onnx`).
+    - Verified opening committed quantized TFLite model (`tiny_cnn_int8.tflite`) and asserting `INT8` badges and scale/zero-point parameters.
+    - Verified error state populating `ModelParseException` file offset and context cleanly.
+    - Verified theme toggling (`Dark` <-> `Light`).
+    - Verified subgraph selection.
+  - Created `tools/desktop_harness.py` for live X11/AT-SPI window capture and automation.
+- **`README.md` & `docs/site/` Updates:**
+  - Updated root [`README.md`](../../README.md) with a new Desktop Visualizer section, CLI launch arguments, visualizer feature list, and embedded shell screenshots.
+  - Authored Diátaxis How-To guide in [`docs/site/articles/visualizer/user-guide.md`](../site/articles/visualizer/user-guide.md) with tutorials and screenshots for desktop launch, file loading, telemetry inspection, and theme toggling.
+  - Added `resource` pattern in `docs/site/docfx.json` and mirrored screenshots to `docs/site/images/s05/`.
+- **New ADRs Recorded:**
+  - None (strictly followed ADRs `0001`–`0007`).
+- **Deviations & Known Limitations:**
+  - None.
+- **Test Count:** 74 passed (`DotNodeViewer.Core.Tests`: 50, `DotNodeViewer.Layout.Tests`: 13, `DotNodeViewer.App.Tests`: 11), 0 failed, 0 skipped.
+- **Screenshots Taken:**
+  - [Empty State (Dark)](../screenshots/S05/01-empty-state-dark.png)
+  - [Loaded ONNX Dynamic Batch Model (Dark)](../screenshots/S05/02-loaded-onnx-dark.png)
+  - [Loaded Quantized TFLite Model (Dark)](../screenshots/S05/03-loaded-tflite-int8-dark.png)
+  - [Loaded Quantized TFLite Model (Light)](../screenshots/S05/04-loaded-tflite-int8-light.png)
+- **Verification Commands Run:**
+  - `dotnet build dot-node-viewer.slnx -c Release --no-restore`
+  - `dotnet test --solution dot-node-viewer.slnx -c Release --no-build`
+  - `DISPLAY=:0 python3 tools/desktop_harness.py capture docs/screenshots/S05/01-empty-state-dark.png`
+  - `DISPLAY=:0 python3 tools/desktop_harness.py capture docs/screenshots/S05/02-loaded-onnx-dark.png`
+  - `DISPLAY=:0 python3 tools/desktop_harness.py capture docs/screenshots/S05/03-loaded-tflite-int8-dark.png`
+  - `DISPLAY=:0 python3 tools/desktop_harness.py capture docs/screenshots/S05/04-loaded-tflite-int8-light.png`
+  - `dotnet tool run docfx metadata docs/site/docfx.json --warningsAsErrors`
+  - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
+- **Next Stage:** Run **Stage S06** (`docs/roadmap/stages/S06-ui-iteration-1b-graph-canvas-and-properties.md`).

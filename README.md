@@ -102,6 +102,34 @@ foreach (VisualNode vNode in layout.Nodes)
 
 ---
 
+## Desktop Visualizer (`DotNodeViewer.Desktop`)
+
+`DotNodeViewer.Desktop` is the cross-platform Avalonia visualizer shell for inspecting neural network architectures, tensor dimensions, and quantization parameters.
+
+```bash
+# Launch empty shell (drag-and-drop or file picker)
+dotnet run --project src/DotNodeViewer.Desktop -c Release
+
+# Launch directly with a model file
+dotnet run --project src/DotNodeViewer.Desktop -c Release -- tests/DotNodeViewer.Core.Tests/Fixtures/tflite/tiny_cnn_int8.tflite
+```
+
+### Visualizer Features
+- **File Opening & Loading Pipeline:** Open models via file picker (`Ctrl+O`), drag-and-drop onto the window, recent models list, or command-line path arguments.
+- **Background Pipeline:** Asynchronous streaming and parsing via `ModelFormatRegistry.Default` and layout computation via `DotNodeViewer.Layout` with responsive progress indicators.
+- **Model Architectural Overview:** Displays format badge, producer metadata, total node/edge/tensor counts, and highlights quantized tensors for embedded target verification.
+- **Tensor Telemetry:** Detailed inputs/outputs lists with tabular dimension shapes (including dynamic batch dims like `[batch, 3, 8, 8]`), element types, and quantization badges (`INT8`, `FP32`, `FP16`, `INT4`) with scale and zero-point parameters.
+- **Operator Category Breakdown:** Colorblind-checked semantic operator distribution (`Layer`, `Activation`, `Normalization`, `Pooling`, etc.).
+- **Dual Theme Support:** High-contrast dark instrumentation theme (`#12151B`) and titanium light theme (`#F8FAFC`).
+
+![Empty State](docs/screenshots/S05/01-empty-state-dark.png)
+*Figure 1: Application empty state with drag-and-drop target, recent models, and supported formats summary.*
+
+![Loaded Quantized TFLite Model](docs/screenshots/S05/03-loaded-tflite-int8-dark.png)
+*Figure 2: Architectural overview card of a quantized INT8 TensorFlow Lite model in Dark theme.*
+
+---
+
 ## CLI Tool (`DotNodeViewer.Cli`)
 
 `DotNodeViewer.Cli` provides three commands for inspecting model files and generating golden regression snapshots:
