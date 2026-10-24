@@ -506,10 +506,10 @@ internal readonly struct FlatBufferTable
             return false;
         }
 
-        if (offsetInTable < 4 || offsetInTable + requiredByteSize > _tableInlineByteSize)
+        if (offsetInTable < 4)
         {
             throw new ModelParseException(
-                $"FlatBuffers field {fieldIndex} inline offset ({offsetInTable}) + size ({requiredByteSize}) exceeds table inline size ({_tableInlineByteSize}) at 0x{_tableOffset:X}.",
+                $"FlatBuffers field {fieldIndex} inline offset ({offsetInTable}) is invalid in table at 0x{_tableOffset:X}.",
                 fileOffset: _tableOffset);
         }
 

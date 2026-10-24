@@ -414,13 +414,25 @@ internal static class EthosUSubgraphBuilder
     {
         EthosUOpcodeCatalog.NpuOpConv => "NPU_CONV",
         EthosUOpcodeCatalog.NpuOpDepthwise => "NPU_DEPTHWISE",
-        EthosUOpcodeCatalog.NpuOpPool => "NPU_POOL",
+        EthosUOpcodeCatalog.NpuOpPool => param switch
+        {
+            0 => "NPU_MAXPOOL",
+            1 => "NPU_AVGPOOL",
+            2 => "NPU_REDUCE_SUM",
+            _ => "NPU_POOL",
+        },
         EthosUOpcodeCatalog.NpuOpElementwise => param switch
         {
             0 => "NPU_MUL",
             1 => "NPU_ADD",
             2 => "NPU_SUB",
+            3 => "NPU_MIN",
+            4 => "NPU_MAX",
+            5 => "NPU_LRELU",
+            6 => "NPU_ABS",
+            7 => "NPU_CLZ",
             8 => "NPU_SHR",
+            9 => "NPU_SHL",
             _ => "NPU_ELEMENTWISE",
         },
         EthosUOpcodeCatalog.NpuOpDmaStart => "NPU_DMA",

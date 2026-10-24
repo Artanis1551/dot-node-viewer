@@ -90,6 +90,28 @@
       "expectedSnapshot": "Fixtures/tflite/tiny_while.expected.json"
     },
     {
+      "id": "tflite-tiny_cnn_int8_vela_u55",
+      "format": "tflite",
+      "fileName": "tiny_cnn_int8_vela_u55.tflite",
+      "tier": "committed",
+      "relativePath": "Fixtures/tflite/tiny_cnn_int8_vela_u55.tflite",
+      "sourceUrl": null,
+      "sha256": "035d7f39cd36c9e03217c8d5aa837d04301e5d963e54f4c7664ae8f973ab8d02",
+      "byteLength": 6048,
+      "expectedSnapshot": "Fixtures/tflite/tiny_cnn_int8_vela_u55.expected.json"
+    },
+    {
+      "id": "tflite-tiny_cnn_int8_vela_u65",
+      "format": "tflite",
+      "fileName": "tiny_cnn_int8_vela_u65.tflite",
+      "tier": "committed",
+      "relativePath": "Fixtures/tflite/tiny_cnn_int8_vela_u65.tflite",
+      "sourceUrl": null,
+      "sha256": "4c58bbd4040952ba294f1ad16c101297fb04900da44ab7a45c1282e06c8b68e5",
+      "byteLength": 6128,
+      "expectedSnapshot": "Fixtures/tflite/tiny_cnn_int8_vela_u65.expected.json"
+    },
+    {
       "id": "tflite-mobilenet_v2_1.0_224_quant",
       "format": "tflite",
       "fileName": "mobilenet_v2_1.0_224_quant.tflite",
@@ -121,6 +143,17 @@
       "sha256": "84b2128dc1023b495767af3ea00e4f48653bf82debcb660d85970538e804c501",
       "byteLength": 3360,
       "expectedSnapshot": "Fixtures/executorch/tiny_cnn_xnnpack.expected.json"
+    },
+    {
+      "id": "executorch-tiny_cnn_ethosu55",
+      "format": "executorch",
+      "fileName": "tiny_cnn_ethosu55.pte",
+      "tier": "committed",
+      "relativePath": "Fixtures/executorch/tiny_cnn_ethosu55.pte",
+      "sourceUrl": null,
+      "sha256": "a3df082531c75ccba5ea9b39ffcc7dce1ee899f522227382226326951b0a5418",
+      "byteLength": 4096,
+      "expectedSnapshot": "Fixtures/executorch/tiny_cnn_ethosu55.expected.json"
     },
     {
       "id": "pytorch-tiny_cnn_traced",
