@@ -17,5 +17,5 @@ if (loadingEl) {
 
 const config = dotnetRuntime.getConfig();
 
-await dotnetRuntime.runMainAndExit(config.mainAssemblyName, [window.location.search]);
+await dotnetRuntime.runMain(config.mainAssemblyName, [window.location.search]);
 
