@@ -14,7 +14,8 @@ using DotNodeViewer.Layout;
 namespace DotNodeViewer.App.ViewModels;
 
 /// <summary>
-/// Primary ViewModel driving the main shell window, file opening, background layout pipeline, and model diagnostics.
+/// Primary ViewModel driving the main shell window, file opening, background layout pipeline,
+/// on-demand tensor inspection, search, subgraph breadcrumbs, and diagnostics.
 /// </summary>
 public sealed partial class MainWindowViewModel : ObservableObject
 {
@@ -114,6 +115,48 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private int _quantizedTensorCount;
 
     [ObservableProperty]
+    private long _totalParameters;
+
+    [ObservableProperty]
+    private string _totalParametersFormatted = "0 params";
+
+    [ObservableProperty]
+    private long _totalWeightBytes;
+
+    [ObservableProperty]
+    private string _totalWeightBytesFormatted = "0 bytes";
+
+    [ObservableProperty]
+    private string _precisionMixText = "FP32";
+
+    [ObservableProperty]
+    private string _precisionBadgeBrushKey = "QuantFp32BackgroundBrush";
+
+    [ObservableProperty]
+    private string? _delegateBlocksText;
+
+    [ObservableProperty]
+    private bool _hasDelegateBlocks;
+
+    [ObservableProperty]
+    private bool _hasDiagnostics;
+
+    [ObservableProperty]
+    private int _diagnosticsCount;
+
+    [ObservableProperty]
+    private bool _isDiagnosticsDrawerOpen;
+
+    [ObservableProperty]
+    private TensorInspectorViewModel? _tensorInspector;
+
+    [ObservableProperty]
+    private bool _isTensorInspectorOpen;
+
+    [ObservableProperty]
+    private bool _isSearchOpen;
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ThemeDisplayName))]
     private bool _isDarkTheme = true;
 
@@ -127,8 +170,24 @@ public sealed partial class MainWindowViewModel : ObservableObject
     /// </summary>
     public MainWindowViewModel()
     {
+        SearchPanel.NavigateToNodeRequested = node => NavigateToNode(node);
         TrySeedRecentFiles();
     }
+
+    /// <summary>
+    /// Gets the fast categorized search ViewModel.
+    /// </summary>
+    public SearchPanelViewModel SearchPanel { get; } = new();
+
+    /// <summary>
+    /// Gets the breadcrumb hierarchy for subgraph drill-down navigation.
+    /// </summary>
+    public ObservableCollection<SubgraphBreadcrumbItem> Breadcrumbs { get; } = new();
+
+    /// <summary>
+    /// Gets the diagnostic messages emitted during model parsing.
+    /// </summary>
+    public ObservableCollection<ParseDiagnostic> DiagnosticsList { get; } = new();
 
     /// <summary>
     /// Gets the collection of recently opened model paths.
@@ -175,6 +234,16 @@ public sealed partial class MainWindowViewModel : ObservableObject
     /// </summary>
     public Func<Task<string?>>? FilePickerAsync { get; set; }
 
+    /// <summary>
+    /// Gets or sets an optional factory used to open readable and seekable streams over the active model.
+    /// </summary>
+    public Func<Stream>? ModelStreamFactory { get; set; }
+
+    /// <summary>
+    /// Action invoked when a node should be centered and focused on the graph canvas.
+    /// </summary>
+    public Action<VisualNode>? RequestCenterOnNode { get; set; }
+
     partial void OnSelectedNodeChanged(VisualNode? value)
     {
         UpdateSelectedNodeDetails(value);
@@ -210,6 +279,25 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     /// <summary>
+    /// Opens a readable and seekable stream for the active model.
+    /// </summary>
+    /// <returns>A readable <see cref="Stream"/>, or <see langword="null"/> if not available.</returns>
+    public Stream? OpenModelStream()
+    {
+        if (ModelStreamFactory is not null)
+        {
+            return ModelStreamFactory();
+        }
+
+        if (!string.IsNullOrWhiteSpace(ModelPath) && File.Exists(ModelPath))
+        {
+            return new FileStream(ModelPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Loads a neural network model from disk, extracts its Unified Graph IR, and computes its layered layout.
     /// </summary>
     /// <param name="path">The absolute or relative file path to load.</param>
@@ -234,6 +322,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ErrorOffsetHex = null;
         ErrorContext = null;
         SelectedNode = null;
+        IsTensorInspectorOpen = false;
+        TensorInspector = null;
+        IsDiagnosticsDrawerOpen = false;
         LoadingStatus = "Reading model stream...";
         StatusText = $"Opening {Path.GetFileName(path)}...";
 
@@ -273,6 +364,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
             TotalNodeCount = model.Subgraphs.Sum(s => s.Nodes.Count);
             TotalEdgeCount = layout.Edges.Count;
 
+            // Architecture and conversion quick summary
+            PopulateQuickSummary(model);
+
+            // Diagnostics
+            DiagnosticsList.Clear();
+            foreach (ParseDiagnostic d in model.Diagnostics)
+            {
+                DiagnosticsList.Add(d);
+            }
+            DiagnosticsCount = DiagnosticsList.Count;
+            HasDiagnostics = DiagnosticsCount > 0;
+
             // Subgraphs
             Subgraphs.Clear();
             foreach (Subgraph sg in model.Subgraphs)
@@ -280,9 +383,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 Subgraphs.Add(sg);
             }
 
+            // Breadcrumbs
+            Breadcrumbs.Clear();
             SelectedSubgraph = model.PrimarySubgraph;
             if (SelectedSubgraph is not null)
             {
+                Breadcrumbs.Add(new SubgraphBreadcrumbItem($"Root: {SelectedSubgraph.Name}", SelectedSubgraph, isCurrent: true));
                 PopulateSubgraphSummaries(SelectedSubgraph);
             }
 
@@ -291,6 +397,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
             HasModel = true;
             StatusText = $"Loaded {ModelName} in {sw.ElapsedMilliseconds}ms ({TotalNodeCount} nodes, {TotalEdgeCount} edges)";
+
+            if (SearchPanel.IsOpen)
+            {
+                SearchPanel.PerformSearch(CurrentLayout);
+            }
         }
         catch (OperationCanceledException)
         {
@@ -346,6 +457,172 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     /// <summary>
+    /// Toggles the visibility of the fast search panel.
+    /// </summary>
+    [RelayCommand]
+    public void ToggleSearch()
+    {
+        IsSearchOpen = !IsSearchOpen;
+        if (IsSearchOpen && CurrentLayout is not null)
+        {
+            SearchPanel.PerformSearch(CurrentLayout);
+        }
+        else if (!IsSearchOpen)
+        {
+            SearchPanel.ClearSearch();
+        }
+    }
+
+    /// <summary>
+    /// Closes the fast search panel.
+    /// </summary>
+    [RelayCommand]
+    public void CloseSearch()
+    {
+        IsSearchOpen = false;
+        SearchPanel.ClearSearch();
+    }
+
+    /// <summary>
+    /// Toggles the diagnostics drawer.
+    /// </summary>
+    [RelayCommand]
+    public void ToggleDiagnosticsDrawer()
+    {
+        IsDiagnosticsDrawerOpen = !IsDiagnosticsDrawerOpen;
+    }
+
+    /// <summary>
+    /// Opens and loads the on-demand weight inspector for the specified tensor.
+    /// </summary>
+    /// <param name="tensor">The target tensor edge to inspect.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    [RelayCommand]
+    public async Task InspectTensorAsync(TensorEdge? tensor)
+    {
+        if (tensor is null)
+        {
+            return;
+        }
+
+        TensorInspectorViewModel inspector = new();
+        TensorInspector = inspector;
+        IsTensorInspectorOpen = true;
+
+        Stream? stream = OpenModelStream();
+        try
+        {
+            await inspector.InspectAsync(tensor, stream).ConfigureAwait(true);
+        }
+        finally
+        {
+            if (stream is not null)
+            {
+                await stream.DisposeAsync().ConfigureAwait(true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Closes the on-demand weight inspector.
+    /// </summary>
+    [RelayCommand]
+    public void CloseTensorInspector()
+    {
+        IsTensorInspectorOpen = false;
+        TensorInspector = null;
+    }
+
+    /// <summary>
+    /// Selects and centers the specified node in the canvas.
+    /// </summary>
+    /// <param name="node">The visual node to navigate to.</param>
+    [RelayCommand]
+    public void NavigateToNode(VisualNode? node)
+    {
+        if (node is null)
+        {
+            return;
+        }
+
+        SelectedNode = node;
+        RequestCenterOnNode?.Invoke(node);
+    }
+
+    /// <summary>
+    /// Drills down into a nested child subgraph (e.g. from an If or Loop branch attribute).
+    /// </summary>
+    /// <param name="subgraph">The child subgraph to inspect.</param>
+    [RelayCommand]
+    public void DrillDownSubgraph(Subgraph? subgraph)
+    {
+        if (subgraph is null)
+        {
+            return;
+        }
+
+        // Mark existing breadcrumbs as not current
+        for (int i = 0; i < Breadcrumbs.Count; i++)
+        {
+            SubgraphBreadcrumbItem existing = Breadcrumbs[i];
+            if (existing.IsCurrent)
+            {
+                Breadcrumbs[i] = new SubgraphBreadcrumbItem(existing.Name, existing.Subgraph, isCurrent: false);
+            }
+        }
+
+        string prefix = SelectedNodeTitle;
+        string title = !string.IsNullOrWhiteSpace(prefix) ? $"{prefix}: {subgraph.Name}" : subgraph.Name;
+        Breadcrumbs.Add(new SubgraphBreadcrumbItem(title, subgraph, isCurrent: true));
+
+        SelectSubgraphInternal(subgraph);
+    }
+
+    /// <summary>
+    /// Navigates back up one level in the subgraph breadcrumb hierarchy.
+    /// </summary>
+    [RelayCommand]
+    public void NavigateBackSubgraph()
+    {
+        if (Breadcrumbs.Count <= 1)
+        {
+            return;
+        }
+
+        Breadcrumbs.RemoveAt(Breadcrumbs.Count - 1);
+        SubgraphBreadcrumbItem target = Breadcrumbs[^1];
+        Breadcrumbs[^1] = new SubgraphBreadcrumbItem(target.Name, target.Subgraph, isCurrent: true);
+        SelectSubgraphInternal(target.Subgraph);
+    }
+
+    /// <summary>
+    /// Selects a specific breadcrumb level, navigating back to that level.
+    /// </summary>
+    /// <param name="item">The target breadcrumb item.</param>
+    [RelayCommand]
+    public void SelectBreadcrumb(SubgraphBreadcrumbItem? item)
+    {
+        if (item is null)
+        {
+            return;
+        }
+
+        int index = Breadcrumbs.IndexOf(item);
+        if (index < 0)
+        {
+            return;
+        }
+
+        while (Breadcrumbs.Count > index + 1)
+        {
+            Breadcrumbs.RemoveAt(Breadcrumbs.Count - 1);
+        }
+
+        Breadcrumbs[index] = new SubgraphBreadcrumbItem(item.Name, item.Subgraph, isCurrent: true);
+        SelectSubgraphInternal(item.Subgraph);
+    }
+
+    /// <summary>
     /// Dismisses the active error state.
     /// </summary>
     [RelayCommand]
@@ -359,17 +636,26 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Selects an active subgraph and updates input, output, and category summaries.
+    /// Selects an active subgraph from the root dropdown and updates input, output, and category summaries.
     /// </summary>
     /// <param name="subgraph">The subgraph to inspect.</param>
     [RelayCommand]
     public void SelectSubgraph(Subgraph? subgraph)
     {
-        if (subgraph is null || ReferenceEquals(SelectedSubgraph, subgraph))
+        if (subgraph is null)
         {
             return;
         }
 
+        // Reset breadcrumb trail when explicitly switching root subgraph from selector
+        Breadcrumbs.Clear();
+        Breadcrumbs.Add(new SubgraphBreadcrumbItem($"Root: {subgraph.Name}", subgraph, isCurrent: true));
+
+        SelectSubgraphInternal(subgraph);
+    }
+
+    private void SelectSubgraphInternal(Subgraph subgraph)
+    {
         SelectedSubgraph = subgraph;
         SelectedNode = null;
         PopulateSubgraphSummaries(subgraph);
@@ -385,6 +671,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 LayoutDurationMs = sw.Elapsed.TotalMilliseconds;
                 TotalEdgeCount = CurrentLayout.Edges.Count;
                 StatusText = $"Subgraph '{subgraph.Name}' laid out in {sw.ElapsedMilliseconds}ms ({subgraph.Nodes.Count} nodes)";
+
+                if (SearchPanel.IsOpen)
+                {
+                    SearchPanel.PerformSearch(CurrentLayout);
+                }
             }
             catch (Exception ex)
             {
@@ -435,7 +726,16 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 NodeAttribute attr = gn.Attributes[i];
                 string typeName = GetAttributeTypeName(attr.Value);
                 string valText = FormatAttributeValue(attr.Value);
-                SelectedNodeAttributes.Add(new NodeAttributeItem(attr.Name, typeName, valText));
+
+                Subgraph? nestedGraph = attr.Value is AttributeValue.Graph g ? g.Value : null;
+                IReadOnlyList<Subgraph>? nestedGraphList = attr.Value is AttributeValue.GraphList gl ? gl.Values : null;
+
+                SelectedNodeAttributes.Add(new NodeAttributeItem(
+                    attr.Name,
+                    typeName,
+                    valText,
+                    subgraph: nestedGraph,
+                    subgraphList: nestedGraphList));
             }
 
             // Inputs
@@ -459,7 +759,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
                         quantizationBrushKey: item.QuantizationBrushKey,
                         quantizationTextBrushKey: item.QuantizationTextBrushKey,
                         isQuantized: item.IsQuantized,
-                        details: item.Details));
+                        details: item.Details,
+                        tensor: tensor));
                 }
             }
 
@@ -481,7 +782,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
                         quantizationBrushKey: item.QuantizationBrushKey,
                         quantizationTextBrushKey: item.QuantizationTextBrushKey,
                         isQuantized: item.IsQuantized,
-                        details: item.Details));
+                        details: item.Details,
+                        tensor: tensor));
                 }
             }
         }
@@ -510,7 +812,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
                         quantizationBrushKey: item.QuantizationBrushKey,
                         quantizationTextBrushKey: item.QuantizationTextBrushKey,
                         isQuantized: item.IsQuantized,
-                        details: item.Details));
+                        details: item.Details,
+                        tensor: tensor));
                 }
                 else
                 {
@@ -524,7 +827,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
                         quantizationBrushKey: item.QuantizationBrushKey,
                         quantizationTextBrushKey: item.QuantizationTextBrushKey,
                         isQuantized: item.IsQuantized,
-                        details: item.Details));
+                        details: item.Details,
+                        tensor: tensor));
                 }
             }
         }
@@ -615,6 +919,124 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
     }
 
+    private void PopulateQuickSummary(ModelGraph model)
+    {
+        long totalParams = 0;
+        long totalWeightBytes = 0;
+        int quantizedCount = 0;
+        int totalTensors = 0;
+        string? delegateText = null;
+
+        foreach (Subgraph sg in model.Subgraphs)
+        {
+            foreach (TensorEdge t in sg.Tensors)
+            {
+                totalTensors++;
+                if (t.Descriptor.Quantization is not null || IsQuantizedDataType(t.Descriptor.DataType))
+                {
+                    quantizedCount++;
+                }
+
+                if (t.Kind is TensorKind.Initializer or TensorKind.Constant)
+                {
+                    if (t.Descriptor.Shape is not null)
+                    {
+                        totalParams += ComputeElementCount(t.Descriptor.Shape);
+                    }
+                    if (t.Data is TensorDataSlice s)
+                    {
+                        totalWeightBytes += s.ByteLength;
+                    }
+                }
+            }
+
+            foreach (GraphNode n in sg.Nodes)
+            {
+                string opLower = n.Operator.Name.ToLowerInvariant();
+                if (opLower.Contains("xnnpack"))
+                {
+                    delegateText = "Delegate: XNNPACK";
+                }
+                else if (opLower.Contains("delegate") && delegateText is null)
+                {
+                    delegateText = $"Delegate: {n.Operator.Name}";
+                }
+            }
+        }
+
+        TotalParameters = totalParams;
+        TotalParametersFormatted = FormatMetricCount(totalParams, "params");
+        TotalWeightBytes = totalWeightBytes;
+        TotalWeightBytesFormatted = FormatByteSize(totalWeightBytes);
+
+        if (quantizedCount == 0)
+        {
+            PrecisionMixText = "FP32 Precision";
+            PrecisionBadgeBrushKey = "QuantFp32BackgroundBrush";
+        }
+        else if (quantizedCount == totalTensors || (totalTensors > 0 && quantizedCount >= totalTensors / 2))
+        {
+            PrecisionMixText = totalTensors > 0 && quantizedCount == totalTensors
+                ? "INT8 Quantized (100%)"
+                : $"Mixed INT8 / FP32 ({(quantizedCount * 100) / Math.Max(1, totalTensors)}%)";
+            PrecisionBadgeBrushKey = "QuantInt8BackgroundBrush";
+        }
+        else
+        {
+            PrecisionMixText = $"Mixed Quantized ({(quantizedCount * 100) / Math.Max(1, totalTensors)}%)";
+            PrecisionBadgeBrushKey = "QuantInt8BackgroundBrush";
+        }
+
+        DelegateBlocksText = delegateText;
+        HasDelegateBlocks = delegateText is not null;
+    }
+
+    private static string FormatMetricCount(long count, string suffix)
+    {
+        if (count >= 1_000_000)
+        {
+            return string.Format(CultureInfo.InvariantCulture, "{0:F1}M {1}", count / 1_000_000.0, suffix);
+        }
+        if (count >= 1_000)
+        {
+            return string.Format(CultureInfo.InvariantCulture, "{0:F1}K {1}", count / 1_000.0, suffix);
+        }
+        return $"{count} {suffix}";
+    }
+
+    private static long ComputeElementCount(TensorShape shape)
+    {
+        if (shape.IsScalar)
+        {
+            return 1;
+        }
+
+        long count = 1;
+        bool hasFixed = false;
+        for (int i = 0; i < shape.Dimensions.Count; i++)
+        {
+            if (shape.Dimensions[i] is TensorDimension.Fixed f)
+            {
+                count *= f.Value;
+                hasFixed = true;
+            }
+        }
+        return hasFixed ? count : 1;
+    }
+
+    private static string FormatByteSize(long bytes)
+    {
+        if (bytes >= 1024 * 1024)
+        {
+            return string.Format(CultureInfo.InvariantCulture, "{0:F1} MB", bytes / (1024.0 * 1024.0));
+        }
+        if (bytes >= 1024)
+        {
+            return string.Format(CultureInfo.InvariantCulture, "{0:F1} KB", bytes / 1024.0);
+        }
+        return $"{bytes:N0} bytes";
+    }
+
     private static TensorSummaryItem CreateTensorSummaryItem(string name, TensorEdge? tensor)
     {
         if (tensor is null)
@@ -687,7 +1109,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
             quantizationBrushKey: bgKey,
             quantizationTextBrushKey: fgKey,
             isQuantized: isQuant,
-            details: details);
+            details: details,
+            tensor: tensor);
     }
 
     private static bool IsQuantizedDataType(DataType type) =>
