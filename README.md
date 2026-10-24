@@ -116,7 +116,7 @@ dotnet run --project src/DotNodeViewer.Desktop -c Release -- tests/DotNodeViewer
 
 ### Visualizer Features
 - **Interactive GraphCanvas:** High-performance immediate-mode rendering of neural network topologies directly via `DrawingContext` with 60 fps performance even on large models (`mobilenetv2`).
-- **Smooth Navigation & Pan/Zoom:** Drag canvas, middle-mouse pan, trackpad scroll, smooth zoom-around-cursor (`Ctrl` + wheel), keyboard navigation (`Tab`, `Up`/`Down` connected traversal, `F` zoom-to-fit, `Escape`), and floating HUD controls.
+- **Smooth Navigation & Pan/Zoom:** Drag canvas, middle-mouse pan, trackpad scroll, smooth zoom-around-cursor (`Ctrl` + wheel), keyboard shortcuts (`Ctrl+O` / `Cmd+O` open model, `Ctrl+F` search, `Tab`, `Up`/`Down` connected traversal, `F` or `Ctrl+0` zoom-to-fit, `Escape`), and floating HUD controls.
 - **On-Demand Weight Inspector:** Inspects raw weights directly from model stream on demand without eager memory allocations. Decodes FP32, FP16, BF16, INT8, UINT8, INT32, INT64, displays min/max/mean/zero statistics, and renders real-time affine dequantized values alongside raw integer bytes.
 - **Fast Categorized Search (`Ctrl+F`):** Searches across operator types, instance names, categories, and tensors with keyboard navigation and smooth camera centering on matched nodes.
 - **1-Hop Neighborhood Highlighting & Dimming:** Dynamically highlights predecessor (amber) and successor (emerald) connections while dimming unrelated graph branches to 25% opacity.
@@ -143,6 +143,59 @@ dotnet run --project src/DotNodeViewer.Desktop -c Release -- tests/DotNodeViewer
 
 ![Minimap in Dark and Light Themes](docs/screenshots/S11/05-keras-residual-minimap-dark.png)
 *Figure 5: Keras functional residual model featuring skip connections, architecture telemetry bar, and collapsible minimap.*
+
+---
+
+## WebAssembly Visualizer (`DotNodeViewer.Browser`)
+
+`DotNodeViewer.Browser` is the browser WebAssembly (`net10.0-browser`) head running completely client-side in the browser via Avalonia 11 for WebAssembly. It requires no backend server, preserving complete model privacy by parsing topologies and inspecting tensor slices locally in the browser sandbox.
+
+- **Shared UI & Logic:** Hosts the shared `MainView` with 100% feature parity with the desktop application (pan/zoom canvas, categorized search, weight inspector, subgraph drilldown, and minimap).
+- **Safe Browser Streaming (`BrowserStreamAdapter`):** Implements a chunked streaming adapter using `ArrayPool<byte>.Shared` and a configurable 512 MB memory guard to prevent browser tab out-of-memory crashes on oversized models.
+
+```bash
+# Publish client-side WebAssembly AppBundle
+dotnet publish src/DotNodeViewer.Browser -c Release -r browser-wasm
+
+# Serve locally at http://localhost:8080
+python3 -m http.server 8080 --directory src/DotNodeViewer.Browser/bin/Release/net10.0/browser-wasm/AppBundle
+```
+
+---
+
+## NativeAOT Compilation
+
+`DotNodeViewer.Cli` and `DotNodeViewer.Desktop` support zero-warning NativeAOT compilation (`PublishAot=true`):
+
+```bash
+# Publish self-contained NativeAOT CLI tool (~3.8 MB binary)
+dotnet publish tools/DotNodeViewer.Cli -c Release -p:PublishAot=true
+
+# Publish self-contained NativeAOT Desktop visualizer (~19 MB binary)
+dotnet publish src/DotNodeViewer.Desktop -c Release -p:PublishAot=true -r linux-x64
+```
+
+![NativeAOT Desktop Verification](docs/screenshots/S12/01-nativeaot-desktop-verified.png)
+*Figure 6: NativeAOT compiled DotNodeViewer.Desktop binary verified via automated desktop harness on Linux x64.*
+
+---
+
+## NuGet Packages
+
+The core model parsing and layout engines are published as independent, AOT-compatible NuGet packages:
+
+* **`DotNodeViewer.Core`**: Pure C# Unified Graph IR, streaming readers for ONNX, TFLite, ExecuTorch, PyTorch, and Keras, plus lazy tensor data loaders.
+* **`DotNodeViewer.Layout`**: Pure C# Sugiyama-style layered graph layout engine for neural network topologies.
+
+```bash
+# Pack NuGet packages
+dotnet pack src/DotNodeViewer.Core -c Release
+dotnet pack src/DotNodeViewer.Layout -c Release
+
+# Install in your project
+dotnet add package DotNodeViewer.Core
+dotnet add package DotNodeViewer.Layout
+```
 
 ---
 
@@ -194,11 +247,13 @@ dotnet tool run docfx docs/site/docfx.json --serve
 - [**Documentation Website Source (`docs/site/`)**](docs/site/index.md)
   - [Tutorial: Getting Started](docs/site/articles/getting-started.md)
   - [Explanation: Unified Graph IR & Architecture](docs/site/articles/library/unified-graph-ir.md)
+  - [Explanation: Performance Architecture & NativeAOT](docs/site/articles/architecture/performance-and-aot.md)
   - [How-To & Reference: Layered Graph Layout Engine (`DotNodeViewer.Layout`)](docs/site/articles/library/layout-engine.md)
   - [Reference: Supported Model Formats](docs/site/articles/formats/overview.md)
   - [Reference: CLI Tool (`DotNodeViewer.Cli`)](docs/site/articles/cli/reference.md)
   - [Reference: Domain Glossary](docs/site/articles/glossary.md)
   - [How-To: Visualizer User Guide](docs/site/articles/visualizer/user-guide.md)
+  - [How-To: Running in the Browser (WebAssembly)](docs/site/articles/visualizer/webassembly.md)
 - [**Development Prerequisites (`PREREQUISITES.md`)**](PREREQUISITES.md)
 - [**Domain Glossary (`GLOSSARY.md`)**](GLOSSARY.md)
 - [**Architecture Decision Records (`docs/adr/`)**](docs/adr/)

@@ -68,9 +68,9 @@ internal sealed class PyTorchFormatDetector : IModelFormatDetector
             if (read > 0)
             {
                 string probeText = Encoding.Latin1.GetString(probeBuf[..read]);
-                if (probeText.Contains("torch") ||
-                    probeText.Contains("_rebuild_tensor") ||
-                    probeText.Contains("_rebuild_parameter"))
+                if (probeText.Contains("torch", StringComparison.Ordinal) ||
+                    probeText.Contains("_rebuild_tensor", StringComparison.Ordinal) ||
+                    probeText.Contains("_rebuild_parameter", StringComparison.Ordinal))
                 {
                     return true;
                 }

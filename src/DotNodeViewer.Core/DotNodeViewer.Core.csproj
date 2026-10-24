@@ -2,11 +2,23 @@
   <PropertyGroup>
     <RootNamespace>DotNodeViewer.Core</RootNamespace>
     <AssemblyName>DotNodeViewer.Core</AssemblyName>
+    <PackageId>DotNodeViewer.Core</PackageId>
+    <Version>0.12.0</Version>
+    <Authors>dot-node-viewer contributors</Authors>
     <Description>Pure C# neural network model format detection, streaming graph extraction, and Unified Graph IR.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/dot-node-viewer/dot-node-viewer</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/dot-node-viewer/dot-node-viewer</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>neural-networks;onnx;tflite;pytorch;executorch;keras;machine-learning;graph;aot</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="DotNodeViewer.Core.Tests" />
   </ItemGroup>
 </Project>
-

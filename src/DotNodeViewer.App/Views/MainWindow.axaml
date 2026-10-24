@@ -14,6 +14,12 @@
         FontFamily="{DynamicResource UiFontFamily}"
         DragDrop.AllowDrop="True">
 
+  <Window.KeyBindings>
+    <!-- Open Model: Ctrl+O on Linux/Windows, Cmd+O on macOS -->
+    <KeyBinding Gesture="Ctrl+O" Command="{Binding OpenModelCommand}" />
+    <KeyBinding Gesture="Cmd+O" Command="{Binding OpenModelCommand}" />
+  </Window.KeyBindings>
+
   <views:MainView />
 
 </Window>

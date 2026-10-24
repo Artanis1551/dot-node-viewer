@@ -14,12 +14,23 @@
              DragDrop.AllowDrop="True">
 
   <UserControl.KeyBindings>
+    <!-- Open Model: Ctrl+O on Linux/Windows, Cmd+O on macOS -->
+    <KeyBinding Gesture="Ctrl+O" Command="{Binding OpenModelCommand}" />
+    <KeyBinding Gesture="Cmd+O" Command="{Binding OpenModelCommand}" />
+
+    <!-- Zoom and Navigation Gestures (Ctrl on Linux/Windows, Cmd on macOS) -->
     <KeyBinding Gesture="Ctrl+Add" Command="{Binding #Canvas.ZoomInCommand}" />
+    <KeyBinding Gesture="Cmd+Add" Command="{Binding #Canvas.ZoomInCommand}" />
     <KeyBinding Gesture="Ctrl+OemPlus" Command="{Binding #Canvas.ZoomInCommand}" />
+    <KeyBinding Gesture="Cmd+OemPlus" Command="{Binding #Canvas.ZoomInCommand}" />
     <KeyBinding Gesture="Ctrl+Subtract" Command="{Binding #Canvas.ZoomOutCommand}" />
+    <KeyBinding Gesture="Cmd+Subtract" Command="{Binding #Canvas.ZoomOutCommand}" />
     <KeyBinding Gesture="Ctrl+OemMinus" Command="{Binding #Canvas.ZoomOutCommand}" />
+    <KeyBinding Gesture="Cmd+OemMinus" Command="{Binding #Canvas.ZoomOutCommand}" />
     <KeyBinding Gesture="Ctrl+D0" Command="{Binding #Canvas.ZoomToFitCommand}" />
+    <KeyBinding Gesture="Cmd+D0" Command="{Binding #Canvas.ZoomToFitCommand}" />
     <KeyBinding Gesture="Ctrl+NumPad0" Command="{Binding #Canvas.ZoomToFitCommand}" />
+    <KeyBinding Gesture="Cmd+NumPad0" Command="{Binding #Canvas.ZoomToFitCommand}" />
   </UserControl.KeyBindings>
 
   <UserControl.Styles>
@@ -102,11 +113,17 @@
         <Button Grid.Column="1"
                 Classes="toolbar-btn"
                 Command="{Binding OpenModelCommand}"
+                HotKey="Ctrl+O"
+                ToolTip.Tip="Open Model (Ctrl+O / ⌘O)"
                 AutomationProperties.Name="Open Model"
                 AutomationProperties.AutomationId="OpenModelButton"
                 VerticalAlignment="Center">
           <StackPanel Orientation="Horizontal" Spacing="6">
             <TextBlock Text="Open Model..." VerticalAlignment="Center" />
+            <TextBlock Text="Ctrl+O"
+                       FontSize="11"
+                       Foreground="{DynamicResource ShellTextTertiaryBrush}"
+                       VerticalAlignment="Center" />
           </StackPanel>
         </Button>
 
@@ -194,9 +211,16 @@
           <Button Classes="primary-btn"
                   HorizontalAlignment="Center"
                   Command="{Binding OpenModelCommand}"
+                  ToolTip.Tip="Open Model (Ctrl+O / ⌘O)"
                   AutomationProperties.Name="Open Model Button"
                   AutomationProperties.AutomationId="EmptyStateOpenButton">
-            <TextBlock Text="Browse Model File..." />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="Browse Model File..." />
+              <TextBlock Text="(Ctrl+O)"
+                         Opacity="0.75"
+                         FontSize="11"
+                         VerticalAlignment="Center" />
+            </StackPanel>
           </Button>
 
           <!-- Recent / Quick Sample Fixtures -->

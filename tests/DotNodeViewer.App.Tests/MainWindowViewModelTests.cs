@@ -155,6 +155,63 @@ public sealed class MainWindowViewModelTests
         }
     }
 
+    [Test]
+    public async Task KeyGestures_ForOpenModel_ParseProperly()
+    {
+        var ctrlO = Avalonia.Input.KeyGesture.Parse("Ctrl+O");
+        await Assert.That(ctrlO.Key).IsEqualTo(Avalonia.Input.Key.O);
+        await Assert.That(ctrlO.KeyModifiers).IsEqualTo(Avalonia.Input.KeyModifiers.Control);
+
+        var cmdO = Avalonia.Input.KeyGesture.Parse("Cmd+O");
+        await Assert.That(cmdO.Key).IsEqualTo(Avalonia.Input.Key.O);
+        await Assert.That(cmdO.KeyModifiers).IsEqualTo(Avalonia.Input.KeyModifiers.Meta);
+    }
+
+    [Test]
+    public async Task KeyBindings_CtrlOAndCmdO_ExecuteOpenModelCommand()
+    {
+        await HeadlessAppSession.DispatchAsync(async () =>
+        {
+            MainWindowViewModel vm = new();
+            int filePickerInvocations = 0;
+            vm.FilePickerAsync = () =>
+            {
+                filePickerInvocations++;
+                return Task.FromResult<string?>(null);
+            };
+
+            Views.MainView view = new()
+            {
+                DataContext = vm
+            };
+
+            // Directly invoke the bound OpenModelCommand to verify ViewModel delegate
+            await vm.OpenModelCommand.ExecuteAsync(null);
+            await Assert.That(filePickerInvocations).IsEqualTo(1);
+
+            // Verify KeyBindings collection on MainView
+            bool hasCtrlO = false;
+            bool hasCmdO = false;
+            foreach (var kb in view.KeyBindings)
+            {
+                if (kb.Gesture is Avalonia.Input.KeyGesture gesture && gesture.Key == Avalonia.Input.Key.O)
+                {
+                    if (gesture.KeyModifiers == Avalonia.Input.KeyModifiers.Control)
+                    {
+                        hasCtrlO = true;
+                    }
+                    else if (gesture.KeyModifiers == Avalonia.Input.KeyModifiers.Meta)
+                    {
+                        hasCmdO = true;
+                    }
+                }
+            }
+
+            await Assert.That(hasCtrlO).IsTrue();
+            await Assert.That(hasCmdO).IsTrue();
+        });
+    }
+
     private static string ResolveFixturePath(string relative)
     {
         string? dir = AppContext.BaseDirectory;

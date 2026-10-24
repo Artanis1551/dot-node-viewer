@@ -174,7 +174,7 @@ public sealed partial class TensorInspectorViewModel : ObservableObject
             HasDequantization = true;
             double scale = affine.Scale.Count > 0 ? affine.Scale[0] : 1.0;
             long zp = affine.ZeroPoint.Count > 0 ? affine.ZeroPoint[0] : 0;
-            QuantizationDescription = string.Format(CultureInfo.InvariantCulture, "Scale: {0:G6}, Zero-Point: {1}", scale, zp);
+            QuantizationDescription = string.Create(CultureInfo.InvariantCulture, $"Scale: {scale:G6}, Zero-Point: {zp}");
         }
 
         if (tensor.Data is null)
@@ -200,7 +200,7 @@ public sealed partial class TensorInspectorViewModel : ObservableObject
             ByteLength = ext.Length ?? 0;
             ByteLengthFormatted = ext.Length.HasValue ? $"{ext.Length.Value:N0} bytes" : "External length unknown";
             StreamOffset = ext.Offset;
-            StreamOffsetHex = string.Format(CultureInfo.InvariantCulture, "0x{0:X8}", ext.Offset);
+            StreamOffsetHex = string.Create(CultureInfo.InvariantCulture, $"0x{ext.Offset:X8}");
             EncodingText = "External File Reference";
             return;
         }
@@ -214,7 +214,7 @@ public sealed partial class TensorInspectorViewModel : ObservableObject
         ByteLength = slice.ByteLength;
         ByteLengthFormatted = $"{slice.ByteLength:N0} bytes";
         StreamOffset = slice.StreamOffset;
-        StreamOffsetHex = string.Format(CultureInfo.InvariantCulture, "0x{0:X8}", slice.StreamOffset);
+        StreamOffsetHex = string.Create(CultureInfo.InvariantCulture, $"0x{slice.StreamOffset:X8}");
         EncodingText = slice.Encoding.ToString();
 
         if (stream is null)
@@ -430,7 +430,7 @@ public sealed partial class TensorInspectorViewModel : ObservableObject
                 {
                     byte b = bytes[i];
                     numericValues.Add(b);
-                    formattedRaws.Add(string.Format(CultureInfo.InvariantCulture, "0x{0:X2}", b));
+                    formattedRaws.Add(string.Create(CultureInfo.InvariantCulture, $"0x{b:X2}"));
                 }
                 break;
         }

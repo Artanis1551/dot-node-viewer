@@ -612,3 +612,59 @@ Every stage agent MUST read this file before starting work and append a completi
   - `python3 tools/capture_s11_screenshots.py`
   - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
 - **Next Stage:** Run **Stage S12** (`docs/roadmap/stages/S12-wasm-aot-and-perf.md`).
+
+---
+
+### Stage S12 — WebAssembly Head, NativeAOT Publishing, Performance Audit & NuGet Packaging
+- **Branch:** `stage/S12-wasm-aot-and-perf`
+- **Commits:**
+  - `S12: complete DotNodeViewer.Browser WebAssembly head and BrowserStreamAdapter`
+  - `S12: apply performance audit optimizations to GraphCanvas rendering, string allocation, and comparisons`
+  - `S12: configure NativeAOT publishing, NuGet package metadata, and record performance audit`
+  - `S12: update README, DocFX documentation site, and PROGRESS.md`
+  - `S12: add Ctrl+O and Cmd+O shortcut for opening models across desktop and browser`
+- **What Was Built:**
+  - **WebAssembly Head (`src/DotNodeViewer.Browser/`, `src/DotNodeViewer.App/`):**
+    - Configured `DotNodeViewer.Browser` targeting `net10.0-browser` with Avalonia 11 WebAssembly.
+    - Added `BrowserStreamAdapter` (`src/DotNodeViewer.App/IO/BrowserStreamAdapter.cs`):
+      - Configurable memory limit guard (default: 512 MB) protecting browser tabs from out-of-memory aborts.
+      - Asynchronous pooled chunking (`ArrayPool<byte>.Shared`) avoiding Large Object Heap (LOH) fragmentation.
+      - Seekable stream adapter factory (`Func<Stream>`) enabling random-access seeking for FlatBuffers, Protobuf, and ZIP readers without eager buffer copies.
+    - Updated `App.axaml.cs` supporting `ISingleViewApplicationLifetime`, mounting the shared `MainView` with unified styling and storage provider file picker integration.
+    - Added comprehensive unit tests in `BrowserStreamAdapterTests.cs` (5 tests verifying seekable buffer creation, oversized stream rejection, cancellation, stream factory recreation, and zero-byte streams).
+  - **NativeAOT Publishing Verification:**
+    - `DotNodeViewer.Cli`: configured `PublishAot=true` and verified zero trim/AOT warnings (`dotnet publish tools/DotNodeViewer.Cli -c Release -p:PublishAot=true`), producing a ~3.8 MB standalone ELF executable.
+    - `DotNodeViewer.Desktop`: configured NativeAOT compatibility with SkiaSharp and Avalonia (`dotnet publish src/DotNodeViewer.Desktop -c Release -p:PublishAot=true -r linux-x64`), producing a ~19 MB self-contained binary with zero trim warnings.
+    - Live desktop verification: launched the compiled NativeAOT desktop binary and verified interactive graph loading, text measurement, and rendering using `python3 tools/desktop_harness.py capture docs/screenshots/S12/01-nativeaot-desktop-verified.png`.
+  - **Comprehensive Performance Audit (`analyzing-dotnet-performance`):**
+    - Scanned `DotNodeViewer.Core`, `DotNodeViewer.Layout`, and `DotNodeViewer.App`.
+    - Fixed `GraphCanvas.Render`: eliminated per-frame `HashSet<string>` neighborhood allocations on the 60 fps render loop by precomputing and caching upstream/downstream ID sets on node selection changes.
+    - Fixed string boxing: replaced composite `string.Format(CultureInfo.InvariantCulture, ...)` with `string.Create(CultureInfo.InvariantCulture, ...)` across `MainWindowViewModel` and `TensorInspectorViewModel`.
+    - Fixed culture lookups: replaced `.ToLowerInvariant()` calls with `Contains("...", StringComparison.OrdinalIgnoreCase)` and added explicit `StringComparison.Ordinal` to format sniffers.
+    - Authored comprehensive audit document `docs/perf/performance-audit.md`.
+  - **NuGet Packaging:**
+    - Configured metadata (`PackageId`, `Version 0.12.0`, `Authors`, `License`, `PackageReadmeFile`, `PackageTags`, `RepositoryUrl`) in `DotNodeViewer.Core.csproj` and `DotNodeViewer.Layout.csproj`.
+    - Verified `dotnet pack src/DotNodeViewer.Core -c Release` -> `DotNodeViewer.Core.0.12.0.nupkg`.
+    - Verified `dotnet pack src/DotNodeViewer.Layout -c Release` -> `DotNodeViewer.Layout.0.12.0.nupkg`.
+- **`README.md` & `docs/site/` Updates:**
+  - Updated root [`README.md`](../../README.md) with WebAssembly visualizer instructions, NativeAOT compilation guides and screenshot, and NuGet package installation details.
+  - Authored Diátaxis How-To article [`docs/site/articles/visualizer/webassembly.md`](../site/articles/visualizer/webassembly.md) detailing browser deployment, `ISingleViewApplicationLifetime`, and `BrowserStreamAdapter`.
+  - Authored Diátaxis Explanation article [`docs/site/articles/architecture/performance-and-aot.md`](../site/articles/architecture/performance-and-aot.md) summarizing the performance architecture, zero-allocation design, hot-path optimizations, and NativeAOT compilation.
+  - Updated [`docs/site/articles/toc.yml`](../site/articles/toc.yml).
+  - Verified `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors` passes with 0 warnings.
+- **New ADRs Recorded:** None.
+- **Deviations & Known Limitations:** None.
+- **Test Count:** 157 passed (`DotNodeViewer.Core.Tests`: 95, `DotNodeViewer.Layout.Tests`: 13, `DotNodeViewer.App.Tests`: 49), 0 failed, 0 skipped.
+- **Screenshots Taken:**
+  - [NativeAOT Desktop Verification](../screenshots/S12/01-nativeaot-desktop-verified.png)
+- **Verification Commands Run:**
+  - `dotnet build dot-node-viewer.slnx -c Release`
+  - `dotnet test dot-node-viewer.slnx -c Release`
+  - `dotnet publish tools/DotNodeViewer.Cli -c Release -p:PublishAot=true`
+  - `dotnet publish src/DotNodeViewer.Desktop -c Release -p:PublishAot=true -r linux-x64`
+  - `dotnet build src/DotNodeViewer.Browser -c Release`
+  - `dotnet pack src/DotNodeViewer.Core -c Release`
+  - `dotnet pack src/DotNodeViewer.Layout -c Release`
+  - `python3 tools/desktop_harness.py capture docs/screenshots/S12/01-nativeaot-desktop-verified.png`
+  - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
+- **Next Stage:** Run **Stage S13** (`docs/roadmap/stages/S13-safetensors-gguf-and-final-hardening.md`).
