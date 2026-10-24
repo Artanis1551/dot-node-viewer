@@ -40,7 +40,7 @@ jobs:
         run: dotnet test --project tests/DotNodeViewer.App.Tests -c Release --no-build --output Detailed
 
       - name: Run Core unit & synthetic tests (Release)
-        run: dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/(CoreSmokeTests|PublicApiEncapsulationTests|UnifiedGraphIrTests|RandomAccessSourceAndBinaryCursorTests|ProtoReaderTests|FlatBufferTableTests|ModelProbeAndRegistryTests|ModelFixtureLoaderTests|ZipDirectoryTests|PickleMachineTests|OnnxSyntheticTests|TfliteSyntheticTests|ExecuTorchSyntheticTests|PyTorchSyntheticTests)/*"
+        run: dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/(CoreSmokeTests|PublicApiEncapsulationTests|UnifiedGraphIrTests|RandomAccessSourceAndBinaryCursorTests|ProtoReaderTests|FlatBufferTableTests|ModelProbeAndRegistryTests|ModelFixtureLoaderTests|ZipDirectoryTests|PickleMachineTests|OnnxSyntheticTests|TfliteSyntheticTests|ExecuTorchSyntheticTests|PyTorchSyntheticTests|PyTorchPt2SyntheticTests)/*"
 
       - name: Generate DocFX C# API metadata (warnings as errors)
         run: dotnet tool run docfx metadata docs/site/docfx.json --warningsAsErrors
@@ -179,3 +179,36 @@ jobs:
 
       - name: Pipeline inspection - List & verify tested PyTorch models
         run: python3 tools/ci/report-tested-models.py pytorch
+
+  model-tests-pytorch-pt2:
+    name: "Model Tests: PyTorch .pt2"
+    needs: [build-and-unit-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore cached model fixtures
+        uses: actions/cache@v4
+        with:
+          path: tests/DotNodeViewer.Core.Tests/.model-cache
+          key: model-cache-${{ hashFiles('tests/DotNodeViewer.Core.Tests/Fixtures/models.manifest.json') }}
+          restore-keys: |
+            model-cache-
+
+      - name: Build test project (Release)
+        run: dotnet build tests/DotNodeViewer.Core.Tests -c Release
+
+      - name: Run PyTorch .pt2 format tests (Release)
+        run: dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/PyTorchPt2ModelTests/*"
+
+      - name: Run PyTorch .pt2 manifest golden snapshot tests (Release)
+        run: dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredPyTorchPt2Model*"
+
+      - name: Pipeline inspection - List & verify tested PyTorch .pt2 models
+        run: python3 tools/ci/report-tested-models.py pytorch-pt2

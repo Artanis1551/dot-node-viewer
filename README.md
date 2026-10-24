@@ -52,7 +52,7 @@ dot-node-viewer.slnx
 | [**TensorFlow Lite**](docs/site/articles/formats/tflite.md) | `.tflite` | `tflite` | Bounds-checked FlatBuffers (`TFL3`), zero-copy `Buffer.data` & external `offset`/`size` weight slices, per-tensor/per-channel `INT8` `AffineQuantization`, fused activations, `IF`/`WHILE`/`CALL_ONCE` subgraphs, and `CUSTOM` NPU delegate slices | **Supported (S03)** |
 | [**ExecuTorch**](docs/site/articles/formats/executorch.md) | `.pte` | `executorch` | FlatBuffers (`ET12` / `ET1x`), `eh00` extended header, inline & segmented lazy constant weight slices, dynamic bound shapes, portable ATen operators, and lowered backend delegates (e.g. `XnnpackBackend`, `EthosUBackend`) | **Supported (S07)** |
 | [**PyTorch (`state_dict` & TorchScript)**](docs/site/articles/formats/pytorch.md) | `.pt`, `.pth` | `pytorch` | PKZIP container, safe `PickleMachine` VM (protocols 2–5, zero reflection), TorchScript Python AST mini-parser with module inlining, scripted `if` control flow fallback, hierarchical `state_dict` parameter grouping, and lazy weight slicing | **Supported (S08)** |
-| **PyTorch ExportedProgram** | `.pt2` | `pytorch-pt2` | `torch.export` archive & `ExportedProgram` JSON | Planned (S09) |
+| [**PyTorch ExportedProgram**](docs/site/articles/formats/pytorch.md#pytorch-2-exportedprogram-pt2) | `.pt2` | `pytorch-pt2` | `torch.export` PKZIP archive, `ExportedProgram` JSON schema, ATen operators, symbolic `SymInt` dimensions & `range_constraints`, parameter/buffer initializer isolation, and zero-allocation lazy stored weight slicing | **Supported (S09)** |
 | **Keras v3 & Legacy HDF5** | `.keras`, `.h5` | `keras` | Keras v3 `config.json` + HDF5 weight slices (`PureHDF`) | Planned (S10) |
 
 ---

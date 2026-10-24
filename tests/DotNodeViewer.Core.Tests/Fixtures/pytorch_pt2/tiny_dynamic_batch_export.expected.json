@@ -1,0 +1,39 @@
+{
+  "modelId": "pytorch_pt2-tiny_dynamic_batch_export",
+  "format": "PyTorch ExportedProgram (.pt2)",
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "main",
+    "nodeCount": 2,
+    "operatorHistogram": {
+      "torch.ops.aten.linear.default": 1,
+      "torch.ops.aten.relu.default": 1
+    },
+    "inputs": [
+      {
+        "name": "x",
+        "dataType": "Float32",
+        "shape": [
+          "s77",
+          "4"
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "relu",
+        "dataType": "Float32",
+        "shape": [
+          "s77",
+          "2"
+        ]
+      }
+    ],
+    "sampleWeightSlice": {
+      "tensorName": "p_fc_weight",
+      "dataType": "Float32",
+      "streamOffset": 128,
+      "byteLength": 32
+    }
+  }
+}

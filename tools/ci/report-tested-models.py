@@ -31,6 +31,7 @@ def main() -> None:
         "tflite": "TensorFlow Lite",
         "executorch": "ExecuTorch",
         "pytorch": "PyTorch",
+        "pytorch-pt2": "PyTorch .pt2",
         "keras": "Keras",
     }
     format_label = display_names.get(target_format, target_format.upper())

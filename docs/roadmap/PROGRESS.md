@@ -448,3 +448,50 @@ Every stage agent MUST read this file before starting work and append a completi
   - `dotnet tool run docfx metadata docs/site/docfx.json --warningsAsErrors`
   - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
 - **Next Stage:** Run **Stage S09** (`docs/roadmap/stages/S09-pytorch-pt2-export.md`).
+
+### Stage S09 — PyTorch `.pt2` (`torch.export` Archive)
+- **Branch:** `stage/S09-pytorch-pt2`
+- **Commits:**
+  - `S09: implement PyTorch .pt2 ExportedProgram detector and reader`
+  - `S09: add PyTorch .pt2 model generator, fixtures, and golden snapshots`
+  - `S09: add synthetic and model integration tests`
+  - `S09: update README, DocFX documentation site, and PROGRESS.md`
+- **What Was Built:**
+  - `PyTorchPt2FormatDetector` & `PyTorchPt2FormatReader` (`src/DotNodeViewer.Core/Formats/PyTorchPt2/`, `internal`):
+    - Fast, non-destructive detector verifying ZIP entries for `archive_format` or `models/model.json` / `serialized_exported_program.json`.
+    - Pure C# streaming reader using `JsonDocument` DOM navigation over `ZipDirectory.ReadEntryBytes` for trimming- and NativeAOT-clean parsing of `model.json`.
+    - Handles both modern PyTorch 2.5/2.6+ (`input_specs`, `output_specs`) and legacy `<= 2.4` signature dictionaries (`inputs_to_parameters`, `inputs_to_buffers`, `user_inputs`, `user_outputs`).
+    - Isolates parameters, buffers, and lifted tensor constants as `TensorKind.Initializer` rather than graph inputs.
+    - Resolves both fixed integer dimensions and symbolic dimension expressions (`as_sym_int`, `as_expr`, `Symbol('...')`) into `TensorDimension.Symbolic` and captures `range_constraints` in `ModelGraph.Metadata`.
+    - Lazily extracts stored weight slices from `data/weights/model_weights_config.json` (and `data/constants/model_constants_config.json`) and uncompressed ZIP entries into `TensorDataSlice` with 0 heap copying.
+    - Maps ATen operators (`torch.ops.aten.*`) into semantic `OperatorCategory`s via `PyTorchOperatorCatalog`.
+    - Registered in `ModelFormatRegistry.CreateDefault()`.
+  - Deterministic Python model generator (`tools/model-gen/torch/gen_pt2.py`):
+    - Emits `tiny_cnn_export.pt2` and `tiny_dynamic_batch_export.pt2` (`torch.export.Dim("batch", min=1, max=32)`) along with independent `.truth.json` ground-truth files.
+  - Fixtures & Golden Snapshots:
+    - Staged and registered both committed fixtures in `tests/DotNodeViewer.Core.Tests/Fixtures/models.manifest.json`.
+    - Generated `.expected.json` golden snapshots via `DotNodeViewer.Cli snapshot`.
+  - Comprehensive Unit, Synthetic & Integration Tests:
+    - `Synthetic/PyTorchPt2SyntheticTests`: the 4 mandatory tests (header probing & position restoration, topology extraction, lazy weight skipping, corrupted archive resilience).
+    - `Formats/PyTorchPt2ModelTests`: verifies `tiny_cnn_export.pt2` against `.truth.json`, parameter initializer isolation, and `tiny_dynamic_batch_export.pt2` symbolic dimensions and range constraints.
+    - `ModelManifestTests`: added `GetRegisteredPyTorchPt2Models` and `ParseRegisteredPyTorchPt2Model_MatchesExpectedTopology`.
+    - `.github/workflows/ci.yml`: added `model-tests-pytorch-pt2` job and updated synthetic test filters.
+    - `tools/ci/report-tested-models.py`: added `pytorch-pt2` format reporting.
+- **`README.md` & `docs/site/` Updates:**
+  - Updated root [`README.md`](../../README.md) supported-formats table marking PyTorch ExportedProgram (`.pt2`) supported in S09.
+  - Updated [`docs/site/articles/formats/overview.md`](../site/articles/formats/overview.md) support matrix.
+  - Added Sections 7 & 8 in [`docs/site/articles/formats/pytorch.md`](../site/articles/formats/pytorch.md) detailing `.pt2` archive structure, `ExportedProgram` signature analysis, `SymInt` dynamic dimensions, lazy stored weight slices, and cross-format comparison against downstream ExecuTorch (`.pte`) and TFLite (`.tflite`) conversions.
+  - Built DocFX metadata and site cleanly with 0 warnings (`--warningsAsErrors`).
+- **New ADRs Recorded:** None (strictly followed ADRs `0001`–`0007`).
+- **Deviations & Known Limitations:** None.
+- **Test Count:** 119 passed (`DotNodeViewer.Core.Tests`: 83, `DotNodeViewer.Layout.Tests`: 13, `DotNodeViewer.App.Tests`: 23), 0 failed, 0 skipped.
+- **Screenshots Taken:** None (format parser stage, no UI alterations).
+- **Verification Commands Run:**
+  - `tools/model-gen/torch/.venv/bin/python tools/model-gen/torch/gen_pt2.py`
+  - `dotnet build dot-node-viewer.slnx -c Release --no-restore`
+  - `dotnet test --solution dot-node-viewer.slnx -c Release --no-build`
+  - `dotnet publish tools/DotNodeViewer.Cli/DotNodeViewer.Cli.csproj -c Release -p:PublishAot=true -r linux-x64 --no-restore`
+  - `dotnet tool run docfx metadata docs/site/docfx.json --warningsAsErrors`
+  - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
+  - `python3 tools/ci/report-tested-models.py pytorch-pt2`
+- **Next Stage:** Run **Stage S10** (`docs/roadmap/stages/S10-keras-and-hdf5.md`).

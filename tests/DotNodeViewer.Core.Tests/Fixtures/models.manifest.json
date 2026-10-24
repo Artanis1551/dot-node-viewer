@@ -154,6 +154,28 @@
       "sha256": "bcffabdb71dd377591e6128e119332238c7ffa8522363327d7e3194dc4ae0976",
       "byteLength": 4477,
       "expectedSnapshot": "Fixtures/pytorch/tiny_cnn_state_dict.expected.json"
+    },
+    {
+      "id": "pytorch_pt2-tiny_cnn_export",
+      "format": "pytorch-pt2",
+      "fileName": "tiny_cnn_export.pt2",
+      "tier": "committed",
+      "relativePath": "Fixtures/pytorch_pt2/tiny_cnn_export.pt2",
+      "sourceUrl": null,
+      "sha256": "d8c7f411afd6c3c89a1b6709686e46041b70445f6d2e0c4ef6b2038dd5d8f20d",
+      "byteLength": 13273,
+      "expectedSnapshot": "Fixtures/pytorch_pt2/tiny_cnn_export.expected.json"
+    },
+    {
+      "id": "pytorch_pt2-tiny_dynamic_batch_export",
+      "format": "pytorch-pt2",
+      "fileName": "tiny_dynamic_batch_export.pt2",
+      "tier": "committed",
+      "relativePath": "Fixtures/pytorch_pt2/tiny_dynamic_batch_export.pt2",
+      "sourceUrl": null,
+      "sha256": "cf8888cbb3530b77c2ac01259d353d370a1ecd1429c671e81d9feed83d229f41",
+      "byteLength": 9313,
+      "expectedSnapshot": "Fixtures/pytorch_pt2/tiny_dynamic_batch_export.expected.json"
     }
   ]
 }
