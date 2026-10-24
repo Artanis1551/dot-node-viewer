@@ -99,6 +99,28 @@
       "sha256": "7aad0c74c5e3c06e5eb3c827e13304fdd68a83da6087d92ee169c24ff9fd4776",
       "byteLength": 3610798,
       "expectedSnapshot": "Fixtures/tflite/mobilenet_v2_1.0_224_quant.expected.json"
+    },
+    {
+      "id": "executorch-tiny_mlp_portable",
+      "format": "executorch",
+      "fileName": "tiny_mlp_portable.pte",
+      "tier": "committed",
+      "relativePath": "Fixtures/executorch/tiny_mlp_portable.pte",
+      "sourceUrl": null,
+      "sha256": "d37026e5ba2d7b1c5e9d788bec08a3aae7ae77a16cea3f0cf152566ae8da438b",
+      "byteLength": 2548,
+      "expectedSnapshot": "Fixtures/executorch/tiny_mlp_portable.expected.json"
+    },
+    {
+      "id": "executorch-tiny_cnn_xnnpack",
+      "format": "executorch",
+      "fileName": "tiny_cnn_xnnpack.pte",
+      "tier": "committed",
+      "relativePath": "Fixtures/executorch/tiny_cnn_xnnpack.pte",
+      "sourceUrl": null,
+      "sha256": "84b2128dc1023b495767af3ea00e4f48653bf82debcb660d85970538e804c501",
+      "byteLength": 3360,
+      "expectedSnapshot": "Fixtures/executorch/tiny_cnn_xnnpack.expected.json"
     }
   ]
 }

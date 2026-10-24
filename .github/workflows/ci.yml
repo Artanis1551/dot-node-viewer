@@ -40,7 +40,7 @@ jobs:
         run: dotnet test --project tests/DotNodeViewer.App.Tests -c Release --no-build --output Detailed
 
       - name: Run Core unit & synthetic tests (Release)
-        run: dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/(CoreSmokeTests|PublicApiEncapsulationTests|UnifiedGraphIrTests|RandomAccessSourceAndBinaryCursorTests|ProtoReaderTests|FlatBufferTableTests|ModelProbeAndRegistryTests|ModelFixtureLoaderTests|OnnxSyntheticTests|TfliteSyntheticTests)/*"
+        run: dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/(CoreSmokeTests|PublicApiEncapsulationTests|UnifiedGraphIrTests|RandomAccessSourceAndBinaryCursorTests|ProtoReaderTests|FlatBufferTableTests|ModelProbeAndRegistryTests|ModelFixtureLoaderTests|OnnxSyntheticTests|TfliteSyntheticTests|ExecuTorchSyntheticTests)/*"
 
       - name: Generate DocFX C# API metadata (warnings as errors)
         run: dotnet tool run docfx metadata docs/site/docfx.json --warningsAsErrors
@@ -113,3 +113,36 @@ jobs:
 
       - name: Pipeline inspection - List & verify tested TensorFlow Lite models
         run: python3 tools/ci/report-tested-models.py tflite
+
+  model-tests-executorch:
+    name: "Model Tests: ExecuTorch"
+    needs: [build-and-unit-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore cached model fixtures
+        uses: actions/cache@v4
+        with:
+          path: tests/DotNodeViewer.Core.Tests/.model-cache
+          key: model-cache-${{ hashFiles('tests/DotNodeViewer.Core.Tests/Fixtures/models.manifest.json') }}
+          restore-keys: |
+            model-cache-
+
+      - name: Build test project (Release)
+        run: dotnet build tests/DotNodeViewer.Core.Tests -c Release
+
+      - name: Run ExecuTorch format tests (Release)
+        run: dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/ExecuTorchModelTests/*"
+
+      - name: Run ExecuTorch manifest golden snapshot tests (Release)
+        run: dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredExecuTorchModel*"
+
+      - name: Pipeline inspection - List & verify tested ExecuTorch models
+        run: python3 tools/ci/report-tested-models.py executorch

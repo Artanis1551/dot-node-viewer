@@ -181,6 +181,12 @@ internal readonly struct FlatBufferTable
         TryGetFieldOffset(fieldIndex, 4, out long pos) ? _source.ReadSingleLittleEndian(pos) : defaultValue;
 
     /// <summary>
+    /// Reads a 64-bit IEEE 754 floating-point field at <paramref name="fieldIndex"/>, or returns <paramref name="defaultValue"/> if absent.
+    /// </summary>
+    public double ReadDouble(int fieldIndex, double defaultValue = 0.0) =>
+        TryGetFieldOffset(fieldIndex, 8, out long pos) ? _source.ReadDoubleLittleEndian(pos) : defaultValue;
+
+    /// <summary>
     /// Reads a UTF-8 string field at <paramref name="fieldIndex"/>, or returns <see langword="null"/> if absent.
     /// </summary>
     public string? ReadString(int fieldIndex)
@@ -330,6 +336,58 @@ internal readonly struct FlatBufferTable
         for (int i = 0; i < count; i++)
         {
             result[i] = _source.ReadSingleLittleEndian(dataPos + ((long)i * 4));
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Reads a vector of 64-bit floating-point values at <paramref name="fieldIndex"/>, or returns <see langword="null"/> if the field is absent.
+    /// </summary>
+    public double[]? ReadDoubleVector(int fieldIndex)
+    {
+        if (!TryDereferenceUOffset(fieldIndex, out long vectorPos))
+        {
+            return null;
+        }
+
+        int count = ReadVectorElementCount(vectorPos, elementByteSize: 8);
+        if (count == 0)
+        {
+            return [];
+        }
+
+        double[] result = new double[count];
+        long dataPos = vectorPos + 4;
+        for (int i = 0; i < count; i++)
+        {
+            result[i] = _source.ReadDoubleLittleEndian(dataPos + ((long)i * 8));
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Reads a vector of boolean values at <paramref name="fieldIndex"/>, or returns <see langword="null"/> if the field is absent.
+    /// </summary>
+    public bool[]? ReadBoolVector(int fieldIndex)
+    {
+        if (!TryDereferenceUOffset(fieldIndex, out long vectorPos))
+        {
+            return null;
+        }
+
+        int count = ReadVectorElementCount(vectorPos, elementByteSize: 1);
+        if (count == 0)
+        {
+            return [];
+        }
+
+        bool[] result = new bool[count];
+        long dataPos = vectorPos + 4;
+        for (int i = 0; i < count; i++)
+        {
+            result[i] = _source.ReadByte(dataPos + i) != 0;
         }
 
         return result;
