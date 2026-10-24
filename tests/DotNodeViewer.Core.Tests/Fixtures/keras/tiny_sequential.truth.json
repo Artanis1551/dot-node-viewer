@@ -1,0 +1,65 @@
+{
+  "modelId": "keras-tiny_sequential",
+  "format": "Keras",
+  "modelType": "Sequential",
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "main",
+    "nodeCount": 2,
+    "operatorHistogram": {
+      "Dense": 2
+    },
+    "inputs": [
+      {
+        "name": "input_1",
+        "dataType": "Float32",
+        "shape": [
+          "?",
+          "4"
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "dense_2",
+        "dataType": "Float32"
+      }
+    ],
+    "initializers": [
+      {
+        "name": "dense_1/kernel",
+        "dataType": "Float32",
+        "shape": [
+          4,
+          8
+        ],
+        "byteLength": 128
+      },
+      {
+        "name": "dense_1/bias",
+        "dataType": "Float32",
+        "shape": [
+          8
+        ],
+        "byteLength": 32
+      },
+      {
+        "name": "dense_2/kernel",
+        "dataType": "Float32",
+        "shape": [
+          8,
+          2
+        ],
+        "byteLength": 64
+      },
+      {
+        "name": "dense_2/bias",
+        "dataType": "Float32",
+        "shape": [
+          2
+        ],
+        "byteLength": 8
+      }
+    ]
+  }
+}

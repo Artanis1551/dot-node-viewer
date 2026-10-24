@@ -1,0 +1,10 @@
+{
+  "modelId": "keras-tiny_weights_only",
+  "format": "Keras",
+  "modelType": "WeightsOnly",
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "main",
+    "nodeCount": 1
+  }
+}

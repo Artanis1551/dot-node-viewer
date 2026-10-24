@@ -15,8 +15,8 @@ Every stage agent MUST read this file before starting work and append a completi
 | **S06** | [`S06-ui-iteration-1b-graph-canvas-and-properties.md`](stages/S06-ui-iteration-1b-graph-canvas-and-properties.md) | `stage/S06-ui-graph-canvas` | Complete | Custom `GraphCanvas`, pan/zoom/hit-test, basic node properties sidebar, `computer-use` verification |
 | **S07** | [`S07-executorch-parser.md`](stages/S07-executorch-parser.md) | `stage/S07-executorch-parser` | Complete | ExecuTorch `.pte` detector & reader, delegate payloads, `tools/model-gen/torch` |
 | **S08** | [`S08-pytorch-zip-pickle-and-torchscript.md`](stages/S08-pytorch-zip-pickle-and-torchscript.md) | `stage/S08-pytorch-torchscript` | Complete | `ZipDirectory`, safe `PickleMachine`, `state_dict` & TorchScript `.pt` reader |
-| **S09** | [`S09-pytorch-pt2-export.md`](stages/S09-pytorch-pt2-export.md) | `stage/S09-pytorch-pt2` | Pending | PyTorch `torch.export` `.pt2` archive & `ExportedProgram` JSON reader |
-| **S10** | [`S10-keras-and-hdf5.md`](stages/S10-keras-and-hdf5.md) | `stage/S10-keras-and-hdf5` | Pending | Keras v3 `.keras` + legacy `.h5` reader |
+| **S09** | [`S09-pytorch-pt2-export.md`](stages/S09-pytorch-pt2-export.md) | `stage/S09-pytorch-pt2` | Complete | PyTorch `torch.export` `.pt2` archive & `ExportedProgram` JSON reader |
+| **S10** | [`S10-keras-and-hdf5.md`](stages/S10-keras-and-hdf5.md) | `stage/S10-keras-and-hdf5` | Complete | Keras v3 `.keras` + legacy `.h5` reader |
 | **S11** | [`S11-ui-iteration-2-polish-inspector-and-navigation.md`](stages/S11-ui-iteration-2-polish-inspector-and-navigation.md) | `stage/S11-ui-polish-and-inspector` | Pending | On-demand tensor weight inspector, search, subgraph drill-down, minimap, `computer-use` critique |
 | **S12** | [`S12-browser-wasm-aot-and-perf-hardening.md`](stages/S12-browser-wasm-aot-and-perf-hardening.md) | `stage/S12-wasm-aot-and-perf` | Pending | `DotNodeViewer.Browser` WASM head, NativeAOT publish, perf audit, NuGet packaging |
 | **S13** | [`S13-avalonia-12-migration.md`](stages/S13-avalonia-12-migration.md) | `stage/S13-avalonia-12-migration` | Optional | Migrate Avalonia `11.3.12` → `12.x` via `avalonia-12-migration` skill |
@@ -495,3 +495,55 @@ Every stage agent MUST read this file before starting work and append a completi
   - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
   - `python3 tools/ci/report-tested-models.py pytorch-pt2`
 - **Next Stage:** Run **Stage S10** (`docs/roadmap/stages/S10-keras-and-hdf5.md`).
+
+### Stage S10 — Keras v3 Archive (`.keras`) & Legacy HDF5 (`.h5`)
+- **Branch:** `stage/S10-keras-and-hdf5`
+- **Commits:**
+  - `S10: add pure C# HDF5 reader over RandomAccessSource`
+  - `S10: implement Keras .keras and .h5 format detector, reader, and operator catalog`
+  - `S10: add Keras model generator, fixtures, and golden snapshots`
+  - `S10: add synthetic and model integration tests`
+  - `S10: update README, DocFX documentation site, and PROGRESS.md`
+- **What Was Built:**
+  - `Hdf5Reader` (`src/DotNodeViewer.Core/IO/Hdf5/`, `internal`):
+    - Pure C# zero-allocation HDF5 reader over `RandomAccessSource`.
+    - Supports Superblock versions 0, 1, 2, and 3.
+    - Object Header v1 (with 8-byte message alignment and `0x0010` Object Header Continuation blocks) and v2 (`OHDR`).
+    - Header message decoders: Dataspace (Message 1: simple/scalar dimensions), Datatype (Message 3: IEEE 754 float32/float64, signed/unsigned int8/16/32/64), Data Layout (Message 8: contiguous storage offset and size), Attribute (Message 12: fixed ASCII and variable-length string via Global Heap `GCOL`), and Symbol Table (Message 17: B-Tree v1 nodes `TREE`, local heap `HEAP` data segments, and symbol table nodes `SNOD`).
+    - Walks group hierarchies and extracts datasets with exact uncompressed byte offsets (`DataOffset`), sizes, element types, dimensions, and parent group attributes.
+  - Keras Format Detector & Streaming Reader (`src/DotNodeViewer.Core/Formats/Keras/`, `internal`):
+    - `KerasFormatDetector`: detects both Keras 3 ZIP archives (`config.json` with `keras_version` / `model_config`, and `metadata.json` or `model.weights.h5`) and HDF5 containers (`\x89HDF\r\n\x1a\n` with `model_config` / `keras_version` attributes).
+    - `KerasOperatorCatalog`: maps Keras layers (`Conv2D`, `Dense`, `BatchNormalization`, `Add`, `Concatenate`, `Dropout`, activations, etc.) to semantic `OperatorCategory`s and computes data types and byte sizes.
+    - `KerasFormatReader`: builds full `ModelGraph` for Sequential and Functional models (handling both Keras 3 `keras_history` tuples and Keras 2 nested array `inbound_nodes`). Binds trainable and non-trainable weights as `TensorKind.Initializer` with zero-allocation lazy `TensorDataSlice` (rebased by `DataOffset` when located within stored `model.weights.h5` inside a `.keras` ZIP archive). Provides weights-only HDF5 fallback with `DNV_KERAS_WEIGHTS_ONLY` diagnostic.
+    - Registered in `ModelFormatRegistry.CreateDefault()`.
+  - Deterministic Python model generator (`tools/model-gen/tf/gen_keras.py`):
+    - Emits `tiny_sequential.keras`, `tiny_functional_residual.keras`, `tiny_cnn_legacy.h5`, and `tiny_weights_only.weights.h5` along with independent `.truth.json` ground-truth files.
+  - Fixtures & Golden Snapshots:
+    - Staged and registered all 4 committed fixtures in `tests/DotNodeViewer.Core.Tests/Fixtures/models.manifest.json`.
+    - Generated `.expected.json` golden snapshots via `DotNodeViewer.Cli snapshot`.
+  - Comprehensive Unit, Synthetic & Integration Tests:
+    - `Synthetic/KerasSyntheticTests`: the 4 mandatory tests (header probing & position restoration, topology extraction, lazy weight skipping, corrupted archive resilience).
+    - `Formats/KerasModelTests`: verifies Sequential and Functional `.keras` models against `.truth.json`, residual connections, legacy `.h5` model topology and attributes, and weights-only `.weights.h5` fallback with `DNV_KERAS_WEIGHTS_ONLY` diagnostic.
+    - `ModelManifestTests`: added `GetRegisteredKerasModels` and `ParseRegisteredKerasModel_MatchesExpectedTopology`.
+    - `.github/workflows/ci.yml`: added `model-tests-keras` job and updated synthetic test filters.
+    - `tools/ci/report-tested-models.py`: added `keras` format reporting.
+- **`README.md` & `docs/site/` Updates:**
+  - Updated root [`README.md`](../../README.md) supported-formats table marking Keras (`.keras` / `.h5`) supported in S10.
+  - Updated [`docs/site/articles/formats/overview.md`](../site/articles/formats/overview.md) support matrix.
+  - Added Diátaxis Reference article [`docs/site/articles/formats/keras.md`](../site/articles/formats/keras.md) detailing Keras 3 ZIP container structure, legacy HDF5 layout, weight binding via `Hdf5Reader`, weights-only fallback diagnostics, and cross-format comparison with PyTorch and TFLite.
+  - Updated [`docs/site/articles/toc.yml`](../site/articles/toc.yml) table of contents.
+  - Built DocFX metadata and site cleanly with 0 warnings (`--warningsAsErrors`).
+- **New ADRs Recorded:** None (strictly followed ADRs `0001`–`0007`).
+- **Deviations & Known Limitations:**
+  - Avoided external `PureHDF` dependency by implementing internal `Hdf5Reader.cs` over `RandomAccessSource`. This eliminated unmanaged/reflection risks, achieved 100% NativeAOT cleanliness, and allowed seamless offset rebasing for embedded ZIP entries.
+- **Test Count:** 131 passed (`DotNodeViewer.Core.Tests`: 95, `DotNodeViewer.Layout.Tests`: 13, `DotNodeViewer.App.Tests`: 23), 0 failed, 0 skipped.
+- **Screenshots Taken:** None (format parser stage, no UI alterations).
+- **Verification Commands Run:**
+  - `tools/model-gen/tf/.venv/bin/python tools/model-gen/tf/gen_keras.py`
+  - `dotnet build dot-node-viewer.slnx -c Release --no-restore`
+  - `dotnet test --solution dot-node-viewer.slnx -c Release --no-build`
+  - `dotnet publish tools/DotNodeViewer.Cli/DotNodeViewer.Cli.csproj -c Release -p:PublishAot=true -r linux-x64 --no-restore`
+  - `dotnet tool run docfx metadata docs/site/docfx.json --warningsAsErrors`
+  - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
+  - `python3 tools/ci/report-tested-models.py keras`
+- **Next Stage:** Run **Stage S11** (`docs/roadmap/stages/S11-ui-iteration-2-polish-inspector-and-navigation.md`).

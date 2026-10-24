@@ -1,0 +1,71 @@
+{
+  "modelId": "keras-tiny_cnn_legacy",
+  "format": "Keras",
+  "modelType": "Sequential",
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "main",
+    "nodeCount": 3,
+    "operatorHistogram": {
+      "Conv2D": 1,
+      "Flatten": 1,
+      "Dense": 1
+    },
+    "inputs": [
+      {
+        "name": "input_1",
+        "dataType": "Float32",
+        "shape": [
+          "?",
+          "8",
+          "8",
+          "1"
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "dense_1",
+        "dataType": "Float32"
+      }
+    ],
+    "initializers": [
+      {
+        "name": "conv_1/kernel",
+        "dataType": "Float32",
+        "shape": [
+          3,
+          3,
+          1,
+          2
+        ],
+        "byteLength": 72
+      },
+      {
+        "name": "conv_1/bias",
+        "dataType": "Float32",
+        "shape": [
+          2
+        ],
+        "byteLength": 8
+      },
+      {
+        "name": "dense_1/kernel",
+        "dataType": "Float32",
+        "shape": [
+          128,
+          3
+        ],
+        "byteLength": 1536
+      },
+      {
+        "name": "dense_1/bias",
+        "dataType": "Float32",
+        "shape": [
+          3
+        ],
+        "byteLength": 12
+      }
+    ]
+  }
+}

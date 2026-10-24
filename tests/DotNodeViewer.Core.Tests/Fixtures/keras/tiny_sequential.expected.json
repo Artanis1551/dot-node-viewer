@@ -1,0 +1,35 @@
+{
+  "modelId": "keras-tiny_sequential",
+  "format": "Keras (.keras/.h5)",
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "main",
+    "nodeCount": 2,
+    "operatorHistogram": {
+      "Dense": 2
+    },
+    "inputs": [
+      {
+        "name": "input_1:0",
+        "dataType": "Float32",
+        "shape": [
+          "?",
+          "4"
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "dense_2:0",
+        "dataType": "Float32",
+        "shape": []
+      }
+    ],
+    "sampleWeightSlice": {
+      "tensorName": "dense_1/kernel",
+      "dataType": "Float32",
+      "streamOffset": 11331,
+      "byteLength": 128
+    }
+  }
+}
