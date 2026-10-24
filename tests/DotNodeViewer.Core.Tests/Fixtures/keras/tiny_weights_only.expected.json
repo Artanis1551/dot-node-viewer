@@ -1,0 +1,20 @@
+{
+  "modelId": "keras-tiny_weights_only",
+  "format": "Keras (.keras/.h5)",
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "main",
+    "nodeCount": 1,
+    "operatorHistogram": {
+      "WeightLayer": 1
+    },
+    "inputs": [],
+    "outputs": [],
+    "sampleWeightSlice": {
+      "tensorName": "layers/dense/vars/0",
+      "dataType": "Float32",
+      "streamOffset": 9160,
+      "byteLength": 64
+    }
+  }
+}

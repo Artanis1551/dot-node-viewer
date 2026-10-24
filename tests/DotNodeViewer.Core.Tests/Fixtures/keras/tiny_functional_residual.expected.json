@@ -1,0 +1,36 @@
+{
+  "modelId": "keras-tiny_functional_residual",
+  "format": "Keras (.keras/.h5)",
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "main",
+    "nodeCount": 3,
+    "operatorHistogram": {
+      "Dense": 2,
+      "Add": 1
+    },
+    "inputs": [
+      {
+        "name": "input_1:0",
+        "dataType": "Float32",
+        "shape": [
+          "?",
+          "8"
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "add_skip:0",
+        "dataType": "Float32",
+        "shape": []
+      }
+    ],
+    "sampleWeightSlice": {
+      "tensorName": "dense_res1/kernel",
+      "dataType": "Float32",
+      "streamOffset": 14170,
+      "byteLength": 256
+    }
+  }
+}

@@ -176,6 +176,50 @@
       "sha256": "cf8888cbb3530b77c2ac01259d353d370a1ecd1429c671e81d9feed83d229f41",
       "byteLength": 9313,
       "expectedSnapshot": "Fixtures/pytorch_pt2/tiny_dynamic_batch_export.expected.json"
+    },
+    {
+      "id": "keras-tiny_sequential",
+      "format": "keras",
+      "fileName": "tiny_sequential.keras",
+      "tier": "committed",
+      "relativePath": "Fixtures/keras/tiny_sequential.keras",
+      "sourceUrl": null,
+      "sha256": "cfcf13dacc52ed5e6783c4ccbffdb1538f63f867b06dff2b09f9de5e68505f42",
+      "byteLength": 15067,
+      "expectedSnapshot": "Fixtures/keras/tiny_sequential.expected.json"
+    },
+    {
+      "id": "keras-tiny_functional_residual",
+      "format": "keras",
+      "fileName": "tiny_functional_residual.keras",
+      "tier": "committed",
+      "relativePath": "Fixtures/keras/tiny_functional_residual.keras",
+      "sourceUrl": null,
+      "sha256": "6a6aa26fe5c49939af89aab33c7d796bea5b00ca6f1862e5fe40b240145741cd",
+      "byteLength": 20082,
+      "expectedSnapshot": "Fixtures/keras/tiny_functional_residual.expected.json"
+    },
+    {
+      "id": "keras-tiny_cnn_legacy",
+      "format": "keras",
+      "fileName": "tiny_cnn_legacy.h5",
+      "tier": "committed",
+      "relativePath": "Fixtures/keras/tiny_cnn_legacy.h5",
+      "sourceUrl": null,
+      "sha256": "e354cd7e640c70fc15cd75ec8f7f2732793d70017b46c59688cf1adc50911bbd",
+      "byteLength": 18080,
+      "expectedSnapshot": "Fixtures/keras/tiny_cnn_legacy.expected.json"
+    },
+    {
+      "id": "keras-tiny_weights_only",
+      "format": "keras",
+      "fileName": "tiny_weights_only.weights.h5",
+      "tier": "committed",
+      "relativePath": "Fixtures/keras/tiny_weights_only.weights.h5",
+      "sourceUrl": null,
+      "sha256": "e28aaecfb687749d31a895548595f4a58f9fa230c9ad5dbb930d606f417de1f3",
+      "byteLength": 11808,
+      "expectedSnapshot": "Fixtures/keras/tiny_weights_only.expected.json"
     }
   ]
 }

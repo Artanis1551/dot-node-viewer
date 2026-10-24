@@ -1,0 +1,66 @@
+{
+  "modelId": "keras-tiny_functional_residual",
+  "format": "Keras",
+  "modelType": "Functional",
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "main",
+    "nodeCount": 3,
+    "operatorHistogram": {
+      "Dense": 2,
+      "Add": 1
+    },
+    "inputs": [
+      {
+        "name": "input_1",
+        "dataType": "Float32",
+        "shape": [
+          "?",
+          "8"
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "add_skip",
+        "dataType": "Float32"
+      }
+    ],
+    "initializers": [
+      {
+        "name": "dense_res1/kernel",
+        "dataType": "Float32",
+        "shape": [
+          8,
+          8
+        ],
+        "byteLength": 256
+      },
+      {
+        "name": "dense_res1/bias",
+        "dataType": "Float32",
+        "shape": [
+          8
+        ],
+        "byteLength": 32
+      },
+      {
+        "name": "dense_res2/kernel",
+        "dataType": "Float32",
+        "shape": [
+          8,
+          8
+        ],
+        "byteLength": 256
+      },
+      {
+        "name": "dense_res2/bias",
+        "dataType": "Float32",
+        "shape": [
+          8
+        ],
+        "byteLength": 32
+      }
+    ]
+  }
+}
