@@ -116,6 +116,7 @@ dotnet run --project src/DotNodeViewer.Desktop -c Release -- tests/DotNodeViewer
 ```
 
 ### Visualizer Features
+- **Cross-Platform Drag-and-Drop Loading:** Drop model files directly onto the desktop window or browser canvas. Features an interactive visual drop overlay with dashed accent border, extension validation feedback, multi-file sidecar handling (automatically selecting `.onnx` over companion `.onnx.data` weights), directory scanning, and `Escape` key dismissal.
 - **Interactive GraphCanvas:** High-performance immediate-mode rendering of neural network topologies directly via `DrawingContext` with 60 fps performance even on large models (`mobilenetv2`).
 - **Smooth Navigation & Pan/Zoom:** Drag canvas, middle-mouse pan, trackpad scroll, smooth zoom-around-cursor (`Ctrl` + wheel), keyboard shortcuts (`Ctrl+O` / `Cmd+O` open model, `Ctrl+F` search, `Tab`, `Up`/`Down` connected traversal, `F` or `Ctrl+0` zoom-to-fit, `Escape`), and floating HUD controls.
 - **On-Demand Weight Inspector:** Inspects raw weights directly from model stream on demand without eager memory allocations. Decodes FP32, FP16, BF16, INT8, UINT8, INT32, INT64, displays min/max/mean/zero statistics, and renders real-time affine dequantized values alongside raw integer bytes.
@@ -130,20 +131,23 @@ dotnet run --project src/DotNodeViewer.Desktop -c Release -- tests/DotNodeViewer
 - **Contextual Properties Sidebar:** Model overview (when no node selected) and deep node inspector with typed attributes, runtime inputs, lazy weights, and quantized output descriptors.
 - **Dual Theme Support:** High-contrast dark instrumentation theme (`#12151B`) and slate porcelain light theme (`#F8FAFC`).
 
+![Visual Drop Target Overlay](docs/screenshots/W06/02-visual-drop-overlay-valid.png)
+*Figure 1: Responsive visual drop overlay with dashed accent border, real-time extension validation, and supported format badge strip.*
+
 ![On-Demand Weight Inspector](docs/screenshots/S11/02-tflite-weight-inspector.png)
-*Figure 1: On-demand Tensor Weight Inspector displaying raw INT8 weights and affine-dequantized real values with summary statistics.*
+*Figure 2: On-demand Tensor Weight Inspector displaying raw INT8 weights and affine-dequantized real values with summary statistics.*
 
 ![1-Hop Neighborhood Highlighting](docs/screenshots/S11/03-executorch-xnnpack-neighborhood.png)
-*Figure 2: ExecuTorch model showing XNNPACK delegate badge and 1-hop neighborhood highlighting with unrelated branches dimmed.*
+*Figure 3: ExecuTorch model showing XNNPACK delegate badge and 1-hop neighborhood highlighting with unrelated branches dimmed.*
 
 ![Fast Categorized Search](docs/screenshots/S11/04-pytorch-search.png)
-*Figure 3: Instant Categorized Search (`Ctrl+F`) matching operator types and centering the target node.*
+*Figure 4: Instant Categorized Search (`Ctrl+F`) matching operator types and centering the target node.*
 
 ![Subgraph Breadcrumb Drill-down](docs/screenshots/S11/01-onnx-subgraph-drilldown.png)
-*Figure 4: ONNX control-flow model drilled into nested If subgraph with breadcrumb navigation.*
+*Figure 5: ONNX control-flow model drilled into nested If subgraph with breadcrumb navigation.*
 
 ![Minimap in Dark and Light Themes](docs/screenshots/S11/05-keras-residual-minimap-dark.png)
-*Figure 5: Keras functional residual model featuring skip connections, architecture telemetry bar, and collapsible minimap.*
+*Figure 6: Keras functional residual model featuring skip connections, architecture telemetry bar, and collapsible minimap.*
 
 ---
 
@@ -177,7 +181,7 @@ dotnet publish src/DotNodeViewer.Desktop -c Release -p:PublishAot=true -r linux-
 ```
 
 ![NativeAOT Desktop Verification](docs/screenshots/S12/01-nativeaot-desktop-verified.png)
-*Figure 6: NativeAOT compiled DotNodeViewer.Desktop binary verified via automated desktop harness on Linux x64.*
+*Figure 7: NativeAOT compiled DotNodeViewer.Desktop binary verified via automated desktop harness on Linux x64.*
 
 ---
 
@@ -191,7 +195,7 @@ Neural networks compiled with the Arm Vela compiler (`.tflite`) or lowered via E
 - **Hardware Register Inspection:** Properties sidebar displays IFM/OFM shapes, precisions, quantization zero points, kernel configuration, block configs, and an interactive scrollable monospace microcode disassembly listing.
 
 ![Ethos-U Expanded Subgraph](docs/screenshots/W01/02-ethos-u-expanded-subgraph.png)
-*Figure 7: Decompiled Ethos-U NPU delegate execution graph with synthesized memory dataflow edges and breadcrumb navigation.*
+*Figure 8: Decompiled Ethos-U NPU delegate execution graph with synthesized memory dataflow edges and breadcrumb navigation.*
 
 ---
 
