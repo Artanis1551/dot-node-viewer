@@ -90,3 +90,70 @@ When inspecting parameter checkpoints:
 | `BoolStorage` / `bool` | `DataType.Bool` | 1 |
 | `ComplexFloatStorage` | `DataType.Complex64` | 8 |
 | `ComplexDoubleStorage` | `DataType.Complex128` | 16 |
+
+---
+
+<a id="pytorch-2-exportedprogram-pt2"></a>
+## 7. PyTorch 2 `ExportedProgram` (`.pt2`)
+
+Modern PyTorch 2 uses `torch.export.export` and `torch.export.save` to serialize self-contained computation graphs known as `ExportedProgram`s into `.pt2` archives. These play a foundational role in modern edge deployment pipelines (e.g., exporting PyTorch models to ExecuTorch `.pte` or TFLite).
+
+### Archive Layout
+
+A `.pt2` export is a PKZIP container structured as follows:
+
+```text
+model.pt2
+├── archive_format                     # Contains ASCII "pt2" or "exported_program"
+├── archive_version                    # Archive schema version
+├── byteorder                          # Target byteorder ("little")
+├── models/
+│   └── model.json                     # Serialized ExportedProgram schema (FX graph, signatures, constraints)
+└── data/
+    ├── weights/
+    │   ├── model_weights_config.json  # Map from parameter names to raw weight files
+    │   ├── weight_0                   # Raw uncompressed little-endian tensor data (ZipCompressionMethod.Stored)
+    │   └── weight_1
+    └── constants/
+        └── model_constants_config.json
+```
+
+### Detection Strategy (`PyTorchPt2FormatDetector`)
+
+- Probes `ModelProbe.ZipEntries` for the marker entry `archive_format` or `models/model.json` / `serialized_exported_program.json`.
+- Disambiguates modern `.pt2` archives from legacy TorchScript `.pt` archives (which contain `data.pkl`).
+
+### Graph Extraction & Signature Separation (`PyTorchPt2FormatReader`)
+
+1. **Input Signature Analysis (`input_specs`):**
+   In the raw FX graph, parameters, buffers, lifted constants, and user inputs are all represented as placeholder nodes. `PyTorchPt2FormatReader` parses `graph_module.signature`:
+   - `parameter`, `buffer`, and `lifted_tensor_constant` specs are classified as `TensorKind.Initializer` or `TensorKind.Constant`.
+   - `user_input` specs are classified as `TensorKind.GraphInput` and exposed on the primary `Subgraph.Inputs` boundary.
+   - `user_output` specs are classified as `TensorKind.GraphOutput` and exposed on `Subgraph.Outputs`.
+2. **Dynamic Shapes & Symbolic Constraints (`SymInt`):**
+   Dimensions can be either statically known integers (`as_int`) or symbolic dimension expressions (`as_sym_int` / `as_expr`, such as `s0` or `batch`).
+   - Symbolic dimensions are mapped to `new TensorDimension.Symbolic(symName)`.
+   - Root `range_constraints` (e.g., `s0 in [1, 32]`) are recorded in `ModelGraph.Metadata["range_constraints.<sym>"] = "[min, max]"`.
+3. **Lazy Weight Slices:**
+   Weights are referenced via `data/weights/model_weights_config.json` and stored uncompressed (`CompressionMethod.Stored`) in the ZIP.
+   - `PyTorchPt2FormatReader` extracts the exact stream offset and byte length from `ZipEntry.DataOffset` and `ZipEntry.UncompressedSize`.
+   - Recorded as `TensorDataSlice(offset, byteLength, dataType, TensorDataEncoding.Raw)` with zero managed heap allocations.
+4. **Operator Normalization:**
+   ATen operators (e.g., `torch.ops.aten.conv2d.default`, `torch.ops.aten.relu.default`, `torch.ops.aten.linear.default`) are mapped to semantic categories (`Layer`, `Activation`, `Shape`, `Tensor`) via `PyTorchOperatorCatalog`.
+
+---
+
+## 8. Cross-Format Comparison: PyTorch `.pt2` vs ExecuTorch `.pte` & TFLite
+
+When deploying neural networks from PyTorch 2 to edge runtimes, `dot-node-viewer` enables inspecting each stage of the export pipeline side-by-side:
+
+| Aspect | PyTorch `.pt2` (`ExportedProgram`) | ExecuTorch `.pte` | TensorFlow Lite `.tflite` |
+|---|---|---|---|
+| **Format ID** | `pytorch-pt2` | `executorch` | `tflite` |
+| **Container** | PKZIP (`models/model.json` + `data/weights/`) | FlatBuffers (`ET12` + segmented data) | FlatBuffers (`TFL3` + `Buffer` table) |
+| **Operator Domain** | Core ATen operators (`torch.ops.aten.*`) | Portable ATen kernels + Backend Delegates | Built-in TFLite operators + Custom Delegates |
+| **Weights Backing** | Uncompressed stored ZIP entries | Segmented FlatBuffers file offsets | FlatBuffers buffer table offsets |
+| **Dynamic Shapes** | Exact `SymInt` symbolic symbols & bounds | Upper-bound dynamic shapes (`DynamicBound`) | Dynamic dims (`-1` or signature defs) |
+| **Quantization** | High-level `torch.ao.quantization` or unquantized | Lowered quantized ATen ops | Per-tensor & per-channel `AffineQuantization` |
+
+
