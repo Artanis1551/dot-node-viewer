@@ -71,6 +71,7 @@ public sealed class MinimapControl : Control
     {
         Width = ExpandedWidth;
         Height = ExpandedHeight;
+        Cursor = new Cursor(StandardCursorType.Hand);
     }
 
     /// <summary>
@@ -196,17 +197,17 @@ public sealed class MinimapControl : Control
         double offsetX = availX + (availW - (gBounds.Width * mapScale)) * 0.5 - (gBounds.X * mapScale);
         double offsetY = availY + (availH - (gBounds.Height * mapScale)) * 0.5 - (gBounds.Y * mapScale);
 
-        // Draw simplified node silhouettes
-        IBrush nodeBrush = new SolidColorBrush(isDark ? Color.FromArgb(160, 70, 80, 105) : Color.FromArgb(160, 180, 190, 210));
+        // Draw simplified node silhouettes with semantic category hints
         IReadOnlyList<VisualNode> nodes = Layout.Nodes;
         for (int i = 0; i < nodes.Count; i++)
         {
             BoundingBox nb = nodes[i].Bounds;
             double nx = nb.X * mapScale + offsetX;
             double ny = nb.Y * mapScale + offsetY;
-            double nw = Math.Max(2.0, nb.Width * mapScale);
-            double nh = Math.Max(2.0, nb.Height * mapScale);
+            double nw = Math.Max(2.5, nb.Width * mapScale);
+            double nh = Math.Max(2.5, nb.Height * mapScale);
 
+            IBrush nodeBrush = GetCategoryBrush(nodes[i].Category, isDark);
             context.DrawRectangle(nodeBrush, null, new Rect(nx, ny, nw, nh), 1.0, 1.0);
         }
 
@@ -327,6 +328,36 @@ public sealed class MinimapControl : Control
         double newPanY = (ViewportSize.Height * 0.5) - (worldTargetY * z);
 
         PanOffset = new Vector(newPanX, newPanY);
+    }
+
+    private static readonly Dictionary<(OperatorCategory, bool), IBrush> CategoryBrushCache = new();
+
+    private static IBrush GetCategoryBrush(OperatorCategory category, bool isDark)
+    {
+        if (CategoryBrushCache.TryGetValue((category, isDark), out IBrush? cached))
+        {
+            return cached;
+        }
+
+        string hex = category switch
+        {
+            OperatorCategory.Layer => isDark ? "#818CF8" : "#4F46E5",
+            OperatorCategory.Activation => isDark ? "#FBBF24" : "#D97706",
+            OperatorCategory.Normalization => isDark ? "#C084FC" : "#9333EA",
+            OperatorCategory.Pooling => isDark ? "#2DD4BF" : "#0D9488",
+            OperatorCategory.Quantization => isDark ? "#FB7185" : "#E11D48",
+            OperatorCategory.Shape => isDark ? "#38BDF8" : "#0284C7",
+            OperatorCategory.Tensor => isDark ? "#34D399" : "#059669",
+            OperatorCategory.Constant => isDark ? "#94A3B8" : "#475569",
+            OperatorCategory.ControlFlow => isDark ? "#F472B6" : "#DB2777",
+            OperatorCategory.Data => isDark ? "#60A5FA" : "#2563EB",
+            OperatorCategory.Custom => isDark ? "#FACC15" : "#CA8A04",
+            _ => isDark ? "#71717A" : "#64748B"
+        };
+
+        IBrush brush = new SolidColorBrush(Color.Parse(hex));
+        CategoryBrushCache[(category, isDark)] = brush;
+        return brush;
     }
 }
 

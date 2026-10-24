@@ -320,20 +320,31 @@
             </StackPanel>
           </Border>
 
-          <!-- Zoom Percentage HUD Indicator (Bottom-Left) -->
-          <Border HorizontalAlignment="Left"
-                  VerticalAlignment="Bottom"
-                  Margin="16"
-                  Background="{DynamicResource ShellSurfaceBaseBrush}"
-                  BorderBrush="{DynamicResource ShellBorderMutedBrush}"
-                  BorderThickness="1"
-                  CornerRadius="{DynamicResource RadiusSmall}"
-                  Padding="8,4">
-            <TextBlock Text="{Binding #Canvas.ZoomPercentText}"
-                       FontFamily="{DynamicResource CodeFontFamily}"
-                       FontSize="11"
-                       Foreground="{DynamicResource ShellTextSecondaryBrush}" />
-          </Border>
+          <!-- Bottom-Left Overlay: Interactive Minimap & Zoom HUD Indicator -->
+          <StackPanel HorizontalAlignment="Left"
+                      VerticalAlignment="Bottom"
+                      Margin="16"
+                      Spacing="8">
+            <controls:MinimapControl x:Name="Minimap"
+                                     Layout="{Binding CurrentLayout}"
+                                     Zoom="{Binding #Canvas.Zoom}"
+                                     PanOffset="{Binding #Canvas.PanOffset, Mode=TwoWay}"
+                                     ViewportSize="{Binding #Canvas.ViewportSize}"
+                                     AutomationProperties.Name="Minimap"
+                                     AutomationProperties.AutomationId="GraphMinimap" />
+
+            <Border Background="{DynamicResource ShellSurfaceBaseBrush}"
+                    BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                    BorderThickness="1"
+                    CornerRadius="{DynamicResource RadiusSmall}"
+                    Padding="8,4"
+                    HorizontalAlignment="Left">
+              <TextBlock Text="{Binding #Canvas.ZoomPercentText}"
+                         FontFamily="{DynamicResource CodeFontFamily}"
+                         FontSize="11"
+                         Foreground="{DynamicResource ShellTextSecondaryBrush}" />
+            </Border>
+          </StackPanel>
         </Grid>
 
         <!-- Vertical Divider Splitter -->

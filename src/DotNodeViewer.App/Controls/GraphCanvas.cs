@@ -63,7 +63,18 @@ public sealed class GraphCanvas : Control
     /// Defines the <see cref="PanOffset"/> property.
     /// </summary>
     public static readonly StyledProperty<Vector> PanOffsetProperty =
-        AvaloniaProperty.Register<GraphCanvas, Vector>(nameof(PanOffset), defaultValue: new Vector(0, 0));
+        AvaloniaProperty.Register<GraphCanvas, Vector>(
+            nameof(PanOffset),
+            defaultValue: new Vector(0, 0),
+            defaultBindingMode: BindingMode.TwoWay);
+
+    /// <summary>
+    /// Defines the <see cref="ViewportSize"/> direct property.
+    /// </summary>
+    public static readonly DirectProperty<GraphCanvas, Size> ViewportSizeProperty =
+        AvaloniaProperty.RegisterDirect<GraphCanvas, Size>(
+            nameof(ViewportSize),
+            o => o.ViewportSize);
 
     /// <summary>
     /// Defines the <see cref="ZoomPercentText"/> read-only property.
@@ -314,10 +325,22 @@ public sealed class GraphCanvas : Control
         }
     }
 
+    private Size _viewportSize;
+
+    /// <summary>
+    /// Gets the visible viewport size of the canvas.
+    /// </summary>
+    public Size ViewportSize
+    {
+        get => _viewportSize;
+        private set => SetAndRaise(ViewportSizeProperty, ref _viewportSize, value);
+    }
+
     /// <inheritdoc/>
     protected override void OnSizeChanged(SizeChangedEventArgs e)
     {
         base.OnSizeChanged(e);
+        ViewportSize = e.NewSize;
         if (!_hasInitialFit && Layout is not null && e.NewSize.Width > 10 && e.NewSize.Height > 10)
         {
             ZoomToFit();
