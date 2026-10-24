@@ -34,3 +34,4 @@ internal sealed record VelaBinStream(
     IReadOnlyList<VelaIoTensor> Inputs,
     IReadOnlyList<VelaIoTensor> Outputs,
     uint ScratchSize);
+

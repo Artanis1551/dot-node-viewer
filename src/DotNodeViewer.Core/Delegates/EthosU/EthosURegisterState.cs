@@ -435,3 +435,4 @@ internal sealed class EthosURegisterState
         return snapshot;
     }
 }
+

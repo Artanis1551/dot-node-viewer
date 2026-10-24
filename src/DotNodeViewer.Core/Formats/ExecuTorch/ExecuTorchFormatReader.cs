@@ -599,6 +599,12 @@ internal sealed class ExecuTorchFormatReader : IModelFormatReader
             FlatBufferTable delTable = planTable.GetVectorTable(7, delegateIdx);
             backendId = delTable.ReadString(0) ?? "UnknownBackend";
 
+            if (backendId.Contains("EthosU", StringComparison.OrdinalIgnoreCase))
+            {
+                attributes.Add(new NodeAttribute("delegate.backend", new AttributeValue.String("ethos-u")));
+                attributes.Add(new NodeAttribute("delegate.expandable", new AttributeValue.Bool(true)));
+            }
+
             // Extract processed delegate data slice
             if (delTable.ReadTable(1) is FlatBufferTable refTable)
             {

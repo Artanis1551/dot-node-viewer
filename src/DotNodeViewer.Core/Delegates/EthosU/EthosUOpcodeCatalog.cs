@@ -223,3 +223,4 @@ internal static class EthosUOpcodeCatalog
         _ => false,
     };
 }
+

@@ -18,3 +18,4 @@ internal readonly record struct EthosUCommand(
     uint? Payload,
     bool IsCmd1,
     string Name);
+

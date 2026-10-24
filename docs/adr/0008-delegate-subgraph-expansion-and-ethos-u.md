@@ -70,3 +70,4 @@ Ethos-U operations access IFM and OFM feature maps via `(region, base_address, e
 
 ### Tradeoffs & Mitigations
 - **Inferred Topology:** Hardware register streams do not encode explicit symbolic dataflow graphs. While last-writer-wins address matching faithfully represents actual memory traffic, an informational diagnostic clearly discloses that edges are inferred from memory addresses.
+

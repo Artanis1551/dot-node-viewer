@@ -460,3 +460,4 @@ internal static class EthosUSubgraphBuilder
         _ => 1,
     };
 }
+
