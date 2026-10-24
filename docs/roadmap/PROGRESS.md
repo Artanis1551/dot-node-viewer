@@ -737,6 +737,7 @@ Every stage agent MUST read this file before starting work and append a completi
   - `W06: implement cross-platform drag-and-drop model loading and visual drop overlay`
   - `W06: add headless tests and live verification screenshots`
   - `W06: update documentation and PROGRESS.md`
+  - `W06: fix Linux X11 XDND masked file drag and event bubbling`
 - **What Was Built:**
   - **`MainWindowViewModel` (`src/DotNodeViewer.App/ViewModels/MainWindowViewModel.cs`):**
     - Added reactive drop state properties: `IsDropTargetActive`, `IsDropTargetValid`, `DropTargetFeedbackMessage`, `DropTargetHeadline`.
@@ -749,14 +750,16 @@ Every stage agent MUST read this file before starting work and append a completi
     - Styled `Rectangle.drop-dashed-border` with animated dashed neon/accent stroke (`#38BDF8` when valid, `#EF4444` when invalid).
     - Added drop/warning circular icon (`Border.drop-icon-circle`), dynamic headline ("Drop Model to Visualize" vs "Unsupported Model Format"), subtitle feedback, divider, and format badges for all 5 supported formats (`.onnx`, `.tflite`, `.pte`, `.pt, .pt2`, `.keras, .h5`).
     - Refreshed welcome screen empty-state copy to `"Drop an ONNX, TensorFlow Lite, ExecuTorch, PyTorch, or Keras model file here to inspect its architecture."` and updated format pills.
+    - Added `Background="Transparent"` and `DragDrop.AllowDrop="True"` on root and viewport grids to guarantee full-surface hit testing.
   - **Cross-Platform View Routing (`src/DotNodeViewer.App/Views/MainView.axaml.cs` & `MainWindow.axaml.cs`):**
     - Attached `DragEnter`, `DragOver`, `DragLeave`, `Drop`, and `KeyDown` handlers.
     - Added `_dragDepth` tracking to eliminate flicker when hovering over nested controls.
-    - Wired pre-drop format validation in `DragOver` to toggle `DragDropEffects.Copy` vs `DragDropEffects.None`.
+    - Added `EvaluateDragState` handling platforms (Linux X11 XDND and WebAssembly) where file metadata is masked during `DragEnter`/`DragOver`, allowing `DragDropEffects.Copy` so the desktop file manager doesn't cancel the drag operation.
+    - Added fallback in `ProcessDropAsync` to extract file paths from `e.Data.GetFileNames()` (Linux X11 XDND `text/uri-list`) and load the model cleanly.
     - Implemented `Escape` key dismissal.
-    - Refactored `MainWindow.axaml.cs` to delegate drag-and-drop events directly to `RootMainView` while retaining window-level entry points.
+    - Refactored `MainWindow.axaml.cs` to delegate unhandled drag-and-drop events to `RootMainView`.
   - **Unit and Headless Integration Tests (`tests/DotNodeViewer.App.Tests/DragAndDropModelLoadingTests.cs`):**
-    - 14 comprehensive tests covering valid extensions, unsupported extensions, sidecar prioritization, directory scanning, drag-enter/over/leave depth tracking, drop execution, `MainWindow` event delegation, and `Escape` key dismissal.
+    - 16 comprehensive tests covering valid extensions, unsupported extensions, masked platform payloads (X11 XDND/WASM), `FileNames` fallback, sidecar prioritization, directory scanning, drag-enter/over/leave depth tracking, drop execution, `MainWindow` event delegation, and `Escape` key dismissal.
   - **Automated Live UI Verification & Screenshots (`docs/screenshots/W06/`):**
     - Captured 4 verified high-resolution screenshots with `tools/capture_w06_screenshots.py`:
       - [Empty State with All 5 Supported Formats](../screenshots/W06/01-empty-state-supported-formats.png)
@@ -771,7 +774,7 @@ Every stage agent MUST read this file before starting work and append a completi
   - Verified `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors` passes with 0 warnings.
 - **New ADRs Recorded:** None.
 - **Deviations & Known Limitations:** None.
-- **Test Count:** 193 passed (`DotNodeViewer.Core.Tests`: 116, `DotNodeViewer.Layout.Tests`: 13, `DotNodeViewer.App.Tests`: 64), 0 failed, 0 skipped.
+- **Test Count:** 195 passed (`DotNodeViewer.Core.Tests`: 116, `DotNodeViewer.Layout.Tests`: 13, `DotNodeViewer.App.Tests`: 66), 0 failed, 0 skipped.
 - **Screenshots Taken:**
   - [Empty State with All 5 Supported Formats](../screenshots/W06/01-empty-state-supported-formats.png)
   - [Valid Model Drag Overlay](../screenshots/W06/02-visual-drop-overlay-valid.png)

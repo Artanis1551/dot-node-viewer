@@ -112,7 +112,9 @@
     </Style>
   </UserControl.Styles>
 
-  <Grid RowDefinitions="Auto,*,Auto">
+  <Grid RowDefinitions="Auto,*,Auto"
+        Background="Transparent"
+        DragDrop.AllowDrop="True">
 
     <!-- Top Toolbar / Header Strip -->
     <Border Grid.Row="0"
@@ -243,7 +245,9 @@
     </Border>
 
     <!-- Main Viewport Area -->
-    <Grid Grid.Row="1">
+    <Grid Grid.Row="1"
+          Background="Transparent"
+          DragDrop.AllowDrop="True">
 
       <!-- 1. EMPTY STATE -->
       <Border IsVisible="{Binding !HasModel}"

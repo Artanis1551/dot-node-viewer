@@ -74,7 +74,7 @@ public partial class MainWindow : Window
 
     private void OnDragEnter(object? sender, DragEventArgs e)
     {
-        if (e.Source == this)
+        if (!e.Handled)
         {
             RootMainView.ProcessDragEnter(e);
         }
@@ -82,7 +82,7 @@ public partial class MainWindow : Window
 
     private void OnDragOver(object? sender, DragEventArgs e)
     {
-        if (e.Source == this)
+        if (!e.Handled)
         {
             RootMainView.ProcessDragOver(e);
         }
@@ -90,7 +90,7 @@ public partial class MainWindow : Window
 
     private void OnDragLeave(object? sender, DragEventArgs e)
     {
-        if (e.Source == this)
+        if (!e.Handled)
         {
             RootMainView.ProcessDragLeave(e);
         }
@@ -98,7 +98,7 @@ public partial class MainWindow : Window
 
     private async void OnDrop(object? sender, DragEventArgs e)
     {
-        if (e.Source == this)
+        if (!e.Handled)
         {
             await RootMainView.ProcessDropAsync(e).ConfigureAwait(false);
         }

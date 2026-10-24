@@ -64,12 +64,21 @@ public partial class MainView : UserControl
         _dragDepth++;
         if (DataContext is MainWindowViewModel vm)
         {
-            IStorageItem[]? files = e.DataTransfer.TryGetFiles();
-            bool canAccept = files is { Length: > 0 } &&
-                (files.Any(f => f is IStorageFolder) || MainWindowViewModel.CanAcceptFiles(files.Select(f => f.Name).ToArray()));
+            EvaluateDragState(e, out bool hasFiles, out bool canAccept);
 
-            e.DragEffects = canAccept ? DragDropEffects.Copy : DragDropEffects.None;
-            vm.SetDropTargetState(isActive: true, isValid: canAccept);
+            if (canAccept)
+            {
+                e.DragEffects = DragDropEffects.Copy;
+                vm.SetDropTargetState(isActive: true, isValid: true);
+            }
+            else
+            {
+                e.DragEffects = DragDropEffects.None;
+                if (hasFiles)
+                {
+                    vm.SetDropTargetState(isActive: true, isValid: false);
+                }
+            }
         }
 
         e.Handled = true;
@@ -88,9 +97,7 @@ public partial class MainView : UserControl
 
         if (DataContext is MainWindowViewModel vm)
         {
-            IStorageItem[]? files = e.DataTransfer.TryGetFiles();
-            bool canAccept = files is { Length: > 0 } &&
-                (files.Any(f => f is IStorageFolder) || MainWindowViewModel.CanAcceptFiles(files.Select(f => f.Name).ToArray()));
+            EvaluateDragState(e, out bool hasFiles, out bool canAccept);
 
             if (canAccept)
             {
@@ -100,7 +107,14 @@ public partial class MainView : UserControl
             else
             {
                 e.DragEffects = DragDropEffects.None;
-                vm.SetDropTargetState(isActive: true, isValid: false);
+                if (hasFiles)
+                {
+                    vm.SetDropTargetState(isActive: true, isValid: false);
+                }
+                else
+                {
+                    vm.SetDropTargetState(isActive: false);
+                }
             }
         }
         else
@@ -109,6 +123,74 @@ public partial class MainView : UserControl
         }
 
         e.Handled = true;
+    }
+
+    private static void EvaluateDragState(DragEventArgs e, out bool hasFiles, out bool canAccept)
+    {
+        hasFiles = false;
+        canAccept = false;
+
+        // 1. Check if the drag operation contains files (XDND text/uri-list on Linux, Files on browser, etc.)
+        try
+        {
+#pragma warning disable CS0618
+            if (e.Data.Contains(DataFormats.Files) || e.Data.Contains(DataFormats.FileNames))
+            {
+                hasFiles = true;
+            }
+#pragma warning restore CS0618
+        }
+        catch
+        {
+            // Ignore format inspection failure
+        }
+
+        // 2. Try inspecting explicit storage items (populated in tests, macOS, and some desktop environments)
+        try
+        {
+            IStorageItem[]? files = e.DataTransfer.TryGetFiles();
+            if (files is { Length: > 0 })
+            {
+                hasFiles = true;
+                canAccept = files.Any(f => f is IStorageFolder) ||
+                            MainWindowViewModel.CanAcceptFiles(files.Select(f => f.Name).ToArray());
+                return;
+            }
+        }
+        catch
+        {
+            // Ignore storage item extraction failure
+        }
+
+        // 3. Try inspecting file name paths from legacy/OS clipboard data (DataFormats.FileNames)
+        try
+        {
+#pragma warning disable CS0618
+            IEnumerable<string>? names = e.Data.GetFileNames();
+            if (names is not null)
+            {
+                string[] arr = names.ToArray();
+                if (arr.Length > 0)
+                {
+                    hasFiles = true;
+                    canAccept = MainWindowViewModel.CanAcceptFiles(arr);
+                    return;
+                }
+            }
+#pragma warning restore CS0618
+        }
+        catch
+        {
+            // Ignore file names extraction failure
+        }
+
+        // 4. Fallback: if the platform reports a file payload (hasFiles == true) but masks the file list
+        // until the drop release (standard behavior on Linux X11 XDND and WebAssembly browser sandbox),
+        // we must accept the drag and set Copy effect so the OS permits the user to complete the drop.
+        if (hasFiles)
+        {
+            canAccept = true;
+        }
     }
 
     /// <summary>
@@ -153,15 +235,84 @@ public partial class MainView : UserControl
             });
         }
 
-        if (vm is not null)
+        if (vm is null)
         {
-            vm.SetDropTargetState(isActive: false);
+            return;
+        }
 
-            IStorageItem[]? files = e.DataTransfer.TryGetFiles();
-            if (files is { Length: > 0 })
+        vm.SetDropTargetState(isActive: false);
+
+        // 1. Try modern storage items from DataTransfer (WASM, macOS, Windows)
+        IStorageItem[]? files = null;
+        try
+        {
+            files = e.DataTransfer.TryGetFiles();
+        }
+        catch
+        {
+            // Ignore
+        }
+
+        if (files is { Length: > 0 })
+        {
+            await vm.HandleDroppedFilesAsync(files).ConfigureAwait(false);
+            return;
+        }
+
+        // 2. Fallback: try raw file paths from Data.GetFileNames() (Linux X11 XDND text/uri-list)
+        try
+        {
+#pragma warning disable CS0618
+            if (e.Data.Contains(DataFormats.FileNames))
             {
-                await vm.HandleDroppedFilesAsync(files).ConfigureAwait(false);
+                IEnumerable<string>? paths = e.Data.GetFileNames();
+                if (paths is not null)
+                {
+                    string[] pathArr = paths.ToArray();
+                    if (pathArr.Length > 0)
+                    {
+                        var topLevel = TopLevel.GetTopLevel(this);
+                        if (topLevel?.StorageProvider is { } storageProvider)
+                        {
+                            List<IStorageItem> resolvedItems = new();
+                            foreach (string p in pathArr)
+                            {
+                                if (System.IO.File.Exists(p))
+                                {
+                                    IStorageFile? file = await storageProvider.TryGetFileFromPathAsync(new Uri(System.IO.Path.GetFullPath(p)));
+                                    if (file is not null)
+                                    {
+                                        resolvedItems.Add(file);
+                                    }
+                                }
+                                else if (System.IO.Directory.Exists(p))
+                                {
+                                    IStorageFolder? folder = await storageProvider.TryGetFolderFromPathAsync(new Uri(System.IO.Path.GetFullPath(p)));
+                                    if (folder is not null)
+                                    {
+                                        resolvedItems.Add(folder);
+                                    }
+                                }
+                            }
+
+                            if (resolvedItems.Count > 0)
+                            {
+                                await vm.HandleDroppedFilesAsync(resolvedItems).ConfigureAwait(false);
+                                return;
+                            }
+                        }
+
+                        // Direct fallback to LoadModelAsync with primary recognized model file
+                        string? primary = pathArr.FirstOrDefault(p => MainWindowViewModel.IsSupportedModelExtension(p)) ?? pathArr[0];
+                        await vm.LoadModelAsync(primary).ConfigureAwait(false);
+                    }
+                }
             }
+#pragma warning restore CS0618
+        }
+        catch (Exception ex)
+        {
+            vm.SetDropTargetState(isActive: true, isValid: false, feedbackMessage: ex.Message);
         }
     }
 

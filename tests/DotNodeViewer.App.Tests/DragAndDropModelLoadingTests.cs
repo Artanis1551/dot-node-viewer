@@ -334,6 +334,66 @@ public sealed class DragAndDropModelLoadingTests
     }
 
     [Test]
+    public async Task MainView_ProcessDragEnter_MaskedPlatformPayload_SetsActiveAndCopyEffect()
+    {
+        MainWindowViewModel vm = new();
+        MainView view = null!;
+        DragEventArgs enterArgs = null!;
+
+        await HeadlessAppSession.Dispatch(() =>
+        {
+            view = new MainView { DataContext = vm };
+
+#pragma warning disable CS0618
+            DataObject data = new();
+            data.Set(DataFormats.Files, Array.Empty<IStorageItem>());
+            data.Set(DataFormats.FileNames, Array.Empty<string>());
+
+            enterArgs = new(DragDrop.DragEnterEvent, data, view, new Point(0, 0), KeyModifiers.None)
+            {
+                Source = view
+            };
+#pragma warning restore CS0618
+
+            view.ProcessDragEnter(enterArgs);
+        });
+
+        await Assert.That(vm.IsDropTargetActive).IsTrue();
+        await Assert.That(vm.IsDropTargetValid).IsTrue();
+        await Assert.That(enterArgs.DragEffects).IsEqualTo(DragDropEffects.Copy);
+    }
+
+    [Test]
+    public async Task MainView_ProcessDropAsync_WithFileNamesFallback_LoadsModel()
+    {
+        MainWindowViewModel vm = new();
+        MainView view = null!;
+        string path = ResolveFixturePath("onnx/tiny_mlp.onnx");
+
+        await HeadlessAppSession.Dispatch(() =>
+        {
+            view = new MainView { DataContext = vm };
+            vm.SetDropTargetState(isActive: true, isValid: true);
+        });
+
+#pragma warning disable CS0618
+        DataObject data = new();
+        data.Set(DataFormats.FileNames, new[] { path });
+
+        DragEventArgs dropArgs = new(DragDrop.DropEvent, data, view, new Point(0, 0), KeyModifiers.None)
+        {
+            Source = view
+        };
+#pragma warning restore CS0618
+
+        await view.ProcessDropAsync(dropArgs);
+
+        await Assert.That(vm.IsDropTargetActive).IsFalse();
+        await Assert.That(vm.HasModel).IsTrue();
+        await Assert.That(vm.ModelName).IsEqualTo("tiny_mlp.onnx");
+    }
+
+    [Test]
     public async Task MainView_EscapeKey_DismissesDropTarget()
     {
         await HeadlessAppSession.DispatchAsync(async () =>
