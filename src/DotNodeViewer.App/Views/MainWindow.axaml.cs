@@ -19,7 +19,9 @@ public partial class MainWindow : Window
 
         DataContextChanged += OnDataContextChanged;
 
+        AddHandler(DragDrop.DragEnterEvent, OnDragEnter);
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
+        AddHandler(DragDrop.DragLeaveEvent, OnDragLeave);
         AddHandler(DragDrop.DropEvent, OnDrop);
     }
 
@@ -70,25 +72,35 @@ public partial class MainWindow : Window
         return files is { Count: > 0 } ? files[0].TryGetLocalPath() : null;
     }
 
-    private static void OnDragOver(object? sender, DragEventArgs e)
+    private void OnDragEnter(object? sender, DragEventArgs e)
     {
-        IStorageItem[]? files = e.DataTransfer.TryGetFiles();
-        e.DragEffects = files is { Length: > 0 } ? DragDropEffects.Copy : DragDropEffects.None;
-        e.Handled = true;
+        if (e.Source == this)
+        {
+            RootMainView.ProcessDragEnter(e);
+        }
+    }
+
+    private void OnDragOver(object? sender, DragEventArgs e)
+    {
+        if (e.Source == this)
+        {
+            RootMainView.ProcessDragOver(e);
+        }
+    }
+
+    private void OnDragLeave(object? sender, DragEventArgs e)
+    {
+        if (e.Source == this)
+        {
+            RootMainView.ProcessDragLeave(e);
+        }
     }
 
     private async void OnDrop(object? sender, DragEventArgs e)
     {
-        IStorageItem[]? files = e.DataTransfer.TryGetFiles();
-        if (files is { Length: > 0 } && DataContext is MainWindowViewModel vm)
+        if (e.Source == this)
         {
-            string? path = files[0].TryGetLocalPath();
-            if (!string.IsNullOrWhiteSpace(path))
-            {
-                await vm.LoadModelAsync(path).ConfigureAwait(true);
-            }
+            await RootMainView.ProcessDropAsync(e).ConfigureAwait(false);
         }
-
-        e.Handled = true;
     }
 }

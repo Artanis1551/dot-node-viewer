@@ -2,10 +2,12 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
 using Avalonia;
+using Avalonia.Platform.Storage;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using DotNodeViewer.App.IO;
 using DotNodeViewer.App.Rendering;
 using DotNodeViewer.Core.Abstractions;
 using DotNodeViewer.Core.Ir;
@@ -41,6 +43,22 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _hasError;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DropTargetHeadline))]
+    private bool _isDropTargetActive;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DropTargetHeadline))]
+    private bool _isDropTargetValid = true;
+
+    [ObservableProperty]
+    private string _dropTargetFeedbackMessage = "Drop model file to visualize";
+
+    /// <summary>
+    /// Gets the headline text displayed on the drag-and-drop visual overlay.
+    /// </summary>
+    public string DropTargetHeadline => IsDropTargetValid ? "Drop Model to Visualize" : "Unsupported Model Format";
 
     [ObservableProperty]
     private string? _errorMessage;
@@ -293,6 +311,229 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (!string.IsNullOrWhiteSpace(selectedPath))
         {
             await LoadModelAsync(selectedPath, cancellationToken).ConfigureAwait(true);
+        }
+    }
+
+    /// <summary>
+    /// Supported neural network model file extensions recognized by <c>dot-node-viewer</c>.
+    /// </summary>
+    public static readonly string[] SupportedModelExtensions =
+    [
+        ".onnx",
+        ".tflite",
+        ".pte",
+        ".pt",
+        ".pt2",
+        ".keras",
+        ".h5"
+    ];
+
+    /// <summary>
+    /// Evaluates whether any candidate file names in the specified list have a supported model format extension.
+    /// </summary>
+    /// <param name="fileNames">The candidate file names or paths.</param>
+    /// <returns><see langword="true"/> if at least one file is supported; otherwise, <see langword="false"/>.</returns>
+    public static bool CanAcceptFiles(IReadOnlyList<string>? fileNames)
+    {
+        if (fileNames is null || fileNames.Count == 0)
+        {
+            return false;
+        }
+
+        foreach (string name in fileNames)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                continue;
+            }
+
+            string extension = Path.GetExtension(name);
+            if (IsSupportedModelExtension(extension))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Determines whether the specified file extension corresponds to a supported neural network model format.
+    /// </summary>
+    /// <param name="extension">The file extension, including leading dot.</param>
+    /// <returns><see langword="true"/> if supported; otherwise, <see langword="false"/>.</returns>
+    public static bool IsSupportedModelExtension(string? extension)
+    {
+        if (string.IsNullOrWhiteSpace(extension))
+        {
+            return false;
+        }
+
+        foreach (string ext in SupportedModelExtensions)
+        {
+            if (string.Equals(ext, extension, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        if (string.Equals(".pth", extension, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Updates the drag-and-drop visual target state.
+    /// </summary>
+    /// <param name="isActive">Whether the drop target overlay should be active.</param>
+    /// <param name="isValid">Whether the candidate item format is supported.</param>
+    /// <param name="feedbackMessage">Optional custom feedback message.</param>
+    public void SetDropTargetState(bool isActive, bool isValid = true, string? feedbackMessage = null)
+    {
+        IsDropTargetActive = isActive;
+        IsDropTargetValid = isValid;
+        DropTargetFeedbackMessage = feedbackMessage ?? (isValid
+            ? "Release file to inspect neural network architecture"
+            : "Unsupported format. Supported: .onnx, .tflite, .pte, .pt, .pt2, .keras, .h5");
+    }
+
+    /// <summary>
+    /// Identifies the primary neural network model file from a collection of dropped storage items,
+    /// filtering out companion data sidecars (such as <c>.onnx.data</c>).
+    /// </summary>
+    /// <param name="items">The dropped storage items.</param>
+    /// <returns>The primary model <see cref="IStorageItem"/>, or <see langword="null"/> if none found.</returns>
+    public static IStorageItem? FindPrimaryModelItem(IReadOnlyList<IStorageItem>? items)
+    {
+        if (items is null || items.Count == 0)
+        {
+            return null;
+        }
+
+        // First pass: prioritized primary model file formats (e.g. .onnx before .onnx.data)
+        foreach (IStorageItem item in items)
+        {
+            string ext = Path.GetExtension(item.Name);
+            if (string.Equals(ext, ".onnx", StringComparison.OrdinalIgnoreCase))
+            {
+                return item;
+            }
+        }
+
+        // Other supported primary extensions
+        foreach (IStorageItem item in items)
+        {
+            string ext = Path.GetExtension(item.Name);
+            if (IsSupportedModelExtension(ext))
+            {
+                return item;
+            }
+        }
+
+        // Folder item if no model file directly matched
+        foreach (IStorageItem item in items)
+        {
+            if (item is IStorageFolder)
+            {
+                return item;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Processes dropped storage items, resolving primary model files, directories, or WebAssembly streams.
+    /// </summary>
+    /// <param name="items">The collection of dropped storage items.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    public async Task HandleDroppedFilesAsync(IReadOnlyList<IStorageItem>? items, CancellationToken cancellationToken = default)
+    {
+        if (items is null || items.Count == 0)
+        {
+            return;
+        }
+
+        IStorageItem? primary = FindPrimaryModelItem(items);
+        if (primary is null)
+        {
+            HasError = true;
+            ErrorMessage = "Unsupported file format. Supported: .onnx, .tflite, .pte, .pt, .pt2, .keras, .h5";
+            StatusText = ErrorMessage;
+            return;
+        }
+
+        // Handle directory drop
+        if (primary is IStorageFolder folder)
+        {
+            string? localFolderPath = folder.TryGetLocalPath();
+            if (!string.IsNullOrWhiteSpace(localFolderPath) && Directory.Exists(localFolderPath))
+            {
+                string? candidate = Directory.EnumerateFiles(localFolderPath, "*.*", SearchOption.AllDirectories)
+                    .FirstOrDefault(f => IsSupportedModelExtension(Path.GetExtension(f)));
+
+                if (!string.IsNullOrWhiteSpace(candidate))
+                {
+                    await LoadModelAsync(candidate, cancellationToken).ConfigureAwait(false);
+                    return;
+                }
+            }
+            else
+            {
+                await foreach (IStorageItem child in folder.GetItemsAsync().WithCancellation(cancellationToken).ConfigureAwait(false))
+                {
+                    if (child is IStorageFile file && IsSupportedModelExtension(Path.GetExtension(child.Name)))
+                    {
+                        await using Stream source = await file.OpenReadAsync().ConfigureAwait(false);
+                        MemoryStream seekable = await BrowserStreamAdapter.CreateSeekableStreamAsync(
+                            source,
+                            file.Name,
+                            cancellationToken: cancellationToken).ConfigureAwait(false);
+
+                        byte[] buffer = seekable.ToArray();
+                        await LoadModelStreamAsync(
+                            seekable,
+                            file.Name,
+                            streamFactory: BrowserStreamAdapter.CreateStreamFactory(buffer),
+                            cancellationToken: cancellationToken).ConfigureAwait(false);
+                        return;
+                    }
+                }
+            }
+
+            HasError = true;
+            ErrorMessage = $"No supported neural network model found in folder '{folder.Name}'.";
+            StatusText = ErrorMessage;
+            return;
+        }
+
+        // Desktop path available
+        string? localPath = primary.TryGetLocalPath();
+        if (!string.IsNullOrWhiteSpace(localPath))
+        {
+            await LoadModelAsync(localPath, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        // WebAssembly / Browser stream fallback
+        if (primary is IStorageFile storageFile)
+        {
+            await using Stream source = await storageFile.OpenReadAsync().ConfigureAwait(false);
+            MemoryStream seekable = await BrowserStreamAdapter.CreateSeekableStreamAsync(
+                source,
+                storageFile.Name,
+                cancellationToken: cancellationToken).ConfigureAwait(false);
+
+            byte[] buffer = seekable.ToArray();
+            await LoadModelStreamAsync(
+                seekable,
+                storageFile.Name,
+                streamFactory: BrowserStreamAdapter.CreateStreamFactory(buffer),
+                cancellationToken: cancellationToken).ConfigureAwait(false);
         }
     }
 

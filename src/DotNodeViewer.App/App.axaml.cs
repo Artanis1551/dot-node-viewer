@@ -33,13 +33,30 @@ public sealed class App : Application
 
             desktop.MainWindow = window;
 
-            if (desktop.Args is { Length: > 0 } args && !string.IsNullOrWhiteSpace(args[0]))
+            if (desktop.Args is { Length: > 0 } args)
             {
-                string initialPath = args[0];
-                window.Opened += async (_, _) =>
+                if (args.Contains("--test-drop-overlay=valid"))
                 {
-                    await viewModel.LoadModelAsync(initialPath).ConfigureAwait(true);
-                };
+                    window.Opened += (_, _) =>
+                    {
+                        viewModel.SetDropTargetState(isActive: true, isValid: true);
+                    };
+                }
+                else if (args.Contains("--test-drop-overlay=invalid"))
+                {
+                    window.Opened += (_, _) =>
+                    {
+                        viewModel.SetDropTargetState(isActive: true, isValid: false);
+                    };
+                }
+                else if (!string.IsNullOrWhiteSpace(args[0]) && !args[0].StartsWith('-'))
+                {
+                    string initialPath = args[0];
+                    window.Opened += async (_, _) =>
+                    {
+                        await viewModel.LoadModelAsync(initialPath).ConfigureAwait(true);
+                    };
+                }
             }
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleView)

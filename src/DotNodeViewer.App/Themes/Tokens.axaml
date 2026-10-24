@@ -27,6 +27,7 @@
       <SolidColorBrush x:Key="ShellSuccessBrush" Color="#10B981" />
       <SolidColorBrush x:Key="ShellSuccessSubtleBrush" Color="#133827" />
       <SolidColorBrush x:Key="ShellWarningBrush" Color="#F59E0B" />
+      <SolidColorBrush x:Key="ShellDropScrimBrush" Color="#CC12151B" />
     </ResourceDictionary>
 
     <ResourceDictionary x:Key="Light">
@@ -44,6 +45,7 @@
       <SolidColorBrush x:Key="ShellSuccessBrush" Color="#059669" />
       <SolidColorBrush x:Key="ShellSuccessSubtleBrush" Color="#DCFCE7" />
       <SolidColorBrush x:Key="ShellWarningBrush" Color="#D97706" />
+      <SolidColorBrush x:Key="ShellDropScrimBrush" Color="#E6F8FAFC" />
     </ResourceDictionary>
   </ResourceDictionary.ThemeDictionaries>
 
