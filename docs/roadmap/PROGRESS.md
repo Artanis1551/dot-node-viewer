@@ -20,6 +20,7 @@ Every stage agent MUST read this file before starting work and append a completi
 | **S11** | [`S11-ui-iteration-2-polish-inspector-and-navigation.md`](stages/S11-ui-iteration-2-polish-inspector-and-navigation.md) | `stage/S11-ui-polish-and-inspector` | Pending | On-demand tensor weight inspector, search, subgraph drill-down, minimap, `computer-use` critique |
 | **S12** | [`S12-browser-wasm-aot-and-perf-hardening.md`](stages/S12-browser-wasm-aot-and-perf-hardening.md) | `stage/S12-wasm-aot-and-perf` | Pending | `DotNodeViewer.Browser` WASM head, NativeAOT publish, perf audit, NuGet packaging |
 | **S13** | [`S13-avalonia-12-migration.md`](stages/S13-avalonia-12-migration.md) | `stage/S13-avalonia-12-migration` | Optional | Migrate Avalonia `11.3.12` → `12.x` via `avalonia-12-migration` skill |
+| **W01** | [`W01-ethos-u-command-stream-unwrapping.md`](../wishes/W01-ethos-u-command-stream-unwrapping.md) | `stage/W01-ethos-u-command-stream` | Complete | On-demand Ethos-U NPU command stream unwrapping (TFLite & ExecuTorch), zero-allocation decoder, address inference, CLI, UI drill-down & live screenshots |
 
 ---
 
@@ -668,3 +669,63 @@ Every stage agent MUST read this file before starting work and append a completi
   - `python3 tools/desktop_harness.py capture docs/screenshots/S12/01-nativeaot-desktop-verified.png`
   - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
 - **Next Stage:** Run **Stage S13** (`docs/roadmap/stages/S13-safetensors-gguf-and-final-hardening.md`).
+
+---
+
+### Wish W01 — Ethos-U Command Stream Unwrapping (TFLite `ethos-u` & ExecuTorch `EthosUBackend`)
+- **Branch:** `stage/W01-ethos-u-command-stream`
+- **Commits:**
+  - `a04f7f1` — `W01: add ADR 0008 for on-demand delegate subgraph expansion and Ethos-U decoding`
+  - `4c3daf3` — `W01: add internal Ethos-U and VelaBinStream decoders and synthetic tests`
+  - `62f9858` — `W01: add delegate expander abstractions, EthosUDelegateExpander, and format reader tagging`
+  - `0724b27` — `W01: add Ethos-U model generator, fixtures, golden snapshots, and integration tests`
+  - `e427316` — `W01: add CLI --expand-delegates and cmdstream inspection commands`
+  - `2947cdd` — `W01: add UI delegate drill-down, breadcrumb navigation, register sidebar, and live screenshots`
+  - *(final commit)* — `W01: update documentation, DocFX site, and PROGRESS.md`
+- **What Was Built:**
+  - **Public Expander Abstractions (`DotNodeViewer.Core.Abstractions`):**
+    - `IDelegateSubgraphExpander`: clean, public non-leaking contract exposing `BackendId`, `CanExpand(model, node)`, `ExpandAsync(stream, model, node, ct)`, and `DisassembleAsync(stream, model, node, ct)`.
+    - `DelegateSubgraphExpanderRegistry`: thread-safe registry with `Default` pre-registered expanders, completely decoupling format readers from internal microcode decoders.
+  - **Internal Ethos-U Microcode Decoders (`DotNodeViewer.Core.Delegates.EthosU`):**
+    - `VelaBinStreamReader`: validates little-endian `'COP1'` binary stream framing, 32-byte header offsets, and slices command & weight streams without allocations.
+    - `EthosUDriverPayloadReader`: validates ExecuTorch `'ETHU'` driver payload header and hardware configuration.
+    - `EthosUCommandStreamDecoder`: zero-allocation span-based stream parser for 16-bit (`CMD0`) and 48-bit (`CMD1`) instructions, verified to achieve **0 bytes allocated per command**.
+    - `EthosURegisterState`: register state machine tracking IFM/OFM shapes, addresses, strides, kernel dimensions, padding, block configs, and activation functions.
+    - `EthosUSubgraphBuilder`: snapshots operations on `NPU_OP_*` triggers, reconstructs input/output ports, attaches register attributes and command disassembly, and performs last-writer-wins address interval matching to infer dataflow edges across memory regions.
+    - `EthosUDelegateExpander`: internal sealed expander registered in `DelegateSubgraphExpanderRegistry`.
+  - **Format Readers Tagging:**
+    - `TfliteFormatReader`: detects `CUSTOM(ethos-u)`, tags `delegate.backend = "ethos-u"`, and captures `OfflineMemoryAllocation` metadata.
+    - `ExecuTorchFormatReader`: detects `Delegate (EthosUBackend)`, tags `delegate.backend = "ethos-u"`.
+  - **Deterministic Model Generation & Golden Snapshots:**
+    - Authored `tools/model-gen/ethosu/gen_ethosu.py`, `gen_pte.py`, and `requirements.txt`.
+    - Generated and staged committed test fixtures: `tiny_cnn_int8_vela_u55.tflite` (5.1 KB), `tiny_cnn_int8_vela_u65.tflite` (5.1 KB), and `tiny_cnn_ethosu55.pte` (5.9 KB).
+    - Verified independent ground truth (`*.truth.json`) and golden snapshots (`*.expected.json`) registered in `models.manifest.json`.
+  - **CLI Harness (`DotNodeViewer.Cli`):**
+    - Added `--expand-delegates` to `inspect`, outputting synthesized node count, tensor count, DMA operations, and operator breakdown.
+    - Added `cmdstream <file> [--node <name>]`, dumping linear microcode disassembly with offsets, hex payloads, and mnemonic opcodes.
+    - Published and verified NativeAOT binary (`PublishAot=true`).
+  - **Avalonia Visualizer (`DotNodeViewer.App` & `DotNodeViewer.Desktop`):**
+    - Canvas: rendered `Ethos-U · Expandable` badge pill; double-click drills down into delegate.
+    - Navigation: breadcrumbs (`Root: main > CUSTOM(ethos-u)_0 (Ethos-U55-128)`), `← Back` button, and `Escape` key return.
+    - Notices: rendered inferred-subgraph notice banner `"Decoded from NPU command stream — edges inferred from memory addresses"`.
+    - Sidebar: added `⚡ Unwrap Delegate Subgraph ➔` action button, hardware register attributes, and collapsible monospace "NPU Command Disassembly" panel.
+- **`README.md` & `docs/site/` Updates:**
+  - Authored Diátaxis Reference: [`docs/site/articles/formats/ethos-u.md`](../site/articles/formats/ethos-u.md).
+  - Authored Diátaxis How-To: [`docs/site/articles/visualizer/inspecting-ethos-u-delegates.md`](../site/articles/visualizer/inspecting-ethos-u-delegates.md).
+  - Updated `README.md`, `formats/tflite.md`, `formats/executorch.md`, `formats/overview.md`, `cli/reference.md`, `docs/wishes/README.md`, and `W01-ethos-u-command-stream-unwrapping.md`.
+  - Verified `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors` passes with 0 warnings.
+- **New ADRs Recorded:**
+  - [`docs/adr/0008-on-demand-delegate-subgraph-expansion-and-ethos-u-decoding.md`](../adr/0008-on-demand-delegate-subgraph-expansion-and-ethos-u-decoding.md).
+- **Deviations & Known Limitations:** None.
+- **Test Count:** 179 passed (`DotNodeViewer.Core.Tests`: 116, `DotNodeViewer.Layout.Tests`: 13, `DotNodeViewer.App.Tests`: 50), 0 failed, 0 skipped.
+- **Screenshots Taken:**
+  - [Collapsed Delegate Node with Unwrap Action](../screenshots/W01/01-ethos-u-collapsed-node.png)
+  - [Synthesized Ethos-U Subgraph with Inferred Edges Banner](../screenshots/W01/02-ethos-u-expanded-subgraph.png)
+  - [NPU Op Register Attributes & Monospace Disassembly](../screenshots/W01/03-ethos-u-node-properties-disassembly.png)
+- **Verification Commands Run:**
+  - `dotnet build dot-node-viewer.slnx -c Release`
+  - `dotnet test --solution dot-node-viewer.slnx -c Release`
+  - `dotnet publish tools/DotNodeViewer.Cli -c Release -p:PublishAot=true`
+  - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
+  - `DISPLAY=:0 XAUTHORITY=/home/artanis/.Xauthority python3 tools/desktop_harness.py capture docs/screenshots/W01/...`
+
