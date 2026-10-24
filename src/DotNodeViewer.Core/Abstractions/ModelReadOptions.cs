@@ -28,5 +28,10 @@ public sealed record ModelReadOptions
     /// </summary>
     /// <value>The maximum nested subgraph depth. The default is 16.</value>
     public int MaxSubgraphDepth { get; init; } = 16;
+
+    /// <summary>
+    /// Gets the memoized ZIP directory pre-parsed during non-destructive stream probing, if available.
+    /// </summary>
+    internal DotNodeViewer.Core.IO.Zip.ZipDirectory? CachedZipDirectory { get; init; }
 }
 

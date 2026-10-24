@@ -311,6 +311,25 @@ internal sealed class ZipDirectory
     }
 
     /// <summary>
+    /// Checks whether any entry path in this archive contains the specified <paramref name="substring"/>.
+    /// </summary>
+    /// <param name="substring">The case-insensitive substring to search for in entry paths.</param>
+    /// <returns><see langword="true"/> if any entry path contains <paramref name="substring"/>; otherwise, <see langword="false"/>.</returns>
+    public bool ContainsEntry(string substring)
+    {
+        ArgumentNullException.ThrowIfNull(substring);
+        foreach (var key in _entries.Keys)
+        {
+            if (key.Contains(substring, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Reads and returns the entire uncompressed bytes of <paramref name="entry"/>.
     /// </summary>
     public byte[] ReadEntryBytes(ZipEntry entry)

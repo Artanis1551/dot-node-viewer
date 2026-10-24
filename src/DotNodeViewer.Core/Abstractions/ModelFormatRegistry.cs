@@ -177,8 +177,12 @@ public sealed class ModelFormatRegistry
                 context: detector.Format.Id.Value);
         }
 
+        ModelReadOptions readOptions = effectiveOptions.CachedZipDirectory is null && probe.ZipDirectory is not null
+            ? effectiveOptions with { CachedZipDirectory = probe.ZipDirectory }
+            : effectiveOptions;
+
         stream.Position = 0;
-        return await reader.ReadAsync(stream, effectiveOptions, cancellationToken).ConfigureAwait(false);
+        return await reader.ReadAsync(stream, readOptions, cancellationToken).ConfigureAwait(false);
     }
 
     private static ModelFormatRegistry CreateDefault()

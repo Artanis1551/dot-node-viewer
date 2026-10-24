@@ -26,18 +26,10 @@ internal sealed class PyTorchPt2FormatDetector : IModelFormatDetector
             return false;
         }
 
-        var zipEntries = probe.ZipEntries;
-        if (zipEntries.Count == 0)
-        {
-            return false;
-        }
-
         // Must contain archive_format (pt2) or ExportedProgram model.json / serialized_exported_program.json
-        bool hasArchiveFormat = zipEntries.Any(e => e.EndsWith("archive_format", StringComparison.OrdinalIgnoreCase));
-        bool hasExportedJson = zipEntries.Any(e => e.EndsWith("models/model.json", StringComparison.OrdinalIgnoreCase) ||
-                                                   e.EndsWith("serialized_exported_program.json", StringComparison.OrdinalIgnoreCase));
-
-        return hasArchiveFormat || hasExportedJson;
+        return probe.HasZipEntryEndingWith("archive_format") ||
+               probe.HasZipEntryEndingWith("models/model.json") ||
+               probe.HasZipEntryEndingWith("serialized_exported_program.json");
     }
 }
 

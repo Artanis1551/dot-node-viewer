@@ -38,10 +38,27 @@ internal sealed class PyTorchFormatReader : IModelFormatReader
             throw new ModelParseException("Stream must be readable and seekable to parse PyTorch archives.");
         }
 
+        ZipDirectory? zip = options?.CachedZipDirectory;
+        if (zip is not null)
+        {
+            try
+            {
+                return new ValueTask<ModelGraph>(ParseZipArchive(zip, cancellationToken));
+            }
+            catch (ModelParseException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                throw new ModelParseException($"Failed to parse PyTorch model archive: {ex.Message}", ex);
+            }
+        }
+
         var source = new RandomAccessSource(stream);
         try
         {
-            if (ZipDirectory.TryRead(source, out var zip))
+            if (ZipDirectory.TryRead(source, out zip))
             {
                 return new ValueTask<ModelGraph>(ParseZipArchive(zip, cancellationToken));
             }
