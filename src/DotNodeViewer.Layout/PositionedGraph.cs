@@ -72,7 +72,39 @@ public sealed record PositionedEdge(
     IReadOnlyList<LayoutPoint> Points,
     IReadOnlyList<CubicBezierSegment> BezierSegments,
     LayoutPoint? LabelAnchor,
-    string? Label);
+    string? Label)
+{
+    private BoundingBox? _bounds;
+
+    /// <summary>
+    /// Gets the axis-aligned <see cref="BoundingBox"/> enclosing all routed points of this edge.
+    /// </summary>
+    public BoundingBox Bounds => _bounds ??= ComputeBounds(Points);
+
+    private static BoundingBox ComputeBounds(IReadOnlyList<LayoutPoint> points)
+    {
+        if (points.Count == 0)
+        {
+            return new BoundingBox(0, 0, 0, 0);
+        }
+
+        double minX = double.MaxValue;
+        double minY = double.MaxValue;
+        double maxX = double.MinValue;
+        double maxY = double.MinValue;
+
+        for (int i = 0; i < points.Count; i++)
+        {
+            LayoutPoint p = points[i];
+            if (p.X < minX) minX = p.X;
+            if (p.X > maxX) maxX = p.X;
+            if (p.Y < minY) minY = p.Y;
+            if (p.Y > maxY) maxY = p.Y;
+        }
+
+        return new BoundingBox(minX, minY, Math.Max(0, maxX - minX), Math.Max(0, maxY - minY));
+    }
+}
 
 /// <summary>
 /// Represents the complete positioned layered graph output produced by <see cref="SugiyamaLayoutEngine"/>.
