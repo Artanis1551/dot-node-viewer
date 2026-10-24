@@ -21,6 +21,8 @@
           href: formats/executorch.md
         - name: PyTorch (.pt, .pth)
           href: formats/pytorch.md
+        - name: Keras (.keras, .h5)
+          href: formats/keras.md
     - name: CLI Reference (DotNodeViewer.Cli)
       href: cli/reference.md
     - name: Domain Glossary
