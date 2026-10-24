@@ -261,7 +261,16 @@ public sealed partial class TensorInspectorViewModel : ObservableObject
         double affineScale = affine is not null && affine.Scale.Count > 0 ? affine.Scale[0] : 1.0;
         long affineZp = affine is not null && affine.ZeroPoint.Count > 0 ? affine.ZeroPoint[0] : 0;
 
-        if (slice.Encoding == TensorDataEncoding.VarintPacked)
+        if (slice.Encoding == TensorDataEncoding.EthosUCompressedWeights)
+        {
+            for (int i = 0; i < bytes.Length; i++)
+            {
+                byte b = bytes[i];
+                rawValues.Add(b);
+                formattedRaws.Add($"0x{b:X2}");
+            }
+        }
+        else if (slice.Encoding == TensorDataEncoding.VarintPacked)
         {
             DecodeVarints(bytes, slice.DataType, rawValues, formattedRaws);
         }

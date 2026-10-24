@@ -14,6 +14,11 @@ public enum TensorDataEncoding
     /// Elements are stored as packed Protobuf base-128 varints (for example, ONNX packed <c>int32_data</c> or <c>int64_data</c>).
     /// </summary>
     VarintPacked,
+
+    /// <summary>
+    /// Elements are stored as proprietary hardware-accelerator compressed bitstreams (such as Arm Ethos-U weight and scale streams).
+    /// </summary>
+    EthosUCompressedWeights,
 }
 
 /// <summary>
