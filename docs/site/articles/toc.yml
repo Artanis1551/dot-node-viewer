@@ -6,6 +6,8 @@
   items:
     - name: Visualizer User Guide
       href: visualizer/user-guide.md
+    - name: Inspecting Edge Conversions (.pt2 to .tflite / .pte)
+      href: visualizer/inspecting-edge-conversions.md
     - name: Embedding GraphCanvas in Avalonia
       href: visualizer/embedding-controls.md
 - name: Reference

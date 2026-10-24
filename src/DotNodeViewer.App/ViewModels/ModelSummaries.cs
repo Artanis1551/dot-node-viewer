@@ -18,6 +18,7 @@ public sealed class TensorSummaryItem
     /// <param name="quantizationTextBrushKey">The resource brush key for the badge text.</param>
     /// <param name="isQuantized">Indicates whether the tensor is quantized.</param>
     /// <param name="details">Optional quantization details, such as scale and zero-point parameters.</param>
+    /// <param name="tensor">The optional underlying <see cref="TensorEdge"/> connecting this port.</param>
     public TensorSummaryItem(
         string name,
         string shapeText,
@@ -26,7 +27,8 @@ public sealed class TensorSummaryItem
         string quantizationBrushKey,
         string quantizationTextBrushKey,
         bool isQuantized,
-        string? details = null)
+        string? details = null,
+        TensorEdge? tensor = null)
     {
         Name = name;
         ShapeText = shapeText;
@@ -36,6 +38,7 @@ public sealed class TensorSummaryItem
         QuantizationTextBrushKey = quantizationTextBrushKey;
         IsQuantized = isQuantized;
         Details = details;
+        Tensor = tensor;
     }
 
     /// <summary>
@@ -77,6 +80,16 @@ public sealed class TensorSummaryItem
     /// Gets optional quantization details, such as scale and zero-point parameters.
     /// </summary>
     public string? Details { get; }
+
+    /// <summary>
+    /// Gets the underlying <see cref="TensorEdge"/>, or <see langword="null"/> if not associated with a specific tensor edge.
+    /// </summary>
+    public TensorEdge? Tensor { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether this item has a backing weight slice or external data payload available for inspection.
+    /// </summary>
+    public bool CanInspectWeights => Tensor?.Data is not null;
 }
 
 /// <summary>
@@ -143,11 +156,20 @@ public sealed class NodeAttributeItem
     /// <param name="name">The attribute name.</param>
     /// <param name="typeName">The type name of the attribute value.</param>
     /// <param name="valueText">The formatted string representation of the attribute value.</param>
-    public NodeAttributeItem(string name, string typeName, string valueText)
+    /// <param name="subgraph">The optional single nested <see cref="Subgraph"/> (e.g., from <see cref="AttributeValue.Graph"/>).</param>
+    /// <param name="subgraphList">The optional collection of nested <see cref="Subgraph"/>s (e.g., from <see cref="AttributeValue.GraphList"/>).</param>
+    public NodeAttributeItem(
+        string name,
+        string typeName,
+        string valueText,
+        Subgraph? subgraph = null,
+        IReadOnlyList<Subgraph>? subgraphList = null)
     {
         Name = name;
         TypeName = typeName;
         ValueText = valueText;
+        Subgraph = subgraph;
+        SubgraphList = subgraphList;
     }
 
     /// <summary>
@@ -164,6 +186,55 @@ public sealed class NodeAttributeItem
     /// Gets the formatted string representation of the attribute value.
     /// </summary>
     public string ValueText { get; }
+
+    /// <summary>
+    /// Gets the optional nested <see cref="Subgraph"/> associated with this attribute, if any.
+    /// </summary>
+    public Subgraph? Subgraph { get; }
+
+    /// <summary>
+    /// Gets the optional list of nested <see cref="Subgraph"/>s associated with this attribute, if any.
+    /// </summary>
+    public IReadOnlyList<Subgraph>? SubgraphList { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether this attribute represents a drill-down candidate subgraph.
+    /// </summary>
+    public bool HasSubgraph => Subgraph is not null || (SubgraphList is not null && SubgraphList.Count > 0);
+}
+
+/// <summary>
+/// Represents a breadcrumb entry in the subgraph navigation hierarchy.
+/// </summary>
+public sealed class SubgraphBreadcrumbItem
+{
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SubgraphBreadcrumbItem"/> class.
+    /// </summary>
+    /// <param name="name">The friendly breadcrumb title (e.g. <c>Root: main</c> or <c>If_0: then_branch</c>).</param>
+    /// <param name="subgraph">The referenced <see cref="Subgraph"/> instance.</param>
+    /// <param name="isCurrent">Indicates whether this breadcrumb represents the currently active subgraph level.</param>
+    public SubgraphBreadcrumbItem(string name, Subgraph subgraph, bool isCurrent)
+    {
+        Name = name;
+        Subgraph = subgraph;
+        IsCurrent = isCurrent;
+    }
+
+    /// <summary>
+    /// Gets the friendly breadcrumb title.
+    /// </summary>
+    public string Name { get; }
+
+    /// <summary>
+    /// Gets the referenced <see cref="Subgraph"/> instance.
+    /// </summary>
+    public Subgraph Subgraph { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether this breadcrumb represents the active subgraph.
+    /// </summary>
+    public bool IsCurrent { get; }
 }
 
 /// <summary>
@@ -184,6 +255,7 @@ public sealed class NodePortItem
     /// <param name="quantizationTextBrushKey">The resource brush key for the badge text.</param>
     /// <param name="isQuantized">Indicates whether this port's tensor carries quantization metadata.</param>
     /// <param name="details">Optional quantization details such as scale and zero-point parameters.</param>
+    /// <param name="tensor">The optional underlying <see cref="TensorEdge"/> connecting this port.</param>
     public NodePortItem(
         string portName,
         string tensorName,
@@ -194,7 +266,8 @@ public sealed class NodePortItem
         string quantizationBrushKey,
         string quantizationTextBrushKey,
         bool isQuantized,
-        string? details = null)
+        string? details = null,
+        TensorEdge? tensor = null)
     {
         PortName = portName;
         TensorName = tensorName;
@@ -206,6 +279,7 @@ public sealed class NodePortItem
         QuantizationTextBrushKey = quantizationTextBrushKey;
         IsQuantized = isQuantized;
         Details = details;
+        Tensor = tensor;
     }
 
     /// <summary>
@@ -257,5 +331,15 @@ public sealed class NodePortItem
     /// Gets optional quantization details such as scale and zero-point parameters.
     /// </summary>
     public string? Details { get; }
+
+    /// <summary>
+    /// Gets the underlying <see cref="TensorEdge"/>, or <see langword="null"/> if not associated with a specific tensor edge.
+    /// </summary>
+    public TensorEdge? Tensor { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether this port has a backing weight slice or external data payload available for inspection.
+    /// </summary>
+    public bool CanInspectWeights => Tensor?.Data is not null;
 }
 

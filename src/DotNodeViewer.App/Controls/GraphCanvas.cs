@@ -63,7 +63,18 @@ public sealed class GraphCanvas : Control
     /// Defines the <see cref="PanOffset"/> property.
     /// </summary>
     public static readonly StyledProperty<Vector> PanOffsetProperty =
-        AvaloniaProperty.Register<GraphCanvas, Vector>(nameof(PanOffset), defaultValue: new Vector(0, 0));
+        AvaloniaProperty.Register<GraphCanvas, Vector>(
+            nameof(PanOffset),
+            defaultValue: new Vector(0, 0),
+            defaultBindingMode: BindingMode.TwoWay);
+
+    /// <summary>
+    /// Defines the <see cref="ViewportSize"/> direct property.
+    /// </summary>
+    public static readonly DirectProperty<GraphCanvas, Size> ViewportSizeProperty =
+        AvaloniaProperty.RegisterDirect<GraphCanvas, Size>(
+            nameof(ViewportSize),
+            o => o.ViewportSize);
 
     /// <summary>
     /// Defines the <see cref="ZoomPercentText"/> read-only property.
@@ -265,6 +276,36 @@ public sealed class GraphCanvas : Control
         InvalidateVisual();
     }
 
+    /// <summary>
+    /// Centers the canvas viewport smoothly on the specified <see cref="VisualNode"/> and ensures it is selected.
+    /// </summary>
+    /// <param name="node">The target visual node to center and inspect.</param>
+    public void CenterOnNode(VisualNode node)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+
+        SelectedNode = node;
+
+        if (Bounds.Width <= 10 || Bounds.Height <= 10)
+        {
+            return;
+        }
+
+        BoundingBox b = node.Bounds;
+        double nodeCenterX = b.X + (b.Width * 0.5);
+        double nodeCenterY = b.Y + (b.Height * 0.5);
+
+        // Keep zoom comfortable (at least 0.8 so the user can clearly read the centered node)
+        double targetZoom = Math.Max(Zoom, 0.8);
+        Zoom = Math.Clamp(targetZoom, MinZoom, MaxZoom);
+
+        double panX = (Bounds.Width * 0.5) - (nodeCenterX * Zoom);
+        double panY = (Bounds.Height * 0.5) - (nodeCenterY * Zoom);
+
+        PanOffset = new Vector(panX, panY);
+        InvalidateVisual();
+    }
+
     /// <inheritdoc/>
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
@@ -284,10 +325,22 @@ public sealed class GraphCanvas : Control
         }
     }
 
+    private Size _viewportSize;
+
+    /// <summary>
+    /// Gets the visible viewport size of the canvas.
+    /// </summary>
+    public Size ViewportSize
+    {
+        get => _viewportSize;
+        private set => SetAndRaise(ViewportSizeProperty, ref _viewportSize, value);
+    }
+
     /// <inheritdoc/>
     protected override void OnSizeChanged(SizeChangedEventArgs e)
     {
         base.OnSizeChanged(e);
+        ViewportSize = e.NewSize;
         if (!_hasInitialFit && Layout is not null && e.NewSize.Width > 10 && e.NewSize.Height > 10)
         {
             ZoomToFit();
@@ -441,6 +494,21 @@ public sealed class GraphCanvas : Control
             ZoomToFit();
             e.Handled = true;
         }
+        else if (!isCtrl && e.Key == Key.F)
+        {
+            ZoomToFit();
+            e.Handled = true;
+        }
+        else if (!isCtrl && e.Key == Key.Escape)
+        {
+            SelectedNode = null;
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Tab)
+        {
+            NavigateConnectedNode(forward: !e.KeyModifiers.HasFlag(KeyModifiers.Shift));
+            e.Handled = true;
+        }
         else if (e.Key == Key.Left)
         {
             PanOffset = new Vector(PanOffset.X + 48.0, PanOffset.Y);
@@ -455,16 +523,93 @@ public sealed class GraphCanvas : Control
         }
         else if (e.Key == Key.Up)
         {
+            if (SelectedNode is not null && Layout is not null)
+            {
+                IReadOnlyList<VisualNode> preds = Layout.GetPredecessors(SelectedNode.Id);
+                if (preds.Count > 0)
+                {
+                    CenterOnNode(preds[0]);
+                    e.Handled = true;
+                    return;
+                }
+            }
+
             PanOffset = new Vector(PanOffset.X, PanOffset.Y + 48.0);
             InvalidateVisual();
             e.Handled = true;
         }
         else if (e.Key == Key.Down)
         {
+            if (SelectedNode is not null && Layout is not null)
+            {
+                IReadOnlyList<VisualNode> succs = Layout.GetSuccessors(SelectedNode.Id);
+                if (succs.Count > 0)
+                {
+                    CenterOnNode(succs[0]);
+                    e.Handled = true;
+                    return;
+                }
+            }
+
             PanOffset = new Vector(PanOffset.X, PanOffset.Y - 48.0);
             InvalidateVisual();
             e.Handled = true;
         }
+    }
+
+    private void NavigateConnectedNode(bool forward)
+    {
+        if (Layout is null || Layout.Nodes.Count == 0)
+        {
+            return;
+        }
+
+        if (SelectedNode is null)
+        {
+            CenterOnNode(Layout.Nodes[0]);
+            return;
+        }
+
+        if (forward)
+        {
+            IReadOnlyList<VisualNode> succs = Layout.GetSuccessors(SelectedNode.Id);
+            if (succs.Count > 0)
+            {
+                CenterOnNode(succs[0]);
+                return;
+            }
+
+            // Fallback: cycle to next node in topological order
+            int curIdx = FindNodeIndex(Layout.Nodes, SelectedNode);
+            int nextIdx = curIdx >= 0 ? (curIdx + 1) % Layout.Nodes.Count : 0;
+            CenterOnNode(Layout.Nodes[nextIdx]);
+        }
+        else
+        {
+            IReadOnlyList<VisualNode> preds = Layout.GetPredecessors(SelectedNode.Id);
+            if (preds.Count > 0)
+            {
+                CenterOnNode(preds[0]);
+                return;
+            }
+
+            // Fallback: cycle to previous node in topological order
+            int curIdx = FindNodeIndex(Layout.Nodes, SelectedNode);
+            int prevIdx = curIdx >= 0 ? (curIdx - 1 + Layout.Nodes.Count) % Layout.Nodes.Count : 0;
+            CenterOnNode(Layout.Nodes[prevIdx]);
+        }
+    }
+
+    private static int FindNodeIndex(IReadOnlyList<VisualNode> nodes, VisualNode target)
+    {
+        for (int i = 0; i < nodes.Count; i++)
+        {
+            if (ReferenceEquals(nodes[i], target) || nodes[i].Id == target.Id)
+            {
+                return i;
+            }
+        }
+        return -1;
     }
 
     /// <inheritdoc/>
@@ -689,14 +834,23 @@ public sealed class GraphCanvas : Control
             visibleWorldBounds.Height + 40);
         IReadOnlyList<VisualEdge> visibleEdges = Layout.FindEdgesInRegion(queryBounds);
 
-        HashSet<string>? connectedEdgeIds = null;
+        HashSet<string>? incomingEdgeIds = null;
+        HashSet<string>? outgoingEdgeIds = null;
         if (selectedNodeId is not null)
         {
-            IReadOnlyList<VisualEdge> connected = Layout.GetConnectedEdges(selectedNodeId);
-            connectedEdgeIds = new HashSet<string>(connected.Count, StringComparer.Ordinal);
-            for (int c = 0; c < connected.Count; c++)
+            IReadOnlyList<VisualEdge> inEdges = Layout.GetIncomingEdges(selectedNodeId);
+            IReadOnlyList<VisualEdge> outEdges = Layout.GetOutgoingEdges(selectedNodeId);
+
+            incomingEdgeIds = new HashSet<string>(inEdges.Count, StringComparer.Ordinal);
+            for (int c = 0; c < inEdges.Count; c++)
             {
-                connectedEdgeIds.Add(connected[c].Id);
+                incomingEdgeIds.Add(inEdges[c].Id);
+            }
+
+            outgoingEdgeIds = new HashSet<string>(outEdges.Count, StringComparer.Ordinal);
+            for (int c = 0; c < outEdges.Count; c++)
+            {
+                outgoingEdgeIds.Add(outEdges[c].Id);
             }
         }
 
@@ -709,15 +863,23 @@ public sealed class GraphCanvas : Control
                 continue;
             }
 
-            bool isConnectedToSelected = connectedEdgeIds is not null && connectedEdgeIds.Contains(edge.Id);
+            bool isUpstream = incomingEdgeIds is not null && incomingEdgeIds.Contains(edge.Id);
+            bool isDownstream = outgoingEdgeIds is not null && outgoingEdgeIds.Contains(edge.Id);
+            bool isConnectedToSelected = isUpstream || isDownstream;
+            bool isUnrelated = (incomingEdgeIds is not null || outgoingEdgeIds is not null) && !isConnectedToSelected;
 
             IPen edgePen;
             IBrush arrowBrush;
 
-            if (isConnectedToSelected)
+            if (isUpstream)
             {
-                edgePen = brushes.EdgeSelectedPen;
-                arrowBrush = brushes.AccentPrimaryBrush;
+                edgePen = brushes.EdgePredecessorPen;
+                arrowBrush = brushes.WarningBrush;
+            }
+            else if (isDownstream)
+            {
+                edgePen = brushes.EdgeSuccessorPen;
+                arrowBrush = brushes.SuccessBrush;
             }
             else if (edge.IsQuantized)
             {
@@ -730,16 +892,20 @@ public sealed class GraphCanvas : Control
                 arrowBrush = brushes.BorderMutedBrush;
             }
 
-            // Draw cubic Bézier spline
-            context.DrawGeometry(null, edgePen, geom);
-
-            // Draw directional arrowhead at target anchor
-            DrawArrowhead(context, edge, arrowBrush);
-
-            // Draw edge midpoint tensor shape callout pill (at medium and high zoom)
-            if (!isLowLod && edge.Layout.LabelAnchor.HasValue)
+            double edgeOpacity = isUnrelated ? 0.20 : 1.0;
+            using (context.PushOpacity(edgeOpacity))
             {
-                DrawEdgeShapeLabel(context, edge, edge.Layout.LabelAnchor.Value, isConnectedToSelected, brushes);
+                // Draw cubic Bézier spline
+                context.DrawGeometry(null, edgePen, geom);
+
+                // Draw directional arrowhead at target anchor
+                DrawArrowhead(context, edge, arrowBrush);
+
+                // Draw edge midpoint tensor shape callout pill (at medium and high zoom)
+                if (!isLowLod && edge.Layout.LabelAnchor.HasValue)
+                {
+                    DrawEdgeShapeLabel(context, edge, edge.Layout.LabelAnchor.Value, isConnectedToSelected, brushes);
+                }
             }
         }
     }
@@ -856,6 +1022,36 @@ public sealed class GraphCanvas : Control
             return;
         }
 
+        string? selectedNodeId = SelectedNode?.Id;
+        HashSet<string>? neighborNodeIds = null;
+        HashSet<string>? predecessorNodeIds = null;
+        HashSet<string>? successorNodeIds = null;
+
+        if (selectedNodeId is not null)
+        {
+            IReadOnlyList<VisualNode> preds = Layout.GetPredecessors(selectedNodeId);
+            IReadOnlyList<VisualNode> succs = Layout.GetSuccessors(selectedNodeId);
+
+            predecessorNodeIds = new HashSet<string>(preds.Count, StringComparer.Ordinal);
+            for (int p = 0; p < preds.Count; p++)
+            {
+                predecessorNodeIds.Add(preds[p].Id);
+            }
+
+            successorNodeIds = new HashSet<string>(succs.Count, StringComparer.Ordinal);
+            for (int s = 0; s < succs.Count; s++)
+            {
+                successorNodeIds.Add(succs[s].Id);
+            }
+
+            neighborNodeIds = new HashSet<string>(preds.Count + succs.Count + 1, StringComparer.Ordinal)
+            {
+                selectedNodeId
+            };
+            neighborNodeIds.UnionWith(predecessorNodeIds);
+            neighborNodeIds.UnionWith(successorNodeIds);
+        }
+
         bool isLowLod = Zoom < LodThresholdLow;
         bool isMediumLod = Zoom < LodThresholdMedium;
 
@@ -866,14 +1062,21 @@ public sealed class GraphCanvas : Control
             VisualNode node = visibleNodes[i];
             bool isSelected = ReferenceEquals(SelectedNode, node);
             bool isHovered = ReferenceEquals(HoveredNode, node);
+            bool isPredecessor = predecessorNodeIds is not null && predecessorNodeIds.Contains(node.Id);
+            bool isSuccessor = successorNodeIds is not null && successorNodeIds.Contains(node.Id);
+            bool isUnrelated = neighborNodeIds is not null && !neighborNodeIds.Contains(node.Id);
 
-            if (node.Kind == VisualNodeKind.Operator)
+            double nodeOpacity = isUnrelated ? 0.30 : 1.0;
+            using (context.PushOpacity(nodeOpacity))
             {
-                RenderOperatorNode(context, node, isSelected, isHovered, isLowLod, isMediumLod, brushes);
-            }
-            else
-            {
-                RenderTerminalPill(context, node, isSelected, isHovered, isLowLod, brushes);
+                if (node.Kind == VisualNodeKind.Operator)
+                {
+                    RenderOperatorNode(context, node, isSelected, isHovered, isPredecessor, isSuccessor, isLowLod, isMediumLod, brushes);
+                }
+                else
+                {
+                    RenderTerminalPill(context, node, isSelected, isHovered, isPredecessor, isSuccessor, isLowLod, brushes);
+                }
             }
         }
     }
@@ -883,6 +1086,8 @@ public sealed class GraphCanvas : Control
         VisualNode node,
         bool isSelected,
         bool isHovered,
+        bool isPredecessor,
+        bool isSuccessor,
         bool isLowLod,
         bool isMediumLod,
         in ThemeBrushes brushes)
@@ -891,9 +1096,27 @@ public sealed class GraphCanvas : Control
         Rect cardRect = new(b.X, b.Y, b.Width, b.Height);
 
         // 1. Outer Card Background & Border
-        IPen cardPen = isSelected
-            ? brushes.BorderSelectedPen
-            : (isHovered ? brushes.BorderHoverPen : brushes.BorderMutedPen);
+        IPen cardPen;
+        if (isSelected)
+        {
+            cardPen = brushes.BorderSelectedPen;
+        }
+        else if (isPredecessor)
+        {
+            cardPen = brushes.BorderPredecessorPen;
+        }
+        else if (isSuccessor)
+        {
+            cardPen = brushes.BorderSuccessorPen;
+        }
+        else if (isHovered)
+        {
+            cardPen = brushes.BorderHoverPen;
+        }
+        else
+        {
+            cardPen = brushes.BorderMutedPen;
+        }
 
         context.DrawRectangle(brushes.SurfaceBaseBrush, cardPen, cardRect, 8.0, 8.0);
 
@@ -1130,15 +1353,35 @@ public sealed class GraphCanvas : Control
         VisualNode node,
         bool isSelected,
         bool isHovered,
+        bool isPredecessor,
+        bool isSuccessor,
         bool isLowLod,
         in ThemeBrushes brushes)
     {
         BoundingBox b = node.Bounds;
         Rect pillRect = new(b.X, b.Y, b.Width, b.Height);
 
-        IPen pillPen = isSelected
-            ? brushes.BorderSelectedPen
-            : (isHovered ? brushes.BorderHoverPen : brushes.BorderMutedPen);
+        IPen pillPen;
+        if (isSelected)
+        {
+            pillPen = brushes.BorderSelectedPen;
+        }
+        else if (isPredecessor)
+        {
+            pillPen = brushes.BorderPredecessorPen;
+        }
+        else if (isSuccessor)
+        {
+            pillPen = brushes.BorderSuccessorPen;
+        }
+        else if (isHovered)
+        {
+            pillPen = brushes.BorderHoverPen;
+        }
+        else
+        {
+            pillPen = brushes.BorderMutedPen;
+        }
 
         bool isInput = node.Kind == VisualNodeKind.GraphInput;
         IBrush bg = brushes.SurfaceElevatedBrush;
@@ -1238,7 +1481,11 @@ public sealed class GraphCanvas : Control
         public readonly IPen EdgeMutedPen;
         public readonly IPen EdgeQuantizedPen;
         public readonly IPen EdgeSelectedPen;
+        public readonly IPen EdgePredecessorPen;
+        public readonly IPen EdgeSuccessorPen;
         public readonly IPen WarningBorderPen;
+        public readonly IPen BorderPredecessorPen;
+        public readonly IPen BorderSuccessorPen;
 
         private readonly Control _owner;
 
@@ -1262,9 +1509,13 @@ public sealed class GraphCanvas : Control
             BorderHoverPen = new Pen(AccentPrimaryBrush, 1.5);
             BorderSelectedPen = new Pen(AccentPrimaryBrush, 2.2);
             BorderAccentPen = new Pen(AccentPrimaryBrush, 1.2);
+            BorderPredecessorPen = new Pen(WarningBrush, 1.8);
+            BorderSuccessorPen = new Pen(SuccessBrush, 1.8);
             EdgeMutedPen = new Pen(BorderMutedBrush, 1.4);
             EdgeQuantizedPen = new Pen(SuccessBrush, 1.8);
             EdgeSelectedPen = new Pen(AccentPrimaryBrush, 2.4);
+            EdgePredecessorPen = new Pen(WarningBrush, 2.2);
+            EdgeSuccessorPen = new Pen(SuccessBrush, 2.2);
             WarningBorderPen = new Pen(WarningBrush, 1.0);
         }
 

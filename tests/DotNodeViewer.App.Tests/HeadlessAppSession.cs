@@ -50,14 +50,14 @@ public static class HeadlessAppSession
     }
 
     /// <summary>
-    /// Dispatches a synchronous action to the headless UI thread.
+    /// Dispatches an action to the headless UI thread.
     /// </summary>
     /// <param name="action">The action to execute.</param>
-    public static void Dispatch(Action action) => Session.Dispatch(action, CancellationToken.None);
+    public static Task Dispatch(Action action) => Session.Dispatch(action, CancellationToken.None);
 
     /// <summary>
     /// Dispatches an asynchronous action to the headless UI thread.
     /// </summary>
     /// <param name="action">The asynchronous action to execute.</param>
-    public static Task DispatchAsync(Func<Task> action) => Session.Dispatch(action, CancellationToken.None);
+    public static Task DispatchAsync(Func<Task> action) => Session.Dispatch(action, CancellationToken.None).Unwrap();
 }

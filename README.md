@@ -116,25 +116,33 @@ dotnet run --project src/DotNodeViewer.Desktop -c Release -- tests/DotNodeViewer
 
 ### Visualizer Features
 - **Interactive GraphCanvas:** High-performance immediate-mode rendering of neural network topologies directly via `DrawingContext` with 60 fps performance even on large models (`mobilenetv2`).
-- **Smooth Navigation & Pan/Zoom:** Drag canvas, middle-mouse pan, trackpad scroll, smooth zoom-around-cursor (`Ctrl` + wheel), and floating HUD controls (`+`, `-`, `Zoom to Fit`, `1:1 Reset`).
+- **Smooth Navigation & Pan/Zoom:** Drag canvas, middle-mouse pan, trackpad scroll, smooth zoom-around-cursor (`Ctrl` + wheel), keyboard navigation (`Tab`, `Up`/`Down` connected traversal, `F` zoom-to-fit, `Escape`), and floating HUD controls.
+- **On-Demand Weight Inspector:** Inspects raw weights directly from model stream on demand without eager memory allocations. Decodes FP32, FP16, BF16, INT8, UINT8, INT32, INT64, displays min/max/mean/zero statistics, and renders real-time affine dequantized values alongside raw integer bytes.
+- **Fast Categorized Search (`Ctrl+F`):** Searches across operator types, instance names, categories, and tensors with keyboard navigation and smooth camera centering on matched nodes.
+- **1-Hop Neighborhood Highlighting & Dimming:** Dynamically highlights predecessor (amber) and successor (emerald) connections while dimming unrelated graph branches to 25% opacity.
+- **Interactive Minimap:** Collapsible bottom-left silhouette overlay with draggable viewport indicator for effortless spatial orientation in deep networks.
+- **Subgraph Breadcrumb Drill-Down:** Inspects nested control-flow branches (`If`, `Loop`, `Scan`) with hierarchic breadcrumb navigation (`Root: main > If_0: then_branch`) and back/escape support.
+- **Architecture & Conversion Telemetry:** Real-time metrics bar reporting total parameter count, uncompressed memory volume, precision distribution (`INT8`, `FP32`, `FP16`), hardware delegate blocks (`XNNPACK`), and non-fatal parser diagnostics.
 - **Semantic Category Nodes:** Colorblind-checked header bands indicating operator categories (`Layer`, `Activation`, `Normalization`, `Pooling`, `Quantization`, etc.) with clean operator title and node name subtitles.
-- **Collapsed Initializer Rows:** Single-consumer parameter weights and biases are collapsed directly inside operator cards with tabular shape and data type callouts (e.g. `W · float32 [64, 3, 3, 3]` or `filter · uint8 [32, 3, 3, 3] Q`).
-- **Quantized Edge Indicators:** Smooth cubic Bézier spline routing with directional arrowheads, tensor shape labels (`[batch, 64, 112, 112]`), and green hardware acceleration indicators for quantized activations (`INT8` / `UINT8`).
-- **Viewport Culling & Level-of-Detail (LOD):** Seamlessly degrades text details at low zoom to sustain high frame rates on expansive graphs.
-- **Spatial Grid Hit-Testing ($O(1)$):** Hover highlight and click-to-select for interactive node inspection.
-- **Contextual Properties Sidebar (v1):**
-  - **Graph Overview (when no node is selected):** Format, producer, opset/version, subgraph selector, inputs/outputs lists, and category distribution.
-  - **Node Inspector (when a node is selected):** Operator title, category badge, domain/version, typed attributes list (`Int64`, `Float64`, `String`, `TensorShape`, etc.), runtime activations vs initializer weights, and output tensor descriptors with affine quantization parameters.
+- **Collapsed Initializer Rows:** Single-consumer parameter weights and biases are collapsed directly inside operator cards with tabular shape and data type callouts.
+- **Quantized Edge Indicators:** Smooth cubic Bézier spline routing with directional arrowheads, tensor shape labels, and emerald hardware acceleration indicators for quantized activations.
+- **Contextual Properties Sidebar:** Model overview (when no node selected) and deep node inspector with typed attributes, runtime inputs, lazy weights, and quantized output descriptors.
 - **Dual Theme Support:** High-contrast dark instrumentation theme (`#12151B`) and slate porcelain light theme (`#F8FAFC`).
 
-![Interactive Graph Canvas](docs/screenshots/S06/01-canvas-onnx-dynamic-batch.png)
-*Figure 1: Interactive GraphCanvas rendering an ONNX dynamic-batch network with collapsed weights and routed Bézier edges.*
+![On-Demand Weight Inspector](docs/screenshots/S11/02-tflite-weight-inspector.png)
+*Figure 1: On-demand Tensor Weight Inspector displaying raw INT8 weights and affine-dequantized real values with summary statistics.*
 
-![Node Inspector Sidebar](docs/screenshots/S06/02-canvas-node-selected-properties.png)
-*Figure 2: Contextual Properties Sidebar (v1) inspecting selected node attributes, runtime activations, and weights.*
+![1-Hop Neighborhood Highlighting](docs/screenshots/S11/03-executorch-xnnpack-neighborhood.png)
+*Figure 2: ExecuTorch model showing XNNPACK delegate badge and 1-hop neighborhood highlighting with unrelated branches dimmed.*
 
-![Quantized TFLite Model](docs/screenshots/S06/03-canvas-tflite-quantized-int8.png)
-*Figure 3: Interactive topology of a quantized INT8 TensorFlow Lite model showing quantized weights and parameters.*
+![Fast Categorized Search](docs/screenshots/S11/04-pytorch-search.png)
+*Figure 3: Instant Categorized Search (`Ctrl+F`) matching operator types and centering the target node.*
+
+![Subgraph Breadcrumb Drill-down](docs/screenshots/S11/01-onnx-subgraph-drilldown.png)
+*Figure 4: ONNX control-flow model drilled into nested If subgraph with breadcrumb navigation.*
+
+![Minimap in Dark and Light Themes](docs/screenshots/S11/05-keras-residual-minimap-dark.png)
+*Figure 5: Keras functional residual model featuring skip connections, architecture telemetry bar, and collapsible minimap.*
 
 ---
 

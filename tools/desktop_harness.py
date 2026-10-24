@@ -51,7 +51,19 @@ def capture_window(win, output_path, disp):
     w = geom.width
     h = geom.height
 
-    raw_image = win.get_image(0, 0, w, h, Xlib.X.ZPixmap, 0xFFFFFFFF)
+    raw_image = None
+    for attempt in range(15):
+        try:
+            disp.sync()
+            raw_image = win.get_image(0, 0, w, h, Xlib.X.ZPixmap, 0xFFFFFFFF)
+            if raw_image:
+                break
+        except Exception:
+            time.sleep(0.4)
+
+    if not raw_image:
+        raise RuntimeError(f"Failed to capture window image after {w}x{h} mapping")
+
     img = Image.frombytes("RGB", (w, h), raw_image.data, "raw", "BGRX")
     
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
