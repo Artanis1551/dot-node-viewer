@@ -154,11 +154,11 @@ dotnet run --project src/DotNodeViewer.Desktop -c Release -- tests/DotNodeViewer
 - **Safe Browser Streaming (`BrowserStreamAdapter`):** Implements a chunked streaming adapter using `ArrayPool<byte>.Shared` and a configurable 512 MB memory guard to prevent browser tab out-of-memory crashes on oversized models.
 
 ```bash
-# Run local browser development server
-dotnet run --project src/DotNodeViewer.Browser
+# Publish client-side WebAssembly AppBundle
+dotnet publish src/DotNodeViewer.Browser -c Release -r browser-wasm
 
-# Publish standalone static WASM bundle for static web hosting or CDN
-dotnet publish src/DotNodeViewer.Browser -c Release -o dist/wasm
+# Serve locally at http://localhost:8080
+python3 -m http.server 8080 --directory src/DotNodeViewer.Browser/bin/Release/net10.0/browser-wasm/AppBundle
 ```
 
 ---

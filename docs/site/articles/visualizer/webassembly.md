@@ -48,33 +48,36 @@ await viewModel.LoadModelStreamAsync(streamFactory, file.Name, ct);
 
 ## Building and Running Locally
 
-### Prerequisites
+### 1. Publish the WebAssembly Bundle
 
-Ensure the .NET WebAssembly workload is installed:
-
-```bash
-dotnet workload install wasm-tools
-```
-
-### Local Development Server
-
-Run the browser head directly via `dotnet run`:
+Publish the client-side WebAssembly AppBundle targeting the `browser-wasm` runtime:
 
 ```bash
-dotnet run --project src/DotNodeViewer.Browser
+dotnet publish src/DotNodeViewer.Browser -c Release -r browser-wasm
 ```
 
-Navigate to `http://localhost:5000` (or the URL printed in the terminal). Use the **Open Model** button or drag-and-drop to open any supported neural network model (`.onnx`, `.tflite`, `.pte`, `.pt2`, `.keras`, `.h5`).
+This compiles .NET assemblies and native Skia/HarfBuzz libraries into static WebAssembly assets at:
+`src/DotNodeViewer.Browser/bin/Release/net10.0/browser-wasm/AppBundle/`
+
+### 2. Serve Locally
+
+Serve the generated static bundle with any local HTTP server (such as Python's built-in static server):
+
+```bash
+python3 -m http.server 8080 --directory src/DotNodeViewer.Browser/bin/Release/net10.0/browser-wasm/AppBundle
+```
+
+Navigate to `http://localhost:8080` in your web browser (Chrome, Firefox, Safari, Edge). Use the **Open Model** button (`Ctrl+O` / `Cmd+O`) or drag-and-drop to open any supported neural network model (`.onnx`, `.tflite`, `.pte`, `.pt2`, `.keras`, `.h5`).
 
 ---
 
-## Production Publishing
+## Production Deployment
 
-To publish the optimized standalone WebAssembly static bundle:
+The static `AppBundle` directory contains only standard web assets (`index.html`, `main.js`, `.wasm`, `.js`). You can deploy this directory directly to any static hosting provider, including:
+* **GitHub Pages**
+* **Cloudflare Pages / Workers**
+* **AWS S3 + CloudFront**
+* **Nginx / Caddy static file hosting**
 
-```bash
-dotnet publish src/DotNodeViewer.Browser -c Release -o dist/wasm
-```
-
-The resulting `dist/wasm/wwwroot/` folder contains pure static assets (`index.html`, `.wasm` binaries, and JavaScript interop shims) that can be hosted on any static web host, CDN, or GitHub Pages.
+Because `DotNodeViewer.Browser` runs standard single-threaded WASM with client-side streaming, it requires no special Cross-Origin Isolation headers (`COOP`/`COEP`) and runs on any standard web host out of the box.
 

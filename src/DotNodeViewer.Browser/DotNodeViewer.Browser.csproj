@@ -14,4 +14,9 @@
   <ItemGroup>
     <PackageReference Include="Avalonia.Browser" />
   </ItemGroup>
+
+  <ItemGroup>
+    <WasmExtraFilesToDeploy Include="index.html" />
+    <WasmExtraFilesToDeploy Include="main.js" />
+  </ItemGroup>
 </Project>
