@@ -2,7 +2,16 @@
   <PropertyGroup>
     <RootNamespace>DotNodeViewer.Layout</RootNamespace>
     <AssemblyName>DotNodeViewer.Layout</AssemblyName>
+    <PackageId>DotNodeViewer.Layout</PackageId>
+    <Version>0.12.0</Version>
+    <Authors>dot-node-viewer contributors</Authors>
     <Description>Pure C# Sugiyama layered directed-graph layout engine for DotNodeViewer.Core graphs.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/dot-node-viewer/dot-node-viewer</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/dot-node-viewer/dot-node-viewer</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>dag;graph-layout;sugiyama;dagre;visualization;layered-graph</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -10,7 +19,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="DotNodeViewer.Layout.Tests" />
   </ItemGroup>
 </Project>
-

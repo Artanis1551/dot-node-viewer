@@ -4,6 +4,7 @@
     <RootNamespace>DotNodeViewer.Desktop</RootNamespace>
     <AssemblyName>DotNodeViewer.Desktop</AssemblyName>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PublishAot Condition="'$(PublishAot)' == 'true'">true</PublishAot>
   </PropertyGroup>
 
   <ItemGroup>
