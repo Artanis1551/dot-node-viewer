@@ -73,7 +73,6 @@ public sealed class GraphCanvas : Control
             nameof(ZoomPercentText),
             o => o.ZoomPercentText);
 
-    private SpatialGridIndex _spatialIndex = SpatialGridIndex.Empty;
     private readonly Dictionary<string, StreamGeometry> _edgeGeometryCache = new();
     private readonly Dictionary<string, FormattedText> _textCache = new();
     private bool _isPanning;
@@ -309,11 +308,8 @@ public sealed class GraphCanvas : Control
 
         if (layout is null)
         {
-            _spatialIndex = SpatialGridIndex.Empty;
             return;
         }
-
-        _spatialIndex = new SpatialGridIndex(layout.Nodes);
 
         // Precompute edge Bézier StreamGeometry
         for (int i = 0; i < layout.Edges.Count; i++)
@@ -500,7 +496,7 @@ public sealed class GraphCanvas : Control
         if (currentPoint.Properties.IsLeftButtonPressed
             || currentPoint.Properties.PointerUpdateKind == PointerUpdateKind.LeftButtonPressed)
         {
-            VisualNode? hitNode = _spatialIndex.FindNodeAt(world.X, world.Y);
+            VisualNode? hitNode = Layout?.FindNodeAt(world.X, world.Y);
             if (hitNode is not null)
             {
                 SelectedNode = hitNode;
@@ -551,7 +547,7 @@ public sealed class GraphCanvas : Control
         }
 
         Point world = ScreenToWorld(pos);
-        VisualNode? hitNode = _spatialIndex.FindNodeAt(world.X, world.Y);
+        VisualNode? hitNode = Layout?.FindNodeAt(world.X, world.Y);
         if (!ReferenceEquals(HoveredNode, hitNode))
         {
             HoveredNode = hitNode;
@@ -685,23 +681,35 @@ public sealed class GraphCanvas : Control
         string? selectedNodeId = SelectedNode?.Id;
         bool isLowLod = Zoom < LodThresholdLow;
 
-        for (int i = 0; i < Layout.Edges.Count; i++)
-        {
-            VisualEdge edge = Layout.Edges[i];
+        // Query visible edges directly from Layout's spatial index (expanded by 20px for labels and arrowheads)
+        BoundingBox queryBounds = new(
+            visibleWorldBounds.X - 20,
+            visibleWorldBounds.Y - 20,
+            visibleWorldBounds.Width + 40,
+            visibleWorldBounds.Height + 40);
+        IReadOnlyList<VisualEdge> visibleEdges = Layout.FindEdgesInRegion(queryBounds);
 
-            // Edge culling check: determine if edge bounds intersect visible viewport
-            if (!IsEdgeVisible(edge, visibleWorldBounds))
+        HashSet<string>? connectedEdgeIds = null;
+        if (selectedNodeId is not null)
+        {
+            IReadOnlyList<VisualEdge> connected = Layout.GetConnectedEdges(selectedNodeId);
+            connectedEdgeIds = new HashSet<string>(connected.Count, StringComparer.Ordinal);
+            for (int c = 0; c < connected.Count; c++)
             {
-                continue;
+                connectedEdgeIds.Add(connected[c].Id);
             }
+        }
+
+        for (int i = 0; i < visibleEdges.Count; i++)
+        {
+            VisualEdge edge = visibleEdges[i];
 
             if (!_edgeGeometryCache.TryGetValue(edge.Id, out StreamGeometry? geom))
             {
                 continue;
             }
 
-            bool isConnectedToSelected = selectedNodeId is not null
-                && (edge.Layout.SourceNodeId == selectedNodeId || edge.Layout.TargetNodeId == selectedNodeId);
+            bool isConnectedToSelected = connectedEdgeIds is not null && connectedEdgeIds.Contains(edge.Id);
 
             IPen edgePen;
             IBrush arrowBrush;
@@ -734,33 +742,6 @@ public sealed class GraphCanvas : Control
                 DrawEdgeShapeLabel(context, edge, edge.Layout.LabelAnchor.Value, isConnectedToSelected, brushes);
             }
         }
-    }
-
-    private static bool IsEdgeVisible(VisualEdge edge, BoundingBox viewport)
-    {
-        IReadOnlyList<LayoutPoint> points = edge.Layout.Points;
-        if (points.Count == 0)
-        {
-            return true;
-        }
-
-        double minX = double.MaxValue;
-        double maxX = double.MinValue;
-        double minY = double.MaxValue;
-        double maxY = double.MinValue;
-
-        for (int i = 0; i < points.Count; i++)
-        {
-            LayoutPoint p = points[i];
-            if (p.X < minX) minX = p.X;
-            if (p.X > maxX) maxX = p.X;
-            if (p.Y < minY) minY = p.Y;
-            if (p.Y > maxY) maxY = p.Y;
-        }
-
-        // Expand bounds slightly for labels and arrowhead
-        BoundingBox edgeBox = new(minX - 20, minY - 20, (maxX - minX) + 40, (maxY - minY) + 40);
-        return edgeBox.Intersects(viewport);
     }
 
     private static void DrawArrowhead(DrawingContext context, VisualEdge edge, IBrush fillBrush)
@@ -878,17 +859,11 @@ public sealed class GraphCanvas : Control
         bool isLowLod = Zoom < LodThresholdLow;
         bool isMediumLod = Zoom < LodThresholdMedium;
 
-        for (int i = 0; i < Layout.Nodes.Count; i++)
+        IReadOnlyList<VisualNode> visibleNodes = Layout.FindNodesInRegion(visibleWorldBounds);
+
+        for (int i = 0; i < visibleNodes.Count; i++)
         {
-            VisualNode node = Layout.Nodes[i];
-            BoundingBox b = node.Bounds;
-
-            // Viewport culling check
-            if (!b.Intersects(visibleWorldBounds))
-            {
-                continue;
-            }
-
+            VisualNode node = visibleNodes[i];
             bool isSelected = ReferenceEquals(SelectedNode, node);
             bool isHovered = ReferenceEquals(HoveredNode, node);
 

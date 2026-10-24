@@ -1,4 +1,3 @@
-using DotNodeViewer.App.Rendering;
 using DotNodeViewer.Core.Ir;
 using DotNodeViewer.Layout;
 
