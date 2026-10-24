@@ -14,7 +14,7 @@ Every stage agent MUST read this file before starting work and append a completi
 | **S05** | [`S05-ui-iteration-1a-design-system-and-shell.md`](stages/S05-ui-iteration-1a-design-system-and-shell.md) | `stage/S05-ui-design-and-shell` | Complete | `frontend-design` token system, Avalonia shell, file loading, `computer-use` screenshots |
 | **S06** | [`S06-ui-iteration-1b-graph-canvas-and-properties.md`](stages/S06-ui-iteration-1b-graph-canvas-and-properties.md) | `stage/S06-ui-graph-canvas` | Complete | Custom `GraphCanvas`, pan/zoom/hit-test, basic node properties sidebar, `computer-use` verification |
 | **S07** | [`S07-executorch-parser.md`](stages/S07-executorch-parser.md) | `stage/S07-executorch-parser` | Complete | ExecuTorch `.pte` detector & reader, delegate payloads, `tools/model-gen/torch` |
-| **S08** | [`S08-pytorch-zip-pickle-and-torchscript.md`](stages/S08-pytorch-zip-pickle-and-torchscript.md) | `stage/S08-pytorch-torchscript` | Pending | `ZipDirectory`, safe `PickleMachine`, `state_dict` & TorchScript `.pt` reader |
+| **S08** | [`S08-pytorch-zip-pickle-and-torchscript.md`](stages/S08-pytorch-zip-pickle-and-torchscript.md) | `stage/S08-pytorch-torchscript` | Complete | `ZipDirectory`, safe `PickleMachine`, `state_dict` & TorchScript `.pt` reader |
 | **S09** | [`S09-pytorch-pt2-export.md`](stages/S09-pytorch-pt2-export.md) | `stage/S09-pytorch-pt2` | Pending | PyTorch `torch.export` `.pt2` archive & `ExportedProgram` JSON reader |
 | **S10** | [`S10-keras-and-hdf5.md`](stages/S10-keras-and-hdf5.md) | `stage/S10-keras-and-hdf5` | Pending | Keras v3 `.keras` + legacy `.h5` reader |
 | **S11** | [`S11-ui-iteration-2-polish-inspector-and-navigation.md`](stages/S11-ui-iteration-2-polish-inspector-and-navigation.md) | `stage/S11-ui-polish-and-inspector` | Pending | On-demand tensor weight inspector, search, subgraph drill-down, minimap, `computer-use` critique |
@@ -396,3 +396,55 @@ Every stage agent MUST read this file before starting work and append a completi
   - `dotnet tool run docfx metadata docs/site/docfx.json --warningsAsErrors`
   - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
 - **Next Stage:** Run **Stage S08** (`docs/roadmap/stages/S08-pytorch-zip-pickle-and-torchscript.md`).
+
+### Stage S08 — PyTorch: ZIP Container, Safe Pickle Machine, `state_dict` & TorchScript (`.pt` / `.pth`)
+- **Branch:** `stage/S08-pytorch-torchscript`
+- **Commits:**
+  - `S08: add ZipDirectory and safe PickleMachine`
+  - `S08: implement PyTorch detector, reader, and operator catalog`
+  - `S08: add PyTorch model generator, fixtures, and golden snapshots`
+  - `S08: add synthetic and model integration tests`
+  - `S08: update README, DocFX documentation site, and PROGRESS.md`
+- **What Was Built:**
+  - `ZipDirectory` & `ZipEntry` (`src/DotNodeViewer.Core/IO/Zip/`, `internal`):
+    - Fast, zero-allocation random-access ZIP parser over `RandomAccessSource`.
+    - Parses EOCD, ZIP64 EOCD Locator, and Central Directory headers.
+    - Resolves exact stream `DataOffset` for uncompressed `Stored` entries without loading payloads.
+    - Supports bounded streaming reads with `DeflateStream` for metadata and python source files.
+  - Safe Pickle Virtual Machine (`PickleMachine`, `src/DotNodeViewer.Core/IO/Pickle/`, `internal`):
+    - Fully sandboxed execution of Python pickle protocols 2–5 with zero reflection or process execution.
+    - Handles `PyGlobal` symbolic descriptors and whitelisted reducers for `torch._utils._rebuild_tensor_v2`, `_rebuild_tensor`, `_rebuild_parameter`, `_rebuild_qtensor`, `collections.OrderedDict`, `torch.Size`, and `torch.device`.
+    - Resolves persistent storage `BINPERSID` directly to ZIP storage entries (`data/<key>`) with exact `TensorDataSlice` descriptors.
+  - PyTorch Detector & Streaming Reader (`src/DotNodeViewer.Core/Formats/PyTorch/`, `internal`):
+    - `PyTorchFormatDetector`: validates ZIP containers with `data.pkl` and torch markers (distinguishing `.pt2` and Keras `.keras`), as well as legacy raw pickle streams.
+    - `TorchScriptParser`: mini-parser for `code/__torch__/**/*.py` extracting `def forward(...)`, inlining submodule calls into `GraphNode`s (`Conv2d`, `BatchNorm2d`, `Linear`, `ReLU`, `torch.flatten`), and detecting scripted control flow (`if`/`while`).
+    - `PyTorchFormatReader`: builds complete `ModelGraph` for TorchScript archives, gracefully falls back to module hierarchy with `DNV_TORCH_CONTROL_FLOW` warning on scripted if/while blocks, and groups hierarchical keys (`layer1.0.conv1.weight`) in `state_dict` checkpoints with informational `DNV_TORCH_STATE_DICT` diagnostic.
+    - `PyTorchOperatorCatalog`: maps PyTorch and TorchScript operators to `OperatorCategory`, storage classes to `DataType`, and computes element byte sizes.
+  - Python model generator (`tools/model-gen/torch/gen_pytorch.py`):
+    - Emits `tiny_cnn_traced.pt`, `tiny_cnn_scripted_if.pt`, and `tiny_cnn_state_dict.pt` along with independent ground-truth `.truth.json` files.
+  - Fixtures & Golden Snapshots:
+    - Staged and registered all 3 committed fixtures in `tests/DotNodeViewer.Core.Tests/Fixtures/models.manifest.json`.
+    - Generated `.expected.json` topology snapshots via `DotNodeViewer.Cli`.
+  - Comprehensive Unit, Synthetic & Integration Tests:
+    - `ZipDirectoryTests`: verifies offset calculation, stored and deflated entry reading, and resilience to corrupted headers.
+    - `PickleMachineTests`: verifies safe opcode execution, hostile global descriptors without execution, and `_rebuild_tensor_v2` lazy slicing.
+    - `Synthetic/PyTorchSyntheticTests`: the 4 mandatory tests (header probing & position restoration, topology extraction, lazy weight skipping, corrupted archive resilience).
+    - `Formats/PyTorchModelTests`: validates traced model against `.truth.json`, scripted control-flow diagnostic and module fallback, and `state_dict` parameter grouping.
+    - `ModelManifestTests`: added `GetRegisteredPyTorchModels` and `ParseRegisteredPyTorchModel_MatchesExpectedTopology`.
+    - `.github/workflows/ci.yml`: added `model-tests-pytorch` job and updated synthetic test filters.
+- **`README.md` & `docs/site/` Updates:**
+  - Updated root [`README.md`](../../README.md) supported-formats table marking PyTorch (`.pt` / `.pth`) supported in S08.
+  - Added Diátaxis Reference article [`docs/site/articles/formats/pytorch.md`](../site/articles/formats/pytorch.md) and linked it in `overview.md` and `toc.yml`.
+  - Built DocFX metadata and site cleanly with 0 warnings (`--warningsAsErrors`).
+- **New ADRs Recorded:** None (strictly followed ADRs `0001`–`0007`).
+- **Deviations & Known Limitations:** None.
+- **Test Count:** 111 passed (`DotNodeViewer.Core.Tests`: 75, `DotNodeViewer.Layout.Tests`: 13, `DotNodeViewer.App.Tests`: 23), 0 failed, 0 skipped.
+- **Screenshots Taken:** None (format parser stage, no UI alterations).
+- **Verification Commands Run:**
+  - `tools/model-gen/torch/.venv/bin/python tools/model-gen/torch/gen_pytorch.py`
+  - `dotnet build dot-node-viewer.slnx -c Release --no-restore`
+  - `dotnet test --solution dot-node-viewer.slnx -c Release --no-build`
+  - `dotnet publish tools/DotNodeViewer.Cli/DotNodeViewer.Cli.csproj -c Release -p:PublishAot=true -r linux-x64 --no-restore`
+  - `dotnet tool run docfx metadata docs/site/docfx.json --warningsAsErrors`
+  - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
+- **Next Stage:** Run **Stage S09** (`docs/roadmap/stages/S09-pytorch-pt2-export.md`).

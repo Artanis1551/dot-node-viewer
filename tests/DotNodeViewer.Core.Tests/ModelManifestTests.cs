@@ -51,6 +51,13 @@ public sealed class ModelManifestTests
     public static IEnumerable<ModelManifestEntry> GetRegisteredExecuTorchModels() =>
         ModelFixtureLoader.LoadManifest().Models.Where(m => m.Format == "executorch");
 
+    /// <summary>
+    /// Enumerates all PyTorch model entries registered in <c>Fixtures/models.manifest.json</c>.
+    /// </summary>
+    /// <returns>The sequence of registered PyTorch <see cref="ModelManifestEntry"/> instances.</returns>
+    public static IEnumerable<ModelManifestEntry> GetRegisteredPyTorchModels() =>
+        ModelFixtureLoader.LoadManifest().Models.Where(m => m.Format == "pytorch");
+
     [Test]
     [MethodDataSource(nameof(GetRegisteredOnnxModels))]
     public async Task ParseRegisteredOnnxModel_MatchesExpectedTopology(ModelManifestEntry entry) =>
@@ -64,6 +71,11 @@ public sealed class ModelManifestTests
     [Test]
     [MethodDataSource(nameof(GetRegisteredExecuTorchModels))]
     public async Task ParseRegisteredExecuTorchModel_MatchesExpectedTopology(ModelManifestEntry entry) =>
+        await AssertModelMatchesExpectedTopologyAsync(entry);
+
+    [Test]
+    [MethodDataSource(nameof(GetRegisteredPyTorchModels))]
+    public async Task ParseRegisteredPyTorchModel_MatchesExpectedTopology(ModelManifestEntry entry) =>
         await AssertModelMatchesExpectedTopologyAsync(entry);
 
     private static async Task AssertModelMatchesExpectedTopologyAsync(ModelManifestEntry entry)

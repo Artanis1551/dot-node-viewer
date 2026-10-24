@@ -12,7 +12,7 @@
 | [**ONNX**](onnx.md) | `.onnx` | Protobuf (`ModelProto`, `GraphProto`) + external data shards | **S02** | **Supported** |
 | [**TensorFlow Lite**](tflite.md) | `.tflite` | FlatBuffers (`TFL3` file identifier) + affine quantization & delegate slices | **S03** | **Supported** |
 | [**ExecuTorch**](executorch.md) | `.pte` | FlatBuffers (`ET12` magic header) + backend delegate blobs | **S07** | **Supported** |
-| **PyTorch (`state_dict` & TorchScript)** | `.pt`, `.pth` | ZIP container + safe `PickleMachine` VM + TorchScript IR | **S08** | Planned |
+| [**PyTorch (`state_dict` & TorchScript)**](pytorch.md) | `.pt`, `.pth` | ZIP container + safe `PickleMachine` VM + TorchScript IR | **S08** | **Supported** |
 | **PyTorch ExportedProgram** | `.pt2` | ZIP archive + `ExportedProgram` JSON (`models/*.json`) | **S09** | Planned |
 | **Keras v3 & Legacy HDF5** | `.keras`, `.h5` | ZIP (`config.json` + `model.weights.h5`) / pure HDF5 (`PureHDF`) | **S10** | Planned |
 

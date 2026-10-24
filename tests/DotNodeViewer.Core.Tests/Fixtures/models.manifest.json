@@ -121,6 +121,39 @@
       "sha256": "84b2128dc1023b495767af3ea00e4f48653bf82debcb660d85970538e804c501",
       "byteLength": 3360,
       "expectedSnapshot": "Fixtures/executorch/tiny_cnn_xnnpack.expected.json"
+    },
+    {
+      "id": "pytorch-tiny_cnn_traced",
+      "format": "pytorch",
+      "fileName": "tiny_cnn_traced.pt",
+      "tier": "committed",
+      "relativePath": "Fixtures/pytorch/tiny_cnn_traced.pt",
+      "sourceUrl": null,
+      "sha256": "d87f2fc5e8ca75cabc0ef372c90183b9c790aacd68f32315b414cfdbddf30e2f",
+      "byteLength": 11293,
+      "expectedSnapshot": "Fixtures/pytorch/tiny_cnn_traced.expected.json"
+    },
+    {
+      "id": "pytorch-tiny_cnn_scripted_if",
+      "format": "pytorch",
+      "fileName": "tiny_cnn_scripted_if.pt",
+      "tier": "committed",
+      "relativePath": "Fixtures/pytorch/tiny_cnn_scripted_if.pt",
+      "sourceUrl": null,
+      "sha256": "fd3bfaeb7b3724b04864af8953ee852a28a546f3bbeb6d41fcd4609a74879d9a",
+      "byteLength": 9706,
+      "expectedSnapshot": "Fixtures/pytorch/tiny_cnn_scripted_if.expected.json"
+    },
+    {
+      "id": "pytorch-tiny_cnn_state_dict",
+      "format": "pytorch",
+      "fileName": "tiny_cnn_state_dict.pt",
+      "tier": "committed",
+      "relativePath": "Fixtures/pytorch/tiny_cnn_state_dict.pt",
+      "sourceUrl": null,
+      "sha256": "bcffabdb71dd377591e6128e119332238c7ffa8522363327d7e3194dc4ae0976",
+      "byteLength": 4477,
+      "expectedSnapshot": "Fixtures/pytorch/tiny_cnn_state_dict.expected.json"
     }
   ]
 }
