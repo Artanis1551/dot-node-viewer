@@ -92,6 +92,12 @@ public sealed class GraphCanvas : Control
     private Point? _lastPointerPosition;
     private bool _hasInitialFit;
 
+    private HashSet<string>? _selectedIncomingEdgeIds;
+    private HashSet<string>? _selectedOutgoingEdgeIds;
+    private HashSet<string>? _selectedPredecessorNodeIds;
+    private HashSet<string>? _selectedSuccessorNodeIds;
+    private HashSet<string>? _selectedNeighborNodeIds;
+
     private readonly FontFamily _uiFont = new("Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Ubuntu, Cantarell, sans-serif");
     private readonly FontFamily _codeFont = new("JetBrains Mono, Cascadia Code, Fira Code, DejaVu Sans Mono, Consolas, monospace");
 
@@ -315,6 +321,7 @@ public sealed class GraphCanvas : Control
         {
             VisualSubgraphLayout? layout = change.GetNewValue<VisualSubgraphLayout?>();
             RebuildLayoutCaches(layout);
+            UpdateSelectedNeighborhoodCache();
             _hasInitialFit = false;
 
             if (Bounds.Width > 0 && Bounds.Height > 0)
@@ -323,6 +330,60 @@ public sealed class GraphCanvas : Control
                 _hasInitialFit = true;
             }
         }
+        else if (change.Property == SelectedNodeProperty)
+        {
+            UpdateSelectedNeighborhoodCache();
+        }
+    }
+
+    private void UpdateSelectedNeighborhoodCache()
+    {
+        string? selectedNodeId = SelectedNode?.Id;
+        if (selectedNodeId is null || Layout is null)
+        {
+            _selectedIncomingEdgeIds = null;
+            _selectedOutgoingEdgeIds = null;
+            _selectedPredecessorNodeIds = null;
+            _selectedSuccessorNodeIds = null;
+            _selectedNeighborNodeIds = null;
+            return;
+        }
+
+        IReadOnlyList<VisualEdge> inEdges = Layout.GetIncomingEdges(selectedNodeId);
+        IReadOnlyList<VisualEdge> outEdges = Layout.GetOutgoingEdges(selectedNodeId);
+        _selectedIncomingEdgeIds = new HashSet<string>(inEdges.Count, StringComparer.Ordinal);
+        for (int i = 0; i < inEdges.Count; i++)
+        {
+            _selectedIncomingEdgeIds.Add(inEdges[i].Id);
+        }
+
+        _selectedOutgoingEdgeIds = new HashSet<string>(outEdges.Count, StringComparer.Ordinal);
+        for (int i = 0; i < outEdges.Count; i++)
+        {
+            _selectedOutgoingEdgeIds.Add(outEdges[i].Id);
+        }
+
+        IReadOnlyList<VisualNode> preds = Layout.GetPredecessors(selectedNodeId);
+        IReadOnlyList<VisualNode> succs = Layout.GetSuccessors(selectedNodeId);
+
+        _selectedPredecessorNodeIds = new HashSet<string>(preds.Count, StringComparer.Ordinal);
+        for (int p = 0; p < preds.Count; p++)
+        {
+            _selectedPredecessorNodeIds.Add(preds[p].Id);
+        }
+
+        _selectedSuccessorNodeIds = new HashSet<string>(succs.Count, StringComparer.Ordinal);
+        for (int s = 0; s < succs.Count; s++)
+        {
+            _selectedSuccessorNodeIds.Add(succs[s].Id);
+        }
+
+        _selectedNeighborNodeIds = new HashSet<string>(preds.Count + succs.Count + 1, StringComparer.Ordinal)
+        {
+            selectedNodeId
+        };
+        _selectedNeighborNodeIds.UnionWith(_selectedPredecessorNodeIds);
+        _selectedNeighborNodeIds.UnionWith(_selectedSuccessorNodeIds);
     }
 
     private Size _viewportSize;
@@ -834,25 +895,8 @@ public sealed class GraphCanvas : Control
             visibleWorldBounds.Height + 40);
         IReadOnlyList<VisualEdge> visibleEdges = Layout.FindEdgesInRegion(queryBounds);
 
-        HashSet<string>? incomingEdgeIds = null;
-        HashSet<string>? outgoingEdgeIds = null;
-        if (selectedNodeId is not null)
-        {
-            IReadOnlyList<VisualEdge> inEdges = Layout.GetIncomingEdges(selectedNodeId);
-            IReadOnlyList<VisualEdge> outEdges = Layout.GetOutgoingEdges(selectedNodeId);
-
-            incomingEdgeIds = new HashSet<string>(inEdges.Count, StringComparer.Ordinal);
-            for (int c = 0; c < inEdges.Count; c++)
-            {
-                incomingEdgeIds.Add(inEdges[c].Id);
-            }
-
-            outgoingEdgeIds = new HashSet<string>(outEdges.Count, StringComparer.Ordinal);
-            for (int c = 0; c < outEdges.Count; c++)
-            {
-                outgoingEdgeIds.Add(outEdges[c].Id);
-            }
-        }
+        HashSet<string>? incomingEdgeIds = _selectedIncomingEdgeIds;
+        HashSet<string>? outgoingEdgeIds = _selectedOutgoingEdgeIds;
 
         for (int i = 0; i < visibleEdges.Count; i++)
         {
@@ -1022,35 +1066,9 @@ public sealed class GraphCanvas : Control
             return;
         }
 
-        string? selectedNodeId = SelectedNode?.Id;
-        HashSet<string>? neighborNodeIds = null;
-        HashSet<string>? predecessorNodeIds = null;
-        HashSet<string>? successorNodeIds = null;
-
-        if (selectedNodeId is not null)
-        {
-            IReadOnlyList<VisualNode> preds = Layout.GetPredecessors(selectedNodeId);
-            IReadOnlyList<VisualNode> succs = Layout.GetSuccessors(selectedNodeId);
-
-            predecessorNodeIds = new HashSet<string>(preds.Count, StringComparer.Ordinal);
-            for (int p = 0; p < preds.Count; p++)
-            {
-                predecessorNodeIds.Add(preds[p].Id);
-            }
-
-            successorNodeIds = new HashSet<string>(succs.Count, StringComparer.Ordinal);
-            for (int s = 0; s < succs.Count; s++)
-            {
-                successorNodeIds.Add(succs[s].Id);
-            }
-
-            neighborNodeIds = new HashSet<string>(preds.Count + succs.Count + 1, StringComparer.Ordinal)
-            {
-                selectedNodeId
-            };
-            neighborNodeIds.UnionWith(predecessorNodeIds);
-            neighborNodeIds.UnionWith(successorNodeIds);
-        }
+        HashSet<string>? neighborNodeIds = _selectedNeighborNodeIds;
+        HashSet<string>? predecessorNodeIds = _selectedPredecessorNodeIds;
+        HashSet<string>? successorNodeIds = _selectedSuccessorNodeIds;
 
         bool isLowLod = Zoom < LodThresholdLow;
         bool isMediumLod = Zoom < LodThresholdMedium;
