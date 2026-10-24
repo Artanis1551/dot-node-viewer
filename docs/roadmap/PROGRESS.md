@@ -622,6 +622,7 @@ Every stage agent MUST read this file before starting work and append a completi
   - `S12: apply performance audit optimizations to GraphCanvas rendering, string allocation, and comparisons`
   - `S12: configure NativeAOT publishing, NuGet package metadata, and record performance audit`
   - `S12: update README, DocFX documentation site, and PROGRESS.md`
+  - `S12: add Ctrl+O and Cmd+O shortcut for opening models across desktop and browser`
 - **What Was Built:**
   - **WebAssembly Head (`src/DotNodeViewer.Browser/`, `src/DotNodeViewer.App/`):**
     - Configured `DotNodeViewer.Browser` targeting `net10.0-browser` with Avalonia 11 WebAssembly.
@@ -653,7 +654,7 @@ Every stage agent MUST read this file before starting work and append a completi
   - Verified `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors` passes with 0 warnings.
 - **New ADRs Recorded:** None.
 - **Deviations & Known Limitations:** None.
-- **Test Count:** 155 passed (`DotNodeViewer.Core.Tests`: 95, `DotNodeViewer.Layout.Tests`: 13, `DotNodeViewer.App.Tests`: 47), 0 failed, 0 skipped.
+- **Test Count:** 157 passed (`DotNodeViewer.Core.Tests`: 95, `DotNodeViewer.Layout.Tests`: 13, `DotNodeViewer.App.Tests`: 49), 0 failed, 0 skipped.
 - **Screenshots Taken:**
   - [NativeAOT Desktop Verification](../screenshots/S12/01-nativeaot-desktop-verified.png)
 - **Verification Commands Run:**
