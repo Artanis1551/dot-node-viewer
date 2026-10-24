@@ -17,6 +17,7 @@ All agents and contributors must follow the protocol outlined in [`AGENTS.md`](.
 | [ADR 0005](0005-avalonia-version.md) | Pinning Avalonia 11.3.12 & Avalonia 12 Migration Boundary | Accepted | S00 | Pins Avalonia `11.3.12` for all UI development across Stages S00–S12 while enforcing forward-compatible compiled bindings and isolating platform calls ahead of the Stage S13 Avalonia 12 migration. |
 | [ADR 0006](0006-ir-v1.md) | Frozen v1 Unified Graph IR & Format Abstraction Contract | Accepted | S01 | Freezes the public Unified Graph IR records, format detector/reader abstractions, and golden topology snapshot schemas as the v1 contract across all subsequent model format implementations. |
 | [ADR 0007](0007-isolated-model-test-ci-jobs-and-pipeline-reporting.md) | Isolated Model Test CI Jobs and Pipeline Inspection Reporting | Accepted | S04 | Isolates explicit neural network model tests into format-specific CI jobs and generates rich pipeline inspection reports across terminal logs and GitHub Actions step summaries. |
+| [ADR 0008](0008-delegate-subgraph-expansion-and-ethos-u.md) | On-Demand Delegate Subgraph Expansion & Arm Ethos-U Command Stream Decoding | Accepted | W01 | Defines on-demand delegate subgraph expansion via `IDelegateSubgraphExpander` and decodes Vela Ethos-U command streams into synthesized subgraphs with inferred dataflow edges. |
 
 ---
 
