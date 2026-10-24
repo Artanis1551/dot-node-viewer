@@ -538,7 +538,7 @@ public sealed class GraphCanvas : Control
     {
         base.OnKeyDown(e);
 
-        bool isCtrl = e.KeyModifiers.HasFlag(KeyModifiers.Control);
+        bool isCtrl = e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta);
 
         if (isCtrl && (e.Key == Key.OemPlus || e.Key == Key.Add))
         {

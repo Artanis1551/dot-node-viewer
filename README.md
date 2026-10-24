@@ -116,7 +116,7 @@ dotnet run --project src/DotNodeViewer.Desktop -c Release -- tests/DotNodeViewer
 
 ### Visualizer Features
 - **Interactive GraphCanvas:** High-performance immediate-mode rendering of neural network topologies directly via `DrawingContext` with 60 fps performance even on large models (`mobilenetv2`).
-- **Smooth Navigation & Pan/Zoom:** Drag canvas, middle-mouse pan, trackpad scroll, smooth zoom-around-cursor (`Ctrl` + wheel), keyboard navigation (`Tab`, `Up`/`Down` connected traversal, `F` zoom-to-fit, `Escape`), and floating HUD controls.
+- **Smooth Navigation & Pan/Zoom:** Drag canvas, middle-mouse pan, trackpad scroll, smooth zoom-around-cursor (`Ctrl` + wheel), keyboard shortcuts (`Ctrl+O` / `Cmd+O` open model, `Ctrl+F` search, `Tab`, `Up`/`Down` connected traversal, `F` or `Ctrl+0` zoom-to-fit, `Escape`), and floating HUD controls.
 - **On-Demand Weight Inspector:** Inspects raw weights directly from model stream on demand without eager memory allocations. Decodes FP32, FP16, BF16, INT8, UINT8, INT32, INT64, displays min/max/mean/zero statistics, and renders real-time affine dequantized values alongside raw integer bytes.
 - **Fast Categorized Search (`Ctrl+F`):** Searches across operator types, instance names, categories, and tensors with keyboard navigation and smooth camera centering on matched nodes.
 - **1-Hop Neighborhood Highlighting & Dimming:** Dynamically highlights predecessor (amber) and successor (emerald) connections while dimming unrelated graph branches to 25% opacity.

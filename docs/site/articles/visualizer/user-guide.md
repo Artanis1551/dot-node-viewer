@@ -16,7 +16,7 @@ To launch the visualizer in its clean empty state:
 dotnet run --project src/DotNodeViewer.Desktop -c Release
 ```
 
-The application opens with an inviting empty-state card offering drag-and-drop targeting, a file browser button, recent model shortcuts, and a summary of supported model formats.
+The application opens with an inviting empty-state card offering drag-and-drop targeting, a file browser button, keyboard shortcuts (`Ctrl+O` / `Cmd+O`), recent model shortcuts, and a summary of supported model formats.
 
 ![Empty State](../../images/s05/01-empty-state-dark.png)
 
@@ -49,7 +49,10 @@ When a model is opened, `dot-node-viewer` displays the graph topology on a high-
 - **Pan:** Click and drag anywhere on empty canvas space, drag with middle/right mouse button, use keyboard arrow keys (`Left`, `Right`, `Up`, `Down`), or two-finger scroll on trackpads.
 - **Zoom Around Cursor:** Hold `Ctrl` and scroll the mouse wheel, pinch on trackpads, or use `Ctrl` + `+` / `Ctrl` + `-`.
 - **Keyboard Shortcuts:**
-  - `F` or `Ctrl+0`: Zoom to fit the entire graph into the visible canvas.
+  - `Ctrl+O` / `Cmd+O`: Open a new model via the platform file picker.
+  - `Ctrl+F` / `Cmd+F`: Open fast categorized search and jump to matching nodes.
+  - `F` or `Ctrl+0` / `Cmd+0`: Zoom to fit the entire graph into the visible canvas.
+  - `Ctrl` + `+` / `Ctrl` + `-` (or `Cmd` + `+` / `Cmd` + `-`): Zoom in and out.
   - `Tab` / `Shift+Tab`: Cycle focus through nodes in topological order.
   - `Up` / `Down`: Navigate to immediate predecessor or successor nodes along dataflow edges.
   - `Escape`: Clear current selection or close open search/inspect panels.
