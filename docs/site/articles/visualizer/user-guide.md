@@ -16,9 +16,9 @@ To launch the visualizer in its clean empty state:
 dotnet run --project src/DotNodeViewer.Desktop -c Release
 ```
 
-The application opens with an inviting empty-state card offering drag-and-drop targeting, a file browser button, keyboard shortcuts (`Ctrl+O` / `Cmd+O`), recent model shortcuts, and a summary of supported model formats.
+The application opens in an empty state with a drop target area, a file browser button, standard keyboard shortcuts (`Ctrl+O` / `Cmd+O`), recent model shortcuts, and supported format indicators.
 
-![Empty State](../../images/s05/01-empty-state-dark.png)
+![Empty State](../../images/w06/01-empty-state-supported-formats.png)
 
 ### 1.2 Direct Model Launch
 
@@ -35,29 +35,29 @@ dotnet run --project src/DotNodeViewer.Desktop -c Release -- tests/DotNodeViewer
 dotnet run --project src/DotNodeViewer.Desktop -c Release -- tests/DotNodeViewer.Core.Tests/Fixtures/executorch/tiny_cnn_xnnpack.pte
 ```
 
-The application immediately streams the model on a background thread, extracts the Unified Graph IR, runs the layered layout engine, and presents the interactive graph topology.
+The application streams the model on a background thread, extracts the Unified Graph IR, runs the layered layout engine, and presents the graph topology.
 
 ### 1.3 Drag-and-Drop Model Loading
 
-You can drag and drop any supported model directly onto the application window or browser canvas at any time—both when in the initial empty welcome state and when an existing model is open on the canvas:
+Supported neural network models can be dragged directly onto the application window or browser canvas at any time—both in the initial empty state and when an existing model is already open:
 
-- **Visual Drop Overlay:** Dragging a file over the window triggers a high-contrast visual drop target overlay featuring a semi-transparent scrim, a dashed neon accent border, a glowing drop symbol, and active format badge pills.
-- **Pre-Drop Format Validation:** As you hover over the window, candidate file extensions are validated. Supported formats (`.onnx`, `.tflite`, `.pte`, `.pt`, `.pt2`, `.keras`, `.h5`) activate the drop target with a `Copy` (+) cursor. Dropping unrecognized file types displays an amber/red warning banner (`Unsupported format`) and sets the cursor effect to `None` (🚫).
-- **Multi-File & Sidecar Handling:** When dragging multiple files together (e.g. an ONNX model split into `model.onnx` and companion `model.onnx.data` external weight shards), the visualizer automatically identifies the `.onnx` entry point while ensuring companion weights are resolved relative to the graph definition.
-- **Directory Drops:** Dropping a directory recursively scans for the first primary neural network model file.
-- **Dismissal:** Press `Escape` or drag the pointer outside the window to immediately dismiss the drop overlay without altering the current session state.
+- **Drop Target Overlay:** Dragging a file over the window displays a drop target overlay indicating that the window is ready to accept the file, along with format validation feedback.
+- **Format Validation:** As candidate files are dragged over the window, their extensions are checked against supported formats (`.onnx`, `.tflite`, `.pte`, `.pt`, `.pt2`, `.keras`, `.h5`). Supported files enable the drop target; unsupported files display a format warning message.
+- **Multi-File & Sidecar Handling:** When an ONNX model definition and its companion external weight file (e.g. `model.onnx` and `model.onnx.data`) are dropped together, the visualizer loads the `.onnx` graph definition while resolving external tensor data references relative to the model directory.
+- **Directory Drops:** Dropping a directory scans for the first primary neural network model file within that folder.
+- **Dismissal:** Pressing `Escape` or dragging the pointer outside the window cancels the drop operation and restores the prior view.
 
 ![Valid Drop Target Overlay](../../images/w06/02-visual-drop-overlay-valid.png)
-*Figure 1: Responsive visual drop overlay with dashed accent border, format validation feedback, and format badges.*
+*Figure 1: Drop target overlay displayed when dragging a supported model file.*
 
 ![Unsupported Format Feedback](../../images/w06/03-visual-drop-overlay-invalid.png)
-*Figure 2: Real-time validation warning displayed when dragging an unsupported file format.*
+*Figure 2: Validation warning displayed when dragging an unsupported file format.*
 
 ---
 
 ## 2. Navigating the Interactive Graph Canvas
 
-When a model is opened, `dot-node-viewer` displays the graph topology on a high-performance custom `GraphCanvas` control.
+When a model is opened, `dot-node-viewer` renders the graph topology using the custom `GraphCanvas` control.
 
 ![Interactive Graph Canvas](../../images/s06/01-canvas-onnx-dynamic-batch.png)
 
@@ -72,28 +72,28 @@ When a model is opened, `dot-node-viewer` displays the graph topology on a high-
   - `Tab` / `Shift+Tab`: Cycle focus through nodes in topological order.
   - `Up` / `Down`: Navigate to immediate predecessor or successor nodes along dataflow edges.
   - `Escape`: Clear current selection or close open search/inspect panels.
-- **Floating HUD Controls:** Located in the bottom-right corner of the canvas (`+`, `-`, `Fit`, `1:1`).
+- **HUD Controls:** Located in the bottom-right corner of the canvas (`+`, `-`, `Fit`, `1:1`).
 
 ### 2.2 Semantic Operator Nodes
-Each operator node is rendered as a clean rounded card styled according to the design system:
-- **Category Header Band:** Coded with distinct, colorblind-safe semantic hues (`Layer`, `Activation`, `Normalization`, `Pooling`, `Quantization`, etc.).
+Each operator node displays its functional classification, operator type, and instance identifier:
+- **Category Header Band:** Indicates the operator category (`Layer`, `Activation`, `Normalization`, `Pooling`, `Quantization`, etc.).
 - **Operator Title:** Bold operator name (e.g., `Conv`, `Relu`, `Gemm`).
 - **Node Name Subtitle:** Exact scoped node identifier in the model (e.g., `/model/layers.0/conv`).
-- **Collapsed Parameter Rows:** Static single-consumer weights and biases (like convolutional kernel filters or dense weights) are rendered directly inside the node card with compact shape pills (e.g., `W · float32 [64, 3, 3, 3]`), reducing visual clutter while keeping key dimensions accessible.
-- **Fused Activation Badges:** When an operator carries a fused non-linearity (such as `+ RELU`), it is highlighted with an amber badge.
+- **Collapsed Parameter Rows:** Static single-consumer weights and biases (like convolutional kernel filters or dense weights) are rendered directly inside the node card with shape callouts (e.g., `W · float32 [64, 3, 3, 3]`), keeping key dimensions accessible without navigating away.
+- **Fused Activation Badges:** Operators with fused non-linearities (such as `+ RELU`) display a fused operator badge.
 
 ### 2.3 1-Hop Neighborhood Highlighting & Dimming
-Selecting any node on the canvas dynamically highlights its immediate upstream predecessors and downstream successors:
-- **Predecessor Edges & Ports:** Rendered with an amber warning accent.
-- **Successor Edges & Ports:** Rendered with an emerald success accent.
-- **Unrelated Branches:** All non-adjacent nodes and edges fade to 25% opacity, eliminating clutter in deep or branched networks.
+Selecting any node on the canvas highlights its immediate upstream predecessors and downstream successors:
+- **Predecessor Edges & Ports:** Highlighted with an amber indicator.
+- **Successor Edges & Ports:** Highlighted with an emerald indicator.
+- **Unrelated Branches:** Non-adjacent nodes and edges fade to 25% opacity to clarify dataflow in complex or branched graphs.
 
 ![ExecuTorch Neighborhood Highlighting](../../images/s11/03-executorch-xnnpack-neighborhood.png)
 
 ### 2.4 Graph Minimap
-The collapsible minimap in the bottom-left corner displays a high-level silhouette of the entire graph layout:
-- **Viewport Rectangle:** Indicates current visible bounds.
-- **Interactive Dragging:** Click or drag inside the minimap to pan canvas view to that region.
+The collapsible minimap in the bottom-left corner displays an overview silhouette of the graph layout:
+- **Viewport Rectangle:** Indicates visible canvas bounds within the larger graph.
+- **Interactive Dragging:** Click or drag inside the minimap to pan the canvas to that region.
 - **Toggle Button:** Click `Minimap` in the header bar to collapse or expand the overlay.
 
 ![Keras Skip Connections and Minimap Dark](../../images/s11/05-keras-residual-minimap-dark.png)
@@ -164,5 +164,5 @@ Toggle themes at any time using the `Theme` button in the top toolbar:
 
 ![Light Theme Mode](../../images/s11/06-keras-residual-minimap-light.png)
 
-- **Dark Theme (Default):** Deep graphite canvas (`#12151B`) with high-contrast text (`#F1F5F9`).
-- **Light Theme:** Clean porcelain canvas (`#F8FAFC`) with titanium boundaries and high-legibility text (`#0F172A`).
+- **Dark Theme (Default):** Dark interface palette optimized for reduced eye strain in low-light environments.
+- **Light Theme:** High-contrast light interface palette suited for well-lit environments.
