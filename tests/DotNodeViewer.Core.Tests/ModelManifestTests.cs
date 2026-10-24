@@ -65,6 +65,13 @@ public sealed class ModelManifestTests
     public static IEnumerable<ModelManifestEntry> GetRegisteredPyTorchPt2Models() =>
         ModelFixtureLoader.LoadManifest().Models.Where(m => m.Format == "pytorch-pt2");
 
+    /// <summary>
+    /// Enumerates all Keras model entries registered in <c>Fixtures/models.manifest.json</c>.
+    /// </summary>
+    /// <returns>The sequence of registered Keras <see cref="ModelManifestEntry"/> instances.</returns>
+    public static IEnumerable<ModelManifestEntry> GetRegisteredKerasModels() =>
+        ModelFixtureLoader.LoadManifest().Models.Where(m => m.Format == "keras");
+
     [Test]
     [MethodDataSource(nameof(GetRegisteredOnnxModels))]
     public async Task ParseRegisteredOnnxModel_MatchesExpectedTopology(ModelManifestEntry entry) =>
@@ -88,6 +95,11 @@ public sealed class ModelManifestTests
     [Test]
     [MethodDataSource(nameof(GetRegisteredPyTorchPt2Models))]
     public async Task ParseRegisteredPyTorchPt2Model_MatchesExpectedTopology(ModelManifestEntry entry) =>
+        await AssertModelMatchesExpectedTopologyAsync(entry);
+
+    [Test]
+    [MethodDataSource(nameof(GetRegisteredKerasModels))]
+    public async Task ParseRegisteredKerasModel_MatchesExpectedTopology(ModelManifestEntry entry) =>
         await AssertModelMatchesExpectedTopologyAsync(entry);
 
     private static async Task AssertModelMatchesExpectedTopologyAsync(ModelManifestEntry entry)
