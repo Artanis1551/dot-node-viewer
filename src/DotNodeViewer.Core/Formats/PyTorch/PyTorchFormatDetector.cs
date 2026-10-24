@@ -30,34 +30,30 @@ internal sealed class PyTorchFormatDetector : IModelFormatDetector
         // Case A: ZIP container format (.pt, .pth, TorchScript)
         if (probe.IsZipArchive)
         {
-            var zipEntries = probe.ZipEntries;
-            if (zipEntries.Count > 0)
+            // Exclude Stage S09 (.pt2 ExportedProgram archives)
+            if (probe.HasZipEntryEndingWith("archive_format") ||
+                probe.HasZipEntryEndingWith("serialized_exported_program.json"))
             {
-                // Exclude Stage S09 (.pt2 ExportedProgram archives)
-                if (zipEntries.Any(e => e.EndsWith("archive_format", StringComparison.OrdinalIgnoreCase) ||
-                                       e.EndsWith("serialized_exported_program.json", StringComparison.OrdinalIgnoreCase)))
-                {
-                    return false;
-                }
+                return false;
+            }
 
-                // Exclude Stage S10 (Keras v3 archives with config.json)
-                if (zipEntries.Any(e => string.Equals(e, "config.json", StringComparison.OrdinalIgnoreCase)))
-                {
-                    return false;
-                }
+            // Exclude Stage S10 (Keras v3 archives with config.json)
+            if (probe.HasZipEntry("config.json"))
+            {
+                return false;
+            }
 
-                // Must contain data.pkl
-                if (zipEntries.Any(e => e.EndsWith("data.pkl", StringComparison.OrdinalIgnoreCase)))
+            // Must contain data.pkl
+            if (probe.HasZipEntryEndingWith("data.pkl"))
+            {
+                // Verify presence of PyTorch markers: version, byteorder, code directory, or data directory
+                if (probe.HasZipEntryEndingWith("version") ||
+                    probe.HasZipEntryEndingWith("byteorder") ||
+                    probe.HasZipEntryEndingWith(".format_version") ||
+                    probe.ContainsZipEntry("/data/") ||
+                    probe.ContainsZipEntry("/code/"))
                 {
-                    // Verify presence of PyTorch markers: version, byteorder, code directory, or data directory
-                    if (zipEntries.Any(e => e.EndsWith("version", StringComparison.OrdinalIgnoreCase) ||
-                                           e.EndsWith("byteorder", StringComparison.OrdinalIgnoreCase) ||
-                                           e.EndsWith(".format_version", StringComparison.OrdinalIgnoreCase) ||
-                                           e.Contains("/data/") ||
-                                           e.Contains("/code/")))
-                    {
-                        return true;
-                    }
+                    return true;
                 }
             }
         }

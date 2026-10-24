@@ -41,6 +41,12 @@ internal sealed class KerasFormatReader : IModelFormatReader
         var source = new RandomAccessSource(stream);
         try
         {
+            ZipDirectory? cachedZip = options?.CachedZipDirectory;
+            if (cachedZip is not null)
+            {
+                return new ValueTask<ModelGraph>(ParseKerasZip(source, cachedZip, cancellationToken));
+            }
+
             // Case A: ZIP archive (.keras)
             if (ZipDirectory.TryRead(source, out var zip))
             {

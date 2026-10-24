@@ -1,4 +1,6 @@
-using System.IO.Compression;
+using System.Diagnostics.CodeAnalysis;
+using DotNodeViewer.Core.IO;
+using DotNodeViewer.Core.IO.Zip;
 
 namespace DotNodeViewer.Core.Abstractions;
 
@@ -22,6 +24,8 @@ public sealed class ModelProbe
     private readonly byte[] _header;
     private readonly int _headerLength;
     private IReadOnlyList<string>? _zipEntries;
+    private ZipDirectory? _zipDirectory;
+    private bool _zipDirectoryAttempted;
 
     private ModelProbe(
         Stream stream,
@@ -93,10 +97,69 @@ public sealed class ModelProbe
     }
 
     /// <summary>
+    /// Gets the parsed <see cref="ZipDirectory"/> if the stream is a valid ZIP archive; otherwise, <see langword="null"/>.
+    /// </summary>
+    internal ZipDirectory? ZipDirectory
+    {
+        get
+        {
+            if (!_zipDirectoryAttempted)
+            {
+                _zipDirectory = ReadZipDirectoryNonDestructively();
+                _zipDirectoryAttempted = true;
+            }
+
+            return _zipDirectory;
+        }
+    }
+
+    /// <summary>
     /// Gets the central-directory entry paths if the stream is a valid ZIP archive, or an empty list otherwise.
     /// </summary>
     /// <value>A read-only list of entry full names in the ZIP archive.</value>
-    public IReadOnlyList<string> ZipEntries => _zipEntries ??= ReadZipEntriesNonDestructively();
+    public IReadOnlyList<string> ZipEntries =>
+        _zipEntries ??= (ZipDirectory is not null ? [.. ZipDirectory.Entries.Keys] : []);
+
+    /// <summary>
+    /// Determines whether the ZIP archive contains an entry with the exact path or relative name.
+    /// </summary>
+    /// <param name="entryPath">The entry path or name to search for.</param>
+    /// <returns><see langword="true"/> if a matching entry is found; otherwise, <see langword="false"/>.</returns>
+    public bool HasZipEntry(string entryPath) =>
+        ZipDirectory?.TryFindEntry(entryPath, out _) == true;
+
+    /// <summary>
+    /// Determines whether the ZIP archive contains any entry ending with the specified suffix.
+    /// </summary>
+    /// <param name="suffix">The suffix to match against entry paths (case-insensitive).</param>
+    /// <returns><see langword="true"/> if any entry ends with <paramref name="suffix"/>; otherwise, <see langword="false"/>.</returns>
+    public bool HasZipEntryEndingWith(string suffix) =>
+        ZipDirectory?.TryFindEntry(suffix, out _) == true;
+
+    /// <summary>
+    /// Determines whether the ZIP archive contains any entry containing the specified substring.
+    /// </summary>
+    /// <param name="substring">The case-insensitive substring to search for in entry paths.</param>
+    /// <returns><see langword="true"/> if any entry contains <paramref name="substring"/>; otherwise, <see langword="false"/>.</returns>
+    public bool ContainsZipEntry(string substring) =>
+        ZipDirectory?.ContainsEntry(substring) == true;
+
+    /// <summary>
+    /// Attempts to locate a ZIP entry matching the specified suffix or relative path.
+    /// </summary>
+    /// <param name="entryPath">The entry path or suffix to search for.</param>
+    /// <param name="entry">When this method returns, contains the matching <see cref="ZipEntry"/> if found; otherwise, <see langword="null"/>.</param>
+    /// <returns><see langword="true"/> if the entry was found; otherwise, <see langword="false"/>.</returns>
+    internal bool TryGetZipEntry(string entryPath, [NotNullWhen(true)] out ZipEntry? entry)
+    {
+        if (ZipDirectory is not null && ZipDirectory.TryFindEntry(entryPath, out entry))
+        {
+            return true;
+        }
+
+        entry = null;
+        return false;
+    }
 
     /// <summary>
     /// Creates a new <see cref="ModelProbe"/> by peeking up to 64 bytes from the beginning of <paramref name="stream"/> and restoring its position.
@@ -158,16 +221,21 @@ public sealed class ModelProbe
         long initialPosition = stream.Position;
         long length = stream.Length;
         byte[] header = new byte[HeaderPeekByteCount];
-        int bytesRead;
+        int bytesRead = 0;
 
         try
         {
             stream.Position = 0;
-            bytesRead = await stream.ReadAtLeastAsync(
-                header.AsMemory(0, HeaderPeekByteCount),
-                minimumBytes: HeaderPeekByteCount,
-                throwOnEndOfStream: false,
-                cancellationToken).ConfigureAwait(false);
+            while (bytesRead < HeaderPeekByteCount)
+            {
+                int n = await stream.ReadAsync(header.AsMemory(bytesRead, HeaderPeekByteCount - bytesRead), cancellationToken).ConfigureAwait(false);
+                if (n == 0)
+                {
+                    break;
+                }
+
+                bytesRead += n;
+            }
         }
         finally
         {
@@ -245,37 +313,26 @@ public sealed class ModelProbe
         return string.IsNullOrEmpty(ext) ? null : ext.ToLowerInvariant();
     }
 
-    private string[] ReadZipEntriesNonDestructively()
+    private ZipDirectory? ReadZipDirectoryNonDestructively()
     {
-        if (!IsZipArchive)
+        if (!IsZipArchive || StreamLength < 22)
         {
-            return [];
+            return null;
         }
 
         try
         {
-            _stream.Position = 0;
-            using ZipArchive archive = new(_stream, ZipArchiveMode.Read, leaveOpen: true);
-            var entries = archive.Entries;
-            string[] names = new string[entries.Count];
-            for (int i = 0; i < entries.Count; i++)
+            RandomAccessSource source = new(_stream);
+            if (ZipDirectory.TryRead(source, out ZipDirectory? dir))
             {
-                names[i] = entries[i].FullName;
+                return dir;
             }
 
-            return names;
+            return null;
         }
-        catch (InvalidDataException)
+        catch
         {
-            return [];
-        }
-        catch (IOException)
-        {
-            return [];
-        }
-        catch (ArgumentException)
-        {
-            return [];
+            return null;
         }
         finally
         {
@@ -283,4 +340,3 @@ public sealed class ModelProbe
         }
     }
 }
-

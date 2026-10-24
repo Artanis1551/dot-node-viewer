@@ -38,14 +38,18 @@ internal sealed class PyTorchPt2FormatReader : IModelFormatReader
             throw new ModelParseException("Stream must be readable and seekable to parse PyTorch .pt2 archives.");
         }
 
-        var source = new RandomAccessSource(stream);
-        try
+        ZipDirectory? zip = options?.CachedZipDirectory;
+        if (zip is null)
         {
-            if (!ZipDirectory.TryRead(source, out var zip))
+            var source = new RandomAccessSource(stream);
+            if (!ZipDirectory.TryRead(source, out zip))
             {
                 throw new ModelParseException("File is not a valid ZIP archive for PyTorch .pt2 export.", fileOffset: 0);
             }
+        }
 
+        try
+        {
             return new ValueTask<ModelGraph>(ParsePt2Archive(zip, cancellationToken));
         }
         catch (ModelParseException)

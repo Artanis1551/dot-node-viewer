@@ -40,6 +40,11 @@ public sealed class ModelProbeAndRegistryTests
         IReadOnlyList<string> entries = probe.ZipEntries;
         await Assert.That(entries).Contains("archive/version");
         await Assert.That(entries).Contains("archive/data.pkl");
+        await Assert.That(probe.HasZipEntry("archive/version")).IsTrue();
+        await Assert.That(probe.HasZipEntry("version")).IsTrue();
+        await Assert.That(probe.HasZipEntryEndingWith("data.pkl")).IsTrue();
+        await Assert.That(probe.ContainsZipEntry("version")).IsTrue();
+        await Assert.That(probe.HasZipEntry("nonexistent.json")).IsFalse();
         await Assert.That(zipStream.Position).IsEqualTo(7);
     }
 
@@ -146,6 +151,30 @@ public sealed class ModelProbeAndRegistryTests
         await Assert.That(index.GetConsumers(tConvOut)).Contains(reluNode);
         await Assert.That(index.GetUpstreamNodes(reluNode)).Contains(convNode);
         await Assert.That(index.GetDownstreamNodes(convNode)).Contains(reluNode);
+    }
+
+    [Test]
+    public async Task ModelFormatRegistry_ReadAsync_ZipModel_PassesCachedZipDirectory()
+    {
+        string fixturePath = Path.Combine(DotNodeViewer.Core.Tests.Harness.ModelFixtureLoader.TestProjectDirectory, "Fixtures", "keras", "tiny_sequential.keras");
+
+        await using FileStream stream = new(fixturePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        ModelProbe probe = await ModelProbe.CreateAsync(stream, "tiny_sequential.keras");
+
+        await Assert.That(probe.IsZipArchive).IsTrue();
+        await Assert.That(probe.HasZipEntry("config.json")).IsTrue();
+        await Assert.That(probe.ZipDirectory).IsNotNull();
+
+        ModelReadOptions options = new()
+        {
+            FileName = "tiny_sequential.keras",
+            CachedZipDirectory = probe.ZipDirectory
+        };
+
+        ModelGraph graph = await ModelFormatRegistry.Default.ReadAsync(stream, options);
+        await Assert.That(graph.Format.Id).IsEqualTo(ModelFormatId.Keras);
+        await Assert.That(graph.PrimarySubgraph).IsNotNull();
+        await Assert.That(graph.PrimarySubgraph!.Nodes.Count > 0).IsTrue();
     }
 
     private sealed class FakeMagicFormat : IModelFormatDetector, IModelFormatReader

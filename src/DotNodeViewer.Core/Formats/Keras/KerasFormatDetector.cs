@@ -32,21 +32,17 @@ internal sealed class KerasFormatDetector : IModelFormatDetector
         // Case A: Modern Keras 3 (.keras) ZIP archive
         if (probe.IsZipArchive)
         {
-            var zipEntries = probe.ZipEntries;
-            if (zipEntries.Count > 0)
+            // Must contain config.json
+            bool hasConfig = probe.HasZipEntry("config.json") ||
+                             probe.HasZipEntryEndingWith("/config.json");
+
+            // Must contain metadata.json or model.weights.h5 or have .keras extension
+            bool hasKerasMarker = probe.HasZipEntry("metadata.json") ||
+                                  probe.HasZipEntryEndingWith("model.weights.h5");
+
+            if (hasConfig && (hasKerasMarker || (probe.FileName != null && probe.FileName.EndsWith(".keras", StringComparison.OrdinalIgnoreCase))))
             {
-                // Must contain config.json
-                bool hasConfig = zipEntries.Any(e => string.Equals(e, "config.json", StringComparison.OrdinalIgnoreCase) ||
-                                                     e.EndsWith("/config.json", StringComparison.OrdinalIgnoreCase));
-
-                // Must contain metadata.json or model.weights.h5 or have .keras extension
-                bool hasKerasMarker = zipEntries.Any(e => string.Equals(e, "metadata.json", StringComparison.OrdinalIgnoreCase) ||
-                                                          e.EndsWith("model.weights.h5", StringComparison.OrdinalIgnoreCase));
-
-                if (hasConfig && (hasKerasMarker || (probe.FileName != null && probe.FileName.EndsWith(".keras", StringComparison.OrdinalIgnoreCase))))
-                {
-                    return true;
-                }
+                return true;
             }
         }
 
