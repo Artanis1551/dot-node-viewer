@@ -1,9 +1,11 @@
+using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Platform.Storage;
 using DotNodeViewer.App.IO;
+using DotNodeViewer.App.Platform.Linux;
 using DotNodeViewer.App.ViewModels;
 using DotNodeViewer.App.Views;
 
@@ -32,6 +34,18 @@ public sealed class App : Application
             };
 
             desktop.MainWindow = window;
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                window.Opened += (_, _) =>
+                {
+                    IDisposable? bridge = LinuxXdndDropBridge.TryAttach(window, viewModel);
+                    if (bridge is not null)
+                    {
+                        window.Closed += (_, _) => bridge.Dispose();
+                    }
+                };
+            }
 
             if (desktop.Args is { Length: > 0 } args)
             {

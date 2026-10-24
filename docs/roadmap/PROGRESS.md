@@ -758,8 +758,13 @@ Every stage agent MUST read this file before starting work and append a completi
     - Added fallback in `ProcessDropAsync` to extract file paths from `e.Data.GetFileNames()` (Linux X11 XDND `text/uri-list`) and load the model cleanly.
     - Implemented `Escape` key dismissal.
     - Refactored `MainWindow.axaml.cs` to delegate unhandled drag-and-drop events to `RootMainView`.
+  - **Native Linux X11 XDND Protocol Bridge (`src/DotNodeViewer.App/Platform/Linux/LinuxXdndDropBridge.cs`):**
+    - Implemented native X11 XDND (v5) protocol bridge resolving upstream Avalonia 11 limitation ([Avalonia Issue #6085](https://github.com/AvaloniaUI/Avalonia/issues/6085)) where Linux X11 desktop file managers (Nemo, Nautilus, Dolphin) omit drag events because `Avalonia.X11` does not export `XdndAware`.
+    - Leverages the Freedesktop XDND proxy protocol (`XdndProxy`), delegating X11 client messages (`XdndEnter`, `XdndPosition`, `XdndStatus`, `XdndLeave`, `XdndDrop`, `XdndFinished`) to an isolated proxy window on a background event loop without interfering with Avalonia's X11 event dispatcher.
+    - Translates `text/uri-list` selection properties into local file paths and dispatches them to `MainWindowViewModel.HandleDroppedFilesAsync`.
+    - Added `MainWindowViewModel.FindPrimaryModelPath` and `HandleDroppedFilesAsync(IReadOnlyList<string>?)` string-based drop dispatchers.
   - **Unit and Headless Integration Tests (`tests/DotNodeViewer.App.Tests/DragAndDropModelLoadingTests.cs`):**
-    - 16 comprehensive tests covering valid extensions, unsupported extensions, masked platform payloads (X11 XDND/WASM), `FileNames` fallback, sidecar prioritization, directory scanning, drag-enter/over/leave depth tracking, drop execution, `MainWindow` event delegation, and `Escape` key dismissal.
+    - 21 comprehensive tests covering valid extensions, unsupported extensions, masked platform payloads (X11 XDND/WASM), `FileNames` fallback, sidecar prioritization, directory scanning, drag-enter/over/leave depth tracking, drop execution, `MainWindow` event delegation, `Escape` key dismissal, `LinuxXdndDropBridge.ParseUriList` parsing, and headless/non-X11 safety.
   - **Automated Live UI Verification & Screenshots (`docs/screenshots/W06/`):**
     - Captured 4 verified high-resolution screenshots with `tools/capture_w06_screenshots.py`:
       - [Empty State with All 5 Supported Formats](../screenshots/W06/01-empty-state-supported-formats.png)
@@ -773,8 +778,9 @@ Every stage agent MUST read this file before starting work and append a completi
   - Updated [`docs/wishes/W06-drag-and-drop-model-loading.md`](../wishes/W06-drag-and-drop-model-loading.md) (status: Completed) and [`docs/wishes/README.md`](../wishes/README.md).
   - Verified `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors` passes with 0 warnings.
 - **New ADRs Recorded:** None.
-- **Deviations & Known Limitations:** None.
-- **Test Count:** 195 passed (`DotNodeViewer.Core.Tests`: 116, `DotNodeViewer.Layout.Tests`: 13, `DotNodeViewer.App.Tests`: 66), 0 failed, 0 skipped.
+- **Deviations & Known Limitations:**
+  - On Linux X11 under Avalonia 11 (pinned to `11.3.12`), desktop file managers require an XDND proxy bridge (`LinuxXdndDropBridge`) because native XDND drop target support was only introduced upstream in Avalonia 12.1. The bridge automatically attaches on Linux desktop without impacting Windows, macOS, or WebAssembly heads.
+- **Test Count:** 200 passed (`DotNodeViewer.Core.Tests`: 116, `DotNodeViewer.Layout.Tests`: 13, `DotNodeViewer.App.Tests`: 71), 0 failed, 0 skipped.
 - **Screenshots Taken:**
   - [Empty State with All 5 Supported Formats](../screenshots/W06/01-empty-state-supported-formats.png)
   - [Valid Model Drag Overlay](../screenshots/W06/02-visual-drop-overlay-valid.png)

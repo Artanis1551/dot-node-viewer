@@ -446,6 +446,61 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     /// <summary>
+    /// Identifies the primary neural network model file from a collection of dropped file paths,
+    /// filtering out companion data sidecars (such as <c>.onnx.data</c>).
+    /// </summary>
+    /// <param name="paths">The dropped file paths.</param>
+    /// <returns>The primary model path, or <see langword="null"/> if none found.</returns>
+    public static string? FindPrimaryModelPath(IReadOnlyList<string>? paths)
+    {
+        if (paths is null || paths.Count == 0)
+        {
+            return null;
+        }
+
+        // First pass: prioritized primary model file formats (.onnx before companion .onnx.data)
+        foreach (string path in paths)
+        {
+            if (path.EndsWith(".onnx.data", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            string ext = Path.GetExtension(path);
+            if (string.Equals(ext, ".onnx", StringComparison.OrdinalIgnoreCase))
+            {
+                return path;
+            }
+        }
+
+        // Other supported primary extensions
+        foreach (string path in paths)
+        {
+            if (path.EndsWith(".onnx.data", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            string ext = Path.GetExtension(path);
+            if (IsSupportedModelExtension(ext))
+            {
+                return path;
+            }
+        }
+
+        // Folder item if no model file directly matched
+        foreach (string path in paths)
+        {
+            if (Directory.Exists(path))
+            {
+                return path;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Processes dropped storage items, resolving primary model files, directories, or WebAssembly streams.
     /// </summary>
     /// <param name="items">The collection of dropped storage items.</param>
@@ -535,6 +590,49 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 streamFactory: BrowserStreamAdapter.CreateStreamFactory(buffer),
                 cancellationToken: cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    /// <summary>
+    /// Processes dropped file system paths from desktop platform drop bridges or legacy drag payloads.
+    /// </summary>
+    /// <param name="filePaths">The collection of dropped file system paths.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    public async Task HandleDroppedFilesAsync(IReadOnlyList<string>? filePaths, CancellationToken cancellationToken = default)
+    {
+        if (filePaths is null || filePaths.Count == 0)
+        {
+            return;
+        }
+
+        string? primary = FindPrimaryModelPath(filePaths);
+        if (primary is null)
+        {
+            HasError = true;
+            ErrorMessage = "Unsupported file format. Supported: .onnx, .tflite, .pte, .pt, .pt2, .keras, .h5";
+            StatusText = ErrorMessage;
+            return;
+        }
+
+        // Handle directory drop
+        if (Directory.Exists(primary))
+        {
+            string? candidate = Directory.EnumerateFiles(primary, "*.*", SearchOption.AllDirectories)
+                .FirstOrDefault(f => IsSupportedModelExtension(Path.GetExtension(f)));
+
+            if (!string.IsNullOrWhiteSpace(candidate))
+            {
+                await LoadModelAsync(candidate, cancellationToken).ConfigureAwait(false);
+                return;
+            }
+
+            HasError = true;
+            ErrorMessage = $"No supported neural network model found in folder '{Path.GetFileName(primary)}'.";
+            StatusText = ErrorMessage;
+            return;
+        }
+
+        await LoadModelAsync(primary, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

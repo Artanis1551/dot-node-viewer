@@ -186,7 +186,8 @@ public sealed class DragAndDropModelLoadingTests
     {
         MainWindowViewModel vm = new();
 
-        await vm.HandleDroppedFilesAsync([]);
+        await vm.HandleDroppedFilesAsync((IReadOnlyList<IStorageItem>)[]);
+        await vm.HandleDroppedFilesAsync((IReadOnlyList<string>)[]);
 
         await Assert.That(vm.HasModel).IsFalse();
         await Assert.That(vm.HasError).IsFalse();
@@ -413,6 +414,84 @@ public sealed class DragAndDropModelLoadingTests
 
             view.RaiseEvent(escapeArgs);
             await Assert.That(vm.IsDropTargetActive).IsFalse();
+        });
+    }
+
+    [Test]
+    public async Task LinuxXdndDropBridge_ParseUriList_ExtractsCleanLocalPaths()
+    {
+        string rawUriList = """
+            # XDND uri-list payload from desktop file manager
+            file:///home/user/models/mobilenet.onnx
+            file:///home/user/models/mobilenet.onnx.data
+            file:///home/user/My%20Models/resnet%20v2.onnx
+            /var/models/direct_path.tflite
+            """;
+
+        string[] paths = DotNodeViewer.App.Platform.Linux.LinuxXdndDropBridge.ParseUriList(rawUriList);
+
+        await Assert.That(paths.Length).IsEqualTo(4);
+        await Assert.That(paths[0]).IsEqualTo("/home/user/models/mobilenet.onnx");
+        await Assert.That(paths[1]).IsEqualTo("/home/user/models/mobilenet.onnx.data");
+        await Assert.That(paths[2]).IsEqualTo("/home/user/My Models/resnet v2.onnx");
+        await Assert.That(paths[3]).IsEqualTo("/var/models/direct_path.tflite");
+
+        // Edge case tests
+        await Assert.That(DotNodeViewer.App.Platform.Linux.LinuxXdndDropBridge.ParseUriList("").Length).IsEqualTo(0);
+        await Assert.That(DotNodeViewer.App.Platform.Linux.LinuxXdndDropBridge.ParseUriList("   ").Length).IsEqualTo(0);
+        await Assert.That(DotNodeViewer.App.Platform.Linux.LinuxXdndDropBridge.ParseUriList("# Just a comment\n# Another").Length).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task FindPrimaryModelPath_PrioritizesModelOverSidecar()
+    {
+        string[] paths =
+        [
+            "/path/to/weights.onnx.data",
+            "/path/to/weights.onnx",
+            "/path/to/readme.txt"
+        ];
+
+        string? primary = MainWindowViewModel.FindPrimaryModelPath(paths);
+        await Assert.That(primary).IsEqualTo("/path/to/weights.onnx");
+    }
+
+    [Test]
+    public async Task HandleDroppedFilesAsync_StringPaths_LoadsModelSuccessfully()
+    {
+        MainWindowViewModel vm = new();
+        string modelPath = ResolveFixturePath("onnx/tiny_mlp.onnx");
+
+        await vm.HandleDroppedFilesAsync([modelPath]);
+
+        await Assert.That(vm.HasModel).IsTrue();
+        await Assert.That(vm.ModelName).IsEqualTo("tiny_mlp.onnx");
+        await Assert.That(vm.HasError).IsFalse();
+    }
+
+    [Test]
+    public async Task HandleDroppedFilesAsync_StringPaths_RejectsUnsupportedExtension()
+    {
+        MainWindowViewModel vm = new();
+
+        await vm.HandleDroppedFilesAsync(["/tmp/notes.txt", "/tmp/photo.jpg"]);
+
+        await Assert.That(vm.HasModel).IsFalse();
+        await Assert.That(vm.HasError).IsTrue();
+        await Assert.That(vm.ErrorMessage).Contains("Unsupported file format");
+    }
+
+    [Test]
+    public async Task LinuxXdndDropBridge_TryAttach_NullWindowOrNonX11_ReturnsNull()
+    {
+        await HeadlessAppSession.DispatchAsync(async () =>
+        {
+            MainWindowViewModel vm = new();
+            Window window = new();
+
+            // In headless test environment, window platform handle is headless (not X11 XID), so TryAttach safely returns null.
+            IDisposable? bridge = DotNodeViewer.App.Platform.Linux.LinuxXdndDropBridge.TryAttach(window, vm);
+            await Assert.That(bridge).IsNull();
         });
     }
 
