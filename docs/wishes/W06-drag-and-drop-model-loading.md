@@ -1,8 +1,8 @@
 # Wish W06 — Cross-Platform Drag-and-Drop Model Loading & Visual Drop Target UX
 
-**Status:** Proposed  
+**Status:** Completed  
+**Branch:** `stage/W06-drag-and-drop-model-loading`  
 **Depends on:** Stage **S05** (Shell & Window), Stage **S06** (GraphCanvas), Stage **S11** (UI Polish & Inspector), Stage **S12** (WebAssembly Head)  
-**Suggested branch when promoted:** `feature/drag-and-drop-model-loading`  
 
 ## Goal
 

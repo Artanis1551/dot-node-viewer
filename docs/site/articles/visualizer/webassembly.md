@@ -67,7 +67,13 @@ Serve the generated static bundle with any local HTTP server (such as Python's b
 python3 -m http.server 8080 --directory src/DotNodeViewer.Browser/bin/Release/net10.0/browser-wasm/AppBundle
 ```
 
-Navigate to `http://localhost:8080` in your web browser (Chrome, Firefox, Safari, Edge). Use the **Open Model** button (`Ctrl+O` / `Cmd+O`) or drag-and-drop to open any supported neural network model (`.onnx`, `.tflite`, `.pte`, `.pt2`, `.keras`, `.h5`).
+Navigate to `http://localhost:8080` in your web browser (Chrome, Firefox, Safari, Edge). Use the **Open Model** button (`Ctrl+O` / `Cmd+O`) or drag-and-drop to open any supported neural network model (`.onnx`, `.tflite`, `.pte`, `.pt`, `.pt2`, `.keras`, `.h5`).
+
+### Drag-and-Drop in WebAssembly
+
+Drag-and-drop in the browser head is routed natively through Avalonia's HTML5 drag events onto `MainView`:
+- **Visual Feedback:** Dropping a file triggers the same responsive dashed-border drop overlay as the desktop shell.
+- **Client-Side File Streaming:** Dropped browser files have no local filesystem path (`TryGetLocalPath()` returns `null`). `MainView` reads the file via `IStorageFile.OpenReadAsync()` and feeds chunks into `BrowserStreamAdapter.CreateSeekableStreamFactoryAsync`, parsing the model completely in-memory inside the browser tab without server uploads.
 
 ---
 

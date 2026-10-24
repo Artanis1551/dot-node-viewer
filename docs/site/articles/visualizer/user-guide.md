@@ -37,6 +37,22 @@ dotnet run --project src/DotNodeViewer.Desktop -c Release -- tests/DotNodeViewer
 
 The application immediately streams the model on a background thread, extracts the Unified Graph IR, runs the layered layout engine, and presents the interactive graph topology.
 
+### 1.3 Drag-and-Drop Model Loading
+
+You can drag and drop any supported model directly onto the application window or browser canvas at any time—both when in the initial empty welcome state and when an existing model is open on the canvas:
+
+- **Visual Drop Overlay:** Dragging a file over the window triggers a high-contrast visual drop target overlay featuring a semi-transparent scrim, a dashed neon accent border, a glowing drop symbol, and active format badge pills.
+- **Pre-Drop Format Validation:** As you hover over the window, candidate file extensions are validated. Supported formats (`.onnx`, `.tflite`, `.pte`, `.pt`, `.pt2`, `.keras`, `.h5`) activate the drop target with a `Copy` (+) cursor. Dropping unrecognized file types displays an amber/red warning banner (`Unsupported format`) and sets the cursor effect to `None` (🚫).
+- **Multi-File & Sidecar Handling:** When dragging multiple files together (e.g. an ONNX model split into `model.onnx` and companion `model.onnx.data` external weight shards), the visualizer automatically identifies the `.onnx` entry point while ensuring companion weights are resolved relative to the graph definition.
+- **Directory Drops:** Dropping a directory recursively scans for the first primary neural network model file.
+- **Dismissal:** Press `Escape` or drag the pointer outside the window to immediately dismiss the drop overlay without altering the current session state.
+
+![Valid Drop Target Overlay](../../images/w06/02-visual-drop-overlay-valid.png)
+*Figure 1: Responsive visual drop overlay with dashed accent border, format validation feedback, and format badges.*
+
+![Unsupported Format Feedback](../../images/w06/03-visual-drop-overlay-invalid.png)
+*Figure 2: Real-time validation warning displayed when dragging an unsupported file format.*
+
 ---
 
 ## 2. Navigating the Interactive Graph Canvas

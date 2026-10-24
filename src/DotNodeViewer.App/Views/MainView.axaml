@@ -78,9 +78,43 @@
       <Setter Property="Background" Value="{DynamicResource ShellCardHoverBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource ShellAccentPrimaryBrush}" />
     </Style>
+
+    <!-- Drag-and-drop overlay and format pill styling -->
+    <Style Selector="Rectangle.drop-dashed-border">
+      <Setter Property="Stroke" Value="{DynamicResource ShellAccentPrimaryBrush}" />
+    </Style>
+    <Style Selector="Rectangle.drop-dashed-border.invalid">
+      <Setter Property="Stroke" Value="{DynamicResource ShellDangerBrush}" />
+    </Style>
+
+    <Style Selector="Border.drop-icon-circle">
+      <Setter Property="Background" Value="{DynamicResource ShellAccentSubtleBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ShellAccentPrimaryBrush}" />
+      <Setter Property="BorderThickness" Value="1.5" />
+    </Style>
+    <Style Selector="Border.drop-icon-circle.invalid">
+      <Setter Property="Background" Value="{DynamicResource ShellDangerSubtleBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ShellDangerBrush}" />
+    </Style>
+
+    <Style Selector="Border.format-pill">
+      <Setter Property="Background" Value="{DynamicResource ShellSurfaceElevatedBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ShellBorderMutedBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{DynamicResource RadiusPill}" />
+      <Setter Property="Padding" Value="10,3" />
+      <Setter Property="Margin" Value="4,2" />
+    </Style>
+    <Style Selector="Border.format-pill TextBlock">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="Foreground" Value="{DynamicResource ShellTextPrimaryBrush}" />
+    </Style>
   </UserControl.Styles>
 
-  <Grid RowDefinitions="Auto,*,Auto">
+  <Grid RowDefinitions="Auto,*,Auto"
+        Background="Transparent"
+        DragDrop.AllowDrop="True">
 
     <!-- Top Toolbar / Header Strip -->
     <Border Grid.Row="0"
@@ -211,7 +245,9 @@
     </Border>
 
     <!-- Main Viewport Area -->
-    <Grid Grid.Row="1">
+    <Grid Grid.Row="1"
+          Background="Transparent"
+          DragDrop.AllowDrop="True">
 
       <!-- 1. EMPTY STATE -->
       <Border IsVisible="{Binding !HasModel}"
@@ -247,10 +283,13 @@
                        FontWeight="SemiBold"
                        Foreground="{DynamicResource ShellTextPrimaryBrush}"
                        HorizontalAlignment="Center" />
-            <TextBlock Text="Drop an ONNX or TensorFlow Lite model file here to inspect its architecture."
+            <TextBlock Text="Drop an ONNX, TensorFlow Lite, ExecuTorch, PyTorch, or Keras model file here to inspect its architecture."
                        FontSize="13"
                        Foreground="{DynamicResource ShellTextSecondaryBrush}"
-                       HorizontalAlignment="Center" />
+                       HorizontalAlignment="Center"
+                       TextWrapping="Wrap"
+                       TextAlignment="Center"
+                       MaxWidth="480" />
           </StackPanel>
 
           <!-- Primary Open Action -->
@@ -300,34 +339,30 @@
           </Border>
 
           <!-- Supported Formats Badge Strip -->
-          <StackPanel Orientation="Horizontal"
-                      Spacing="8"
+          <StackPanel Spacing="6"
                       HorizontalAlignment="Center"
                       Margin="0,8,0,0">
             <TextBlock Text="Supported Formats:"
                        FontSize="11"
                        Foreground="{DynamicResource ShellTextSecondaryBrush}"
-                       VerticalAlignment="Center" />
-            <Border Background="{DynamicResource ShellSurfaceElevatedBrush}"
-                    BorderBrush="{DynamicResource ShellBorderMutedBrush}"
-                    BorderThickness="1"
-                    CornerRadius="{DynamicResource RadiusPill}"
-                    Padding="10,3">
-              <TextBlock Text="ONNX (.onnx)"
-                         FontSize="11"
-                         FontWeight="Medium"
-                         Foreground="{DynamicResource ShellTextPrimaryBrush}" />
-            </Border>
-            <Border Background="{DynamicResource ShellSurfaceElevatedBrush}"
-                    BorderBrush="{DynamicResource ShellBorderMutedBrush}"
-                    BorderThickness="1"
-                    CornerRadius="{DynamicResource RadiusPill}"
-                    Padding="10,3">
-              <TextBlock Text="TensorFlow Lite (.tflite)"
-                         FontSize="11"
-                         FontWeight="Medium"
-                         Foreground="{DynamicResource ShellTextPrimaryBrush}" />
-            </Border>
+                       HorizontalAlignment="Center" />
+            <WrapPanel Orientation="Horizontal" HorizontalAlignment="Center">
+              <Border Classes="format-pill">
+                <TextBlock Text="ONNX (.onnx)" />
+              </Border>
+              <Border Classes="format-pill">
+                <TextBlock Text="TensorFlow Lite (.tflite)" />
+              </Border>
+              <Border Classes="format-pill">
+                <TextBlock Text="ExecuTorch (.pte)" />
+              </Border>
+              <Border Classes="format-pill">
+                <TextBlock Text="PyTorch (.pt, .pt2)" />
+              </Border>
+              <Border Classes="format-pill">
+                <TextBlock Text="Keras (.keras, .h5)" />
+              </Border>
+            </WrapPanel>
           </StackPanel>
 
         </StackPanel>
@@ -544,6 +579,114 @@
                        HorizontalAlignment="Center" />
           </StackPanel>
         </Border>
+      </Border>
+
+      <!-- 5. DRAG AND DROP VISUAL OVERLAY -->
+      <Border IsVisible="{Binding IsDropTargetActive}"
+              IsHitTestVisible="False"
+              HorizontalAlignment="Stretch"
+              VerticalAlignment="Stretch"
+              Background="{DynamicResource ShellDropScrimBrush}"
+              ZIndex="100"
+              AutomationProperties.Name="Drop Target Overlay"
+              AutomationProperties.AutomationId="DropTargetOverlay">
+        <Border.Transitions>
+          <Transitions>
+            <DoubleTransition Property="Opacity" Duration="0:0:0.15" />
+          </Transitions>
+        </Border.Transitions>
+
+        <Grid HorizontalAlignment="Center"
+              VerticalAlignment="Center"
+              MaxWidth="560"
+              Margin="24">
+
+          <!-- Dashed Border Box -->
+          <Rectangle Classes="drop-dashed-border"
+                     Classes.invalid="{Binding !IsDropTargetValid}"
+                     StrokeThickness="2"
+                     StrokeDashArray="4,4"
+                     RadiusX="16" RadiusY="16"
+                     Fill="{DynamicResource ShellSurfaceBaseBrush}" />
+
+          <StackPanel Margin="36,28" Spacing="16" HorizontalAlignment="Center">
+
+            <!-- Prominent Icon Circle -->
+            <Border Width="64" Height="64"
+                    CornerRadius="32"
+                    Classes="drop-icon-circle"
+                    Classes.invalid="{Binding !IsDropTargetValid}"
+                    HorizontalAlignment="Center">
+              <Panel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <!-- Valid: Down arrow import -->
+                <Path IsVisible="{Binding IsDropTargetValid}"
+                      Data="M 12 4 L 12 16 M 7 11 L 12 16 L 17 11 M 4 20 L 20 20"
+                      Stroke="{DynamicResource ShellAccentPrimaryBrush}"
+                      StrokeThickness="2.5"
+                      StrokeLineCap="Round"
+                      StrokeJoin="Round"
+                      Width="24" Height="24" />
+
+                <!-- Invalid: Warning / blocked cross -->
+                <Path IsVisible="{Binding !IsDropTargetValid}"
+                      Data="M 6 6 L 18 18 M 18 6 L 6 18"
+                      Stroke="{DynamicResource ShellDangerBrush}"
+                      StrokeThickness="2.5"
+                      StrokeLineCap="Round"
+                      StrokeJoin="Round"
+                      Width="24" Height="24" />
+              </Panel>
+            </Border>
+
+            <!-- Headline & Subtitle -->
+            <StackPanel Spacing="6" HorizontalAlignment="Center">
+              <TextBlock Text="{Binding DropTargetHeadline}"
+                         FontSize="18"
+                         FontWeight="SemiBold"
+                         HorizontalAlignment="Center"
+                         Foreground="{DynamicResource ShellTextPrimaryBrush}" />
+              <TextBlock Text="{Binding DropTargetFeedbackMessage}"
+                         FontSize="12.5"
+                         HorizontalAlignment="Center"
+                         Foreground="{DynamicResource ShellTextSecondaryBrush}"
+                         TextWrapping="Wrap"
+                         TextAlignment="Center"
+                         MaxWidth="420" />
+            </StackPanel>
+
+            <!-- Format Badge Strip -->
+            <Border BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                    BorderThickness="0,1,0,0"
+                    Padding="0,14,0,0"
+                    Margin="0,4,0,0">
+              <StackPanel Spacing="8" HorizontalAlignment="Center">
+                <TextBlock Text="Supported Model Formats"
+                           FontSize="11"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource ShellTextSecondaryBrush}"
+                           HorizontalAlignment="Center" />
+                <WrapPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                  <Border Classes="format-pill">
+                    <TextBlock Text="ONNX (.onnx)" />
+                  </Border>
+                  <Border Classes="format-pill">
+                    <TextBlock Text="TensorFlow Lite (.tflite)" />
+                  </Border>
+                  <Border Classes="format-pill">
+                    <TextBlock Text="ExecuTorch (.pte)" />
+                  </Border>
+                  <Border Classes="format-pill">
+                    <TextBlock Text="PyTorch (.pt, .pt2)" />
+                  </Border>
+                  <Border Classes="format-pill">
+                    <TextBlock Text="Keras (.keras, .h5)" />
+                  </Border>
+                </WrapPanel>
+              </StackPanel>
+            </Border>
+
+          </StackPanel>
+        </Grid>
       </Border>
 
     </Grid>

@@ -729,3 +729,66 @@ Every stage agent MUST read this file before starting work and append a completi
   - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
   - `DISPLAY=:0 XAUTHORITY=/home/artanis/.Xauthority python3 tools/desktop_harness.py capture docs/screenshots/W01/...`
 
+---
+
+### Wish W06 — Cross-Platform Drag-and-Drop Model Loading & Visual Drop Target UX
+- **Branch:** `stage/W06-drag-and-drop-model-loading`
+- **Commits:**
+  - `W06: implement cross-platform drag-and-drop model loading and visual drop overlay`
+  - `W06: add headless tests and live verification screenshots`
+  - `W06: update documentation and PROGRESS.md`
+  - `W06: fix Linux X11 XDND masked file drag and event bubbling`
+- **What Was Built:**
+  - **`MainWindowViewModel` (`src/DotNodeViewer.App/ViewModels/MainWindowViewModel.cs`):**
+    - Added reactive drop state properties: `IsDropTargetActive`, `IsDropTargetValid`, `DropTargetFeedbackMessage`, `DropTargetHeadline`.
+    - Added format validation and filtering: `SupportedModelExtensions` (`.onnx`, `.tflite`, `.pte`, `.pt`, `.pt2`, `.keras`, `.h5`), `CanAcceptFiles`, `IsSupportedModelExtension`.
+    - Added multi-file sidecar resolution: `FindPrimaryModelItem` (prioritizes `.onnx` graph definition over companion `.onnx.data` external weights, and searches inside dropped directories).
+    - Added unified drop dispatcher: `HandleDroppedFilesAsync` (supporting local file path loading on desktop, or seekable stream conversion via `BrowserStreamAdapter.CreateSeekableStreamFactoryAsync` on WebAssembly).
+  - **Visual Drop Target Overlay & Empty-State Typography (`src/DotNodeViewer.App/Views/MainView.axaml`):**
+    - Added `ShellDropScrimBrush` token (`#CC12151B` dark, `#E6F8FAFC` light).
+    - Designed interactive `Border` drop target overlay (`AutomationId="DropTargetOverlay"`, `ZIndex="100"`, `IsHitTestVisible="False"`) with smooth opacity transitions.
+    - Styled `Rectangle.drop-dashed-border` with animated dashed neon/accent stroke (`#38BDF8` when valid, `#EF4444` when invalid).
+    - Added drop/warning circular icon (`Border.drop-icon-circle`), dynamic headline ("Drop Model to Visualize" vs "Unsupported Model Format"), subtitle feedback, divider, and format badges for all 5 supported formats (`.onnx`, `.tflite`, `.pte`, `.pt, .pt2`, `.keras, .h5`).
+    - Refreshed welcome screen empty-state copy to `"Drop an ONNX, TensorFlow Lite, ExecuTorch, PyTorch, or Keras model file here to inspect its architecture."` and updated format pills.
+    - Added `Background="Transparent"` and `DragDrop.AllowDrop="True"` on root and viewport grids to guarantee full-surface hit testing.
+  - **Cross-Platform View Routing (`src/DotNodeViewer.App/Views/MainView.axaml.cs` & `MainWindow.axaml.cs`):**
+    - Attached `DragEnter`, `DragOver`, `DragLeave`, `Drop`, and `KeyDown` handlers.
+    - Added `_dragDepth` tracking to eliminate flicker when hovering over nested controls.
+    - Added `EvaluateDragState` handling platforms (Linux X11 XDND and WebAssembly) where file metadata is masked during `DragEnter`/`DragOver`, allowing `DragDropEffects.Copy` so the desktop file manager doesn't cancel the drag operation.
+    - Added fallback in `ProcessDropAsync` to extract file paths from `e.Data.GetFileNames()` (Linux X11 XDND `text/uri-list`) and load the model cleanly.
+    - Implemented `Escape` key dismissal.
+    - Refactored `MainWindow.axaml.cs` to delegate unhandled drag-and-drop events to `RootMainView`.
+  - **Native Linux X11 XDND Protocol Bridge (`src/DotNodeViewer.App/Platform/Linux/LinuxXdndDropBridge.cs`):**
+    - Implemented native X11 XDND (v5) protocol bridge resolving upstream Avalonia 11 limitation ([Avalonia Issue #6085](https://github.com/AvaloniaUI/Avalonia/issues/6085)) where Linux X11 desktop file managers (Nemo, Nautilus, Dolphin) omit drag events because `Avalonia.X11` does not export `XdndAware`.
+    - Leverages the Freedesktop XDND proxy protocol (`XdndProxy`), delegating X11 client messages (`XdndEnter`, `XdndPosition`, `XdndStatus`, `XdndLeave`, `XdndDrop`, `XdndFinished`) to an isolated proxy window on a background event loop without interfering with Avalonia's X11 event dispatcher.
+    - Translates `text/uri-list` selection properties into local file paths and dispatches them to `MainWindowViewModel.HandleDroppedFilesAsync`.
+    - Added `MainWindowViewModel.FindPrimaryModelPath` and `HandleDroppedFilesAsync(IReadOnlyList<string>?)` string-based drop dispatchers.
+  - **Unit and Headless Integration Tests (`tests/DotNodeViewer.App.Tests/DragAndDropModelLoadingTests.cs`):**
+    - 21 comprehensive tests covering valid extensions, unsupported extensions, masked platform payloads (X11 XDND/WASM), `FileNames` fallback, sidecar prioritization, directory scanning, drag-enter/over/leave depth tracking, drop execution, `MainWindow` event delegation, `Escape` key dismissal, `LinuxXdndDropBridge.ParseUriList` parsing, and headless/non-X11 safety.
+  - **Automated Live UI Verification & Screenshots (`docs/screenshots/W06/`):**
+    - Captured 4 verified high-resolution screenshots with `tools/capture_w06_screenshots.py`:
+      - [Empty State with All 5 Supported Formats](../screenshots/W06/01-empty-state-supported-formats.png)
+      - [Valid Model Drag Overlay with Dashed Cyan Border and Badges](../screenshots/W06/02-visual-drop-overlay-valid.png)
+      - [Unsupported Format Warning Overlay with Red Border](../screenshots/W06/03-visual-drop-overlay-invalid.png)
+      - [Interactive Graph Canvas after Model Drop](../screenshots/W06/04-dropped-model-graph-canvas.png)
+- **`README.md` & `docs/site/` Updates:**
+  - Updated root [`README.md`](../../README.md) with drag-and-drop features and Figure 1 screenshot.
+  - Updated Diátaxis How-To [`docs/site/articles/visualizer/user-guide.md`](../site/articles/visualizer/user-guide.md) with Section 1.3 Drag-and-Drop Model Loading and screenshots.
+  - Updated [`docs/site/articles/visualizer/webassembly.md`](../site/articles/visualizer/webassembly.md) with WebAssembly Drag-and-Drop streaming details.
+  - Updated [`docs/wishes/W06-drag-and-drop-model-loading.md`](../wishes/W06-drag-and-drop-model-loading.md) (status: Completed) and [`docs/wishes/README.md`](../wishes/README.md).
+  - Verified `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors` passes with 0 warnings.
+- **New ADRs Recorded:** None.
+- **Deviations & Known Limitations:**
+  - On Linux X11 under Avalonia 11 (pinned to `11.3.12`), desktop file managers require an XDND proxy bridge (`LinuxXdndDropBridge`) because native XDND drop target support was only introduced upstream in Avalonia 12.1. The bridge automatically attaches on Linux desktop without impacting Windows, macOS, or WebAssembly heads.
+- **Test Count:** 200 passed (`DotNodeViewer.Core.Tests`: 116, `DotNodeViewer.Layout.Tests`: 13, `DotNodeViewer.App.Tests`: 71), 0 failed, 0 skipped.
+- **Screenshots Taken:**
+  - [Empty State with All 5 Supported Formats](../screenshots/W06/01-empty-state-supported-formats.png)
+  - [Valid Model Drag Overlay](../screenshots/W06/02-visual-drop-overlay-valid.png)
+  - [Unsupported Format Warning Overlay](../screenshots/W06/03-visual-drop-overlay-invalid.png)
+  - [Interactive Graph Canvas after Model Drop](../screenshots/W06/04-dropped-model-graph-canvas.png)
+- **Verification Commands Run:**
+  - `dotnet build dot-node-viewer.slnx -c Release`
+  - `dotnet test dot-node-viewer.slnx -c Release`
+  - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
+  - `python3 tools/capture_w06_screenshots.py`
+

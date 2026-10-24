@@ -1,9 +1,11 @@
+using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Platform.Storage;
 using DotNodeViewer.App.IO;
+using DotNodeViewer.App.Platform.Linux;
 using DotNodeViewer.App.ViewModels;
 using DotNodeViewer.App.Views;
 
@@ -33,13 +35,42 @@ public sealed class App : Application
 
             desktop.MainWindow = window;
 
-            if (desktop.Args is { Length: > 0 } args && !string.IsNullOrWhiteSpace(args[0]))
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
-                string initialPath = args[0];
-                window.Opened += async (_, _) =>
+                window.Opened += (_, _) =>
                 {
-                    await viewModel.LoadModelAsync(initialPath).ConfigureAwait(true);
+                    IDisposable? bridge = LinuxXdndDropBridge.TryAttach(window, viewModel);
+                    if (bridge is not null)
+                    {
+                        window.Closed += (_, _) => bridge.Dispose();
+                    }
                 };
+            }
+
+            if (desktop.Args is { Length: > 0 } args)
+            {
+                if (args.Contains("--test-drop-overlay=valid"))
+                {
+                    window.Opened += (_, _) =>
+                    {
+                        viewModel.SetDropTargetState(isActive: true, isValid: true);
+                    };
+                }
+                else if (args.Contains("--test-drop-overlay=invalid"))
+                {
+                    window.Opened += (_, _) =>
+                    {
+                        viewModel.SetDropTargetState(isActive: true, isValid: false);
+                    };
+                }
+                else if (!string.IsNullOrWhiteSpace(args[0]) && !args[0].StartsWith('-'))
+                {
+                    string initialPath = args[0];
+                    window.Opened += async (_, _) =>
+                    {
+                        await viewModel.LoadModelAsync(initialPath).ConfigureAwait(true);
+                    };
+                }
             }
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleView)

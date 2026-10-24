@@ -20,6 +20,6 @@
     <KeyBinding Gesture="Cmd+O" Command="{Binding OpenModelCommand}" />
   </Window.KeyBindings>
 
-  <views:MainView />
+  <views:MainView x:Name="RootMainView" DragDrop.AllowDrop="True" />
 
 </Window>
