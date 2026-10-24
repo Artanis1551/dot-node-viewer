@@ -462,8 +462,13 @@ public sealed class DragAndDropModelLoadingTests
         MainWindowViewModel vm = new();
         string modelPath = ResolveFixturePath("onnx/tiny_mlp.onnx");
 
+        // Simulate active drop target state before drop
+        vm.SetDropTargetState(isActive: true, isValid: true);
+
         await vm.HandleDroppedFilesAsync([modelPath]);
 
+        await Assert.That(vm.IsDropTargetActive).IsFalse();
+        await Assert.That(vm.IsDropTargetValid).IsTrue();
         await Assert.That(vm.HasModel).IsTrue();
         await Assert.That(vm.ModelName).IsEqualTo("tiny_mlp.onnx");
         await Assert.That(vm.HasError).IsFalse();
@@ -479,6 +484,10 @@ public sealed class DragAndDropModelLoadingTests
         await Assert.That(vm.HasModel).IsFalse();
         await Assert.That(vm.HasError).IsTrue();
         await Assert.That(vm.ErrorMessage).Contains("Unsupported file format");
+        await Assert.That(vm.IsDropTargetActive).IsTrue();
+        await Assert.That(vm.IsDropTargetValid).IsFalse();
+        await Assert.That(vm.DropTargetHeadline).IsEqualTo("Unsupported Model Format");
+        await Assert.That(vm.DropTargetFeedbackMessage).Contains("Unsupported file format");
     }
 
     [Test]

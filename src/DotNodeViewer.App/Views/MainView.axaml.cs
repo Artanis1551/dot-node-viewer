@@ -240,8 +240,6 @@ public partial class MainView : UserControl
             return;
         }
 
-        vm.SetDropTargetState(isActive: false);
-
         // 1. Try modern storage items from DataTransfer (WASM, macOS, Windows)
         IStorageItem[]? files = null;
         try
@@ -302,9 +300,9 @@ public partial class MainView : UserControl
                             }
                         }
 
-                        // Direct fallback to LoadModelAsync with primary recognized model file
-                        string? primary = pathArr.FirstOrDefault(p => MainWindowViewModel.IsSupportedModelExtension(p)) ?? pathArr[0];
-                        await vm.LoadModelAsync(primary).ConfigureAwait(false);
+                        // Direct fallback to HandleDroppedFilesAsync with file paths
+                        await vm.HandleDroppedFilesAsync(pathArr).ConfigureAwait(false);
+                        return;
                     }
                 }
             }
@@ -313,7 +311,10 @@ public partial class MainView : UserControl
         catch (Exception ex)
         {
             vm.SetDropTargetState(isActive: true, isValid: false, feedbackMessage: ex.Message);
+            return;
         }
+
+        vm.SetDropTargetState(isActive: false, isValid: true);
     }
 
     /// <inheritdoc />

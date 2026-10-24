@@ -42,7 +42,13 @@ public sealed class LinuxXdndDropBridge : IDisposable
     private IntPtr _textUriListAtom;
     private IntPtr _stopBridgeAtom;
 
+    private IntPtr _currentSource;
     private IntPtr _dropSource;
+    private string[]? _cachedFiles;
+    private bool _hasRequestedHoverFiles;
+    private bool _isDropPending;
+    private IntPtr _pendingDropSource;
+    private IntPtr _lastPositionSource;
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate int XErrorHandler(IntPtr display, ref XErrorEvent errorEvent);
@@ -200,77 +206,131 @@ public sealed class LinuxXdndDropBridge : IDisposable
 
         if (messageType == _xdndEnterAtom)
         {
+            _currentSource = client.data0;
+            _cachedFiles = null;
+            _hasRequestedHoverFiles = false;
+            _isDropPending = false;
+            _pendingDropSource = IntPtr.Zero;
+            _lastPositionSource = IntPtr.Zero;
+
             Dispatcher.UIThread.Post(() => _viewModel.SetDropTargetState(isActive: true, isValid: true));
         }
         else if (messageType == _xdndPositionAtom)
         {
             IntPtr sourceWindow = client.data0;
+            _currentSource = sourceWindow;
+            _lastPositionSource = sourceWindow;
+            IntPtr timestamp = client.data3; // Timestamp is at data.l[3] for XdndPosition
 
-            // Reply with XdndStatus accepting the drop
-            XEvent reply = default;
-            reply.type = ClientMessageEventType;
-            reply.client.type = ClientMessageEventType;
-            reply.client.window = sourceWindow;
-            reply.client.message_type = _xdndStatusAtom;
-            reply.client.format = 32;
-            reply.client.data0 = _targetWindow; // Target window where the cursor is hovering
-            reply.client.data1 = (IntPtr)1;     // Bit 0 = 1 (accept drop), Bit 1 = 0 (want more position events)
-            reply.client.data2 = IntPtr.Zero;   // Silent rectangle
-            reply.client.data3 = IntPtr.Zero;
-            reply.client.data4 = _xdndActionCopyAtom;
+            if (_cachedFiles is not null)
+            {
+                bool isValid = _cachedFiles.Length > 0 && MainWindowViewModel.CanAcceptFiles(_cachedFiles);
 
-            XSendEvent(_display, sourceWindow, false, 0, ref reply);
-            XFlush(_display);
+                SendXdndStatus(sourceWindow, isValid);
 
-            Dispatcher.UIThread.Post(() => _viewModel.SetDropTargetState(isActive: true, isValid: true));
+                Dispatcher.UIThread.Post(() => _viewModel.SetDropTargetState(
+                    isActive: true,
+                    isValid: isValid,
+                    feedbackMessage: isValid ? null : "Unsupported format. Supported: .onnx, .tflite, .pte, .pt, .pt2, .keras, .h5"));
+            }
+            else
+            {
+                if (!_hasRequestedHoverFiles)
+                {
+                    _hasRequestedHoverFiles = true;
+                    // Request files for hover inspection so we can validate before drop
+                    XConvertSelection(
+                        _display,
+                        _xdndSelectionAtom,
+                        _textUriListAtom,
+                        _xdndSelectionAtom,
+                        _proxyWindow,
+                        timestamp);
+                    XFlush(_display);
+                }
+
+                SendXdndStatus(sourceWindow, willAccept: true);
+                Dispatcher.UIThread.Post(() => _viewModel.SetDropTargetState(isActive: true, isValid: true));
+            }
         }
         else if (messageType == _xdndLeaveAtom)
         {
+            _currentSource = IntPtr.Zero;
+            _cachedFiles = null;
+            _hasRequestedHoverFiles = false;
+            _isDropPending = false;
+            _pendingDropSource = IntPtr.Zero;
+            _lastPositionSource = IntPtr.Zero;
+
             Dispatcher.UIThread.Post(() => _viewModel.SetDropTargetState(isActive: false, isValid: true));
         }
         else if (messageType == _xdndDropAtom)
         {
             IntPtr sourceWindow = client.data0;
-            IntPtr timestamp = client.data2;
+            IntPtr timestamp = client.data2; // Timestamp is at data.l[2] for XdndDrop
             _dropSource = sourceWindow;
 
-            // Request dropped file list via XConvertSelection
-            XConvertSelection(
-                _display,
-                _xdndSelectionAtom,
-                _textUriListAtom,
-                _xdndSelectionAtom,
-                _proxyWindow,
-                timestamp);
-            XFlush(_display);
+            if (_cachedFiles is not null)
+            {
+                bool isValid = _cachedFiles.Length > 0 && MainWindowViewModel.CanAcceptFiles(_cachedFiles);
+
+                SendXdndFinished(sourceWindow, isSuccess: isValid);
+
+                if (isValid)
+                {
+                    // Immediately dismiss overlay on valid drop!
+                    Dispatcher.UIThread.Post(() => _viewModel.SetDropTargetState(isActive: false, isValid: true));
+                }
+
+                string[] dropped = _cachedFiles;
+                _cachedFiles = null;
+
+                Dispatcher.UIThread.Post(async () =>
+                {
+                    await _viewModel.HandleDroppedFilesAsync(dropped).ConfigureAwait(true);
+                });
+            }
+            else
+            {
+                // Files not yet cached, convert on drop
+                _isDropPending = true;
+                _pendingDropSource = sourceWindow;
+
+                XConvertSelection(
+                    _display,
+                    _xdndSelectionAtom,
+                    _textUriListAtom,
+                    _xdndSelectionAtom,
+                    _proxyWindow,
+                    timestamp);
+                XFlush(_display);
+            }
         }
     }
 
     private void HandleSelectionNotify(ref XSelectionEvent selection)
     {
         IntPtr property = selection.property;
-        IntPtr dropSource = _dropSource;
-        _dropSource = IntPtr.Zero;
+        string[] files = property != IntPtr.Zero ? ReadUriListProperty(_display, _proxyWindow, property) : [];
+        _cachedFiles = files;
+        bool isValid = files.Length > 0 && MainWindowViewModel.CanAcceptFiles(files);
 
-        if (property != IntPtr.Zero)
+        if (_isDropPending)
         {
-            string[] files = ReadUriListProperty(_display, _proxyWindow, property);
+            _isDropPending = false;
+            IntPtr dropSource = _pendingDropSource != IntPtr.Zero ? _pendingDropSource : _dropSource;
+            _pendingDropSource = IntPtr.Zero;
+            _dropSource = IntPtr.Zero;
 
-            // Send XdndFinished with success
             if (dropSource != IntPtr.Zero)
             {
-                XEvent finished = default;
-                finished.type = ClientMessageEventType;
-                finished.client.type = ClientMessageEventType;
-                finished.client.window = dropSource;
-                finished.client.message_type = _xdndFinishedAtom;
-                finished.client.format = 32;
-                finished.client.data0 = _targetWindow;
-                finished.client.data1 = (IntPtr)1; // Bit 0 = 1 (success)
-                finished.client.data2 = _xdndActionCopyAtom;
+                SendXdndFinished(dropSource, isSuccess: isValid);
+            }
 
-                XSendEvent(_display, dropSource, false, 0, ref finished);
-                XFlush(_display);
+            if (isValid)
+            {
+                // Immediately dismiss overlay on valid drop!
+                Dispatcher.UIThread.Post(() => _viewModel.SetDropTargetState(isActive: false, isValid: true));
             }
 
             if (files.Length > 0)
@@ -282,30 +342,59 @@ public sealed class LinuxXdndDropBridge : IDisposable
             }
             else
             {
-                Dispatcher.UIThread.Post(() => _viewModel.SetDropTargetState(isActive: false, isValid: true));
+                Dispatcher.UIThread.Post(() => _viewModel.SetDropTargetState(
+                    isActive: true,
+                    isValid: false,
+                    feedbackMessage: "Unsupported format. Supported: .onnx, .tflite, .pte, .pt, .pt2, .keras, .h5"));
             }
         }
         else
         {
-            // Conversion failed
-            if (dropSource != IntPtr.Zero)
+            // Hover inspection completed: update overlay to show whether format is accepted
+            Dispatcher.UIThread.Post(() => _viewModel.SetDropTargetState(
+                isActive: true,
+                isValid: isValid,
+                feedbackMessage: isValid ? null : "Unsupported format. Supported: .onnx, .tflite, .pte, .pt, .pt2, .keras, .h5"));
+
+            if (_lastPositionSource != IntPtr.Zero)
             {
-                XEvent finished = default;
-                finished.type = ClientMessageEventType;
-                finished.client.type = ClientMessageEventType;
-                finished.client.window = dropSource;
-                finished.client.message_type = _xdndFinishedAtom;
-                finished.client.format = 32;
-                finished.client.data0 = _targetWindow;
-                finished.client.data1 = IntPtr.Zero; // Failure
-                finished.client.data2 = IntPtr.Zero;
-
-                XSendEvent(_display, dropSource, false, 0, ref finished);
-                XFlush(_display);
+                SendXdndStatus(_lastPositionSource, willAccept: isValid);
             }
-
-            Dispatcher.UIThread.Post(() => _viewModel.SetDropTargetState(isActive: false, isValid: true));
         }
+    }
+
+    private void SendXdndStatus(IntPtr sourceWindow, bool willAccept)
+    {
+        XEvent reply = default;
+        reply.type = ClientMessageEventType;
+        reply.client.type = ClientMessageEventType;
+        reply.client.window = sourceWindow;
+        reply.client.message_type = _xdndStatusAtom;
+        reply.client.format = 32;
+        reply.client.data0 = _targetWindow; // Window where pointer is located
+        reply.client.data1 = willAccept ? (IntPtr)1 : IntPtr.Zero;
+        reply.client.data2 = IntPtr.Zero;   // Silent rectangle
+        reply.client.data3 = IntPtr.Zero;
+        reply.client.data4 = willAccept ? _xdndActionCopyAtom : IntPtr.Zero;
+
+        XSendEvent(_display, sourceWindow, false, 0, ref reply);
+        XFlush(_display);
+    }
+
+    private void SendXdndFinished(IntPtr sourceWindow, bool isSuccess)
+    {
+        XEvent finished = default;
+        finished.type = ClientMessageEventType;
+        finished.client.type = ClientMessageEventType;
+        finished.client.window = sourceWindow;
+        finished.client.message_type = _xdndFinishedAtom;
+        finished.client.format = 32;
+        finished.client.data0 = _targetWindow;
+        finished.client.data1 = isSuccess ? (IntPtr)1 : IntPtr.Zero;
+        finished.client.data2 = isSuccess ? _xdndActionCopyAtom : IntPtr.Zero;
+
+        XSendEvent(_display, sourceWindow, false, 0, ref finished);
+        XFlush(_display);
     }
 
     private static string[] ReadUriListProperty(IntPtr display, IntPtr window, IntPtr property)

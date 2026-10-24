@@ -347,6 +347,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 continue;
             }
 
+            if (Directory.Exists(name))
+            {
+                return true;
+            }
+
             string extension = Path.GetExtension(name);
             if (IsSupportedModelExtension(extension))
             {
@@ -510,6 +515,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         if (items is null || items.Count == 0)
         {
+            SetDropTargetState(isActive: false, isValid: true);
             return;
         }
 
@@ -519,8 +525,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
             HasError = true;
             ErrorMessage = "Unsupported file format. Supported: .onnx, .tflite, .pte, .pt, .pt2, .keras, .h5";
             StatusText = ErrorMessage;
+            SetDropTargetState(isActive: true, isValid: false, feedbackMessage: ErrorMessage);
+            ScheduleInvalidDropDismissal(cancellationToken);
             return;
         }
+
+        SetDropTargetState(isActive: false, isValid: true);
 
         // Handle directory drop
         if (primary is IStorageFolder folder)
@@ -563,6 +573,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
             HasError = true;
             ErrorMessage = $"No supported neural network model found in folder '{folder.Name}'.";
             StatusText = ErrorMessage;
+            SetDropTargetState(isActive: true, isValid: false, feedbackMessage: ErrorMessage);
+            ScheduleInvalidDropDismissal(cancellationToken);
             return;
         }
 
@@ -602,6 +614,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         if (filePaths is null || filePaths.Count == 0)
         {
+            SetDropTargetState(isActive: false, isValid: true);
             return;
         }
 
@@ -611,8 +624,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
             HasError = true;
             ErrorMessage = "Unsupported file format. Supported: .onnx, .tflite, .pte, .pt, .pt2, .keras, .h5";
             StatusText = ErrorMessage;
+            SetDropTargetState(isActive: true, isValid: false, feedbackMessage: ErrorMessage);
+            ScheduleInvalidDropDismissal(cancellationToken);
             return;
         }
+
+        SetDropTargetState(isActive: false, isValid: true);
 
         // Handle directory drop
         if (Directory.Exists(primary))
@@ -629,10 +646,37 @@ public sealed partial class MainWindowViewModel : ObservableObject
             HasError = true;
             ErrorMessage = $"No supported neural network model found in folder '{Path.GetFileName(primary)}'.";
             StatusText = ErrorMessage;
+            SetDropTargetState(isActive: true, isValid: false, feedbackMessage: ErrorMessage);
+            ScheduleInvalidDropDismissal(cancellationToken);
             return;
         }
 
         await LoadModelAsync(primary, cancellationToken).ConfigureAwait(false);
+    }
+
+    private void ScheduleInvalidDropDismissal(CancellationToken cancellationToken)
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(2500, cancellationToken).ConfigureAwait(false);
+                if (!cancellationToken.IsCancellationRequested)
+                {
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        if (!IsDropTargetValid)
+                        {
+                            SetDropTargetState(isActive: false, isValid: true);
+                        }
+                    });
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Cancellation requested
+            }
+        }, cancellationToken);
     }
 
     /// <summary>
