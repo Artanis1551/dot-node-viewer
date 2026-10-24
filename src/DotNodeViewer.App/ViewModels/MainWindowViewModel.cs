@@ -311,6 +311,58 @@ public sealed partial class MainWindowViewModel : ObservableObject
             return;
         }
 
+        if (!File.Exists(path))
+        {
+            HasModel = false;
+            HasError = true;
+            ErrorMessage = $"Model file was not found: '{path}'";
+            StatusText = ErrorMessage;
+            return;
+        }
+
+        ModelPath = path;
+        string modelName = Path.GetFileName(path);
+
+        await using FileStream stream = new(path, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, useAsync: true);
+        await LoadModelStreamCoreAsync(
+            stream,
+            modelName,
+            streamFactory: () => new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read),
+            associatedPath: path,
+            cancellationToken: cancellationToken).ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// Loads a neural network model from a seekable stream, extracts its Unified Graph IR, and computes its layered layout.
+    /// </summary>
+    /// <param name="stream">The seekable stream containing model data.</param>
+    /// <param name="modelName">The display name or file name of the model.</param>
+    /// <param name="streamFactory">An optional factory to produce seekable streams for on-demand weight inspection.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    public async Task LoadModelStreamAsync(
+        Stream stream,
+        string modelName,
+        Func<Stream>? streamFactory = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+        ModelPath = null;
+        await LoadModelStreamCoreAsync(
+            stream,
+            modelName,
+            streamFactory: streamFactory,
+            associatedPath: null,
+            cancellationToken: cancellationToken).ConfigureAwait(true);
+    }
+
+    private async Task LoadModelStreamCoreAsync(
+        Stream stream,
+        string modelName,
+        Func<Stream>? streamFactory,
+        string? associatedPath,
+        CancellationToken cancellationToken)
+    {
         _loadingCts?.Cancel();
         _loadingCts?.Dispose();
         _loadingCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -326,36 +378,31 @@ public sealed partial class MainWindowViewModel : ObservableObject
         TensorInspector = null;
         IsDiagnosticsDrawerOpen = false;
         LoadingStatus = "Reading model stream...";
-        StatusText = $"Opening {Path.GetFileName(path)}...";
+        StatusText = $"Opening {modelName}...";
+        ModelStreamFactory = streamFactory;
 
         try
         {
-            if (!File.Exists(path))
-            {
-                throw new FileNotFoundException($"Model file was not found: '{path}'", path);
-            }
-
             ModelGraph model;
             VisualSubgraphLayout layout;
             Stopwatch sw = Stopwatch.StartNew();
 
-            await using (FileStream stream = new(path, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, useAsync: true))
-            {
-                LoadingStatus = "Parsing model graph...";
-                model = await ModelFormatRegistry.Default.ReadAsync(stream, options: null, ct).ConfigureAwait(true);
+            LoadingStatus = "Parsing model graph...";
+            model = await ModelFormatRegistry.Default.ReadAsync(
+                stream,
+                new ModelReadOptions { FileName = modelName },
+                ct).ConfigureAwait(true);
 
-                LoadingStatus = "Computing layered layout...";
-                ModelGraphLayoutAdapter layoutAdapter = new(textMeasurer: AvaloniaTextMeasurer.Default);
-                layout = await Task.Run(() => layoutAdapter.CreateLayout(model, options: null, ct), ct).ConfigureAwait(true);
-            }
+            LoadingStatus = "Computing layered layout...";
+            ModelGraphLayoutAdapter layoutAdapter = new(textMeasurer: AvaloniaTextMeasurer.Default);
+            layout = await Task.Run(() => layoutAdapter.CreateLayout(model, options: null, ct), ct).ConfigureAwait(true);
 
             sw.Stop();
             LayoutDurationMs = sw.Elapsed.TotalMilliseconds;
 
             CurrentModel = model;
             CurrentLayout = layout;
-            ModelPath = path;
-            ModelName = Path.GetFileName(path);
+            ModelName = modelName;
             Title = $"{ModelName} — dot-node-viewer";
 
             FormatDisplayName = FormatModelFormatInfo(model.Format);
@@ -392,8 +439,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 PopulateSubgraphSummaries(SelectedSubgraph);
             }
 
-            // Update recent files
-            UpdateRecentFiles(path);
+            // Update recent files if associated path is available
+            if (!string.IsNullOrWhiteSpace(associatedPath))
+            {
+                UpdateRecentFiles(associatedPath);
+            }
 
             HasModel = true;
             StatusText = $"Loaded {ModelName} in {sw.ElapsedMilliseconds}ms ({TotalNodeCount} nodes, {TotalEdgeCount} edges)";
@@ -952,14 +1002,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
             foreach (GraphNode n in sg.Nodes)
             {
-                string opLower = n.Operator.Name.ToLowerInvariant();
-                if (opLower.Contains("xnnpack"))
+                string opName = n.Operator.Name;
+                if (opName.Contains("xnnpack", StringComparison.OrdinalIgnoreCase))
                 {
                     delegateText = "Delegate: XNNPACK";
                 }
-                else if (opLower.Contains("delegate") && delegateText is null)
+                else if (delegateText is null && opName.Contains("delegate", StringComparison.OrdinalIgnoreCase))
                 {
-                    delegateText = $"Delegate: {n.Operator.Name}";
+                    delegateText = $"Delegate: {opName}";
                 }
             }
         }
@@ -995,11 +1045,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         if (count >= 1_000_000)
         {
-            return string.Format(CultureInfo.InvariantCulture, "{0:F1}M {1}", count / 1_000_000.0, suffix);
+            return string.Create(CultureInfo.InvariantCulture, $"{count / 1_000_000.0:F1}M {suffix}");
         }
         if (count >= 1_000)
         {
-            return string.Format(CultureInfo.InvariantCulture, "{0:F1}K {1}", count / 1_000.0, suffix);
+            return string.Create(CultureInfo.InvariantCulture, $"{count / 1_000.0:F1}K {suffix}");
         }
         return $"{count} {suffix}";
     }
@@ -1028,11 +1078,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         if (bytes >= 1024 * 1024)
         {
-            return string.Format(CultureInfo.InvariantCulture, "{0:F1} MB", bytes / (1024.0 * 1024.0));
+            return string.Create(CultureInfo.InvariantCulture, $"{bytes / (1024.0 * 1024.0):F1} MB");
         }
         if (bytes >= 1024)
         {
-            return string.Format(CultureInfo.InvariantCulture, "{0:F1} KB", bytes / 1024.0);
+            return string.Create(CultureInfo.InvariantCulture, $"{bytes / 1024.0:F1} KB");
         }
         return $"{bytes:N0} bytes";
     }
