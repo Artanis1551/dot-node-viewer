@@ -30,9 +30,10 @@ flowchart TD
 Usage: DotNodeViewer.Cli <command> <file> [options]
 
 Commands:
-  detect <file>                     Print the detected model format ID
-  inspect <file>                    Print a human-readable model graph summary
-  snapshot <file> --id <model-id>   Print the golden .expected.json topology snapshot
+  detect <file>                          Print the detected model format ID
+  inspect <file> [--expand-delegates]    Print a human-readable model graph summary
+  snapshot <file> --id <model-id>        Print the golden .expected.json topology snapshot
+  cmdstream <file> [--node <name>]       Disassemble NPU hardware command stream
 ```
 
 ---
@@ -155,6 +156,47 @@ Subgraph [2] 'while_body':
     - Mul:0: Float32 [1, 4]
 ```
 
+#### Delegate Unwrapping Example (`--expand-delegates`):
+
+Pass `--expand-delegates` to decompile embedded NPU delegate microcode (such as Arm Ethos-U `CUSTOM(ethos-u)` or `EthosUBackend`) and display synthesized node counts, tensor counts, and operator distributions:
+
+```bash
+dotnet run --project tools/DotNodeViewer.Cli -c Release -- inspect tests/DotNodeViewer.Core.Tests/Fixtures/tflite/tiny_cnn_int8_vela_u55.tflite --expand-delegates
+```
+
+**Output:**
+```text
+Format:    TensorFlow Lite v3 (tflite)
+Producer:  Vela Optimised
+Subgraphs: 1
+
+Subgraph [0] 'main':
+  Nodes:   1
+  Tensors: 5
+  Inputs:  1
+    - serving_default_input:0: Int8 [1, 8, 8, 3]
+  Outputs: 1
+    - StatefulPartitionedCall_1:0: Int8 [1, 3]
+
+  [Delegate Expansion] 'CUSTOM(ethos-u)_0' (ethos-u) -> CUSTOM(ethos-u)_0 (Ethos-U55-128):
+    Synthesized Nodes:   91
+    Synthesized Tensors: 209
+    DMA Operations:      19
+    Operator Distribution:
+      - NPU_MUL: 27
+      - NPU_MAXPOOL: 21
+      - NPU_DMA: 19
+      - NPU_SUB: 6
+      - NPU_ADD: 5
+      - NPU_AVGPOOL: 3
+      - NPU_CONV: 3
+      - NPU_DEPTHWISE: 2
+      - NPU_SHR: 2
+      - NPU_CLZ: 1
+      - NPU_REDUCE_SUM: 1
+      - NPU_SHL: 1
+```
+
 ---
 
 ### 3. `snapshot` — Generate Golden Topology Snapshot (`*.expected.json`)
@@ -266,6 +308,38 @@ dotnet run --project tools/DotNodeViewer.Cli -c Release -- snapshot tests/DotNod
 ```
 
 - `--id <model-id>`: Sets the `modelId` field in the emitted JSON. If omitted, defaults to the file name without extension.
+
+---
+
+### 4. `cmdstream` — Disassemble NPU Hardware Command Stream
+
+Disassembles the raw binary microcode instructions embedded inside an NPU delegate node (such as Arm Ethos-U `CUSTOM(ethos-u)` or `Delegate (EthosUBackend)`), printing hex offsets, opcodes, parameters, and mnemonic instruction names.
+
+#### Full Disassembly Trace:
+
+```bash
+dotnet run --project tools/DotNodeViewer.Cli -c Release -- cmdstream tests/DotNodeViewer.Core.Tests/Fixtures/tflite/tiny_cnn_int8_vela_u55.tflite
+```
+
+**Output:**
+```text
+Delegate: 'CUSTOM(ethos-u)_0' (ethos-u)
+Command Stream Disassembly (196 instructions):
+--------------------------------------------------------------------------------
+0x000000:          0001 - NPU_SET_IFM_REGION
+0x000004: 00000100 0000 - NPU_SET_IFM_BASE0
+0x00000C: 00000000 0000 - NPU_SET_IFM_BASE1
+0x000014: 00000000 0000 - NPU_SET_IFM_BASE2
+0x00001C:          0001 - NPU_SET_OFM_REGION
+0x000020: 00000400 0000 - NPU_SET_OFM_BASE0
+0x000028: 00070007 0000 - NPU_SET_IFM_HEIGHT0_M1
+0x000030: 00070007 0000 - NPU_SET_IFM_WIDTH0_M1
+0x000038: 00020002 0000 - NPU_SET_IFM_DEPTH_M1
+0x000040:          0000 - NPU_OP_CONV
+...
+```
+
+- `--node <name>`: Optionally filters disassembly to a specific delegate node when multiple delegate nodes exist in the model.
 
 ---
 

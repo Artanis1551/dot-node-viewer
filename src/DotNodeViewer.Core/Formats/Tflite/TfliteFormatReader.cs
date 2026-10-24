@@ -98,7 +98,7 @@ internal sealed class TfliteFormatReader : IModelFormatReader
         }
 
         // Field 6: metadata: [Metadata] (optional key-buffer metadata entries)
-        ExtractModelMetadataEntries(modelTable, metadata);
+        ExtractModelMetadataEntries(modelTable, buffers, metadata);
 
         ModelFormatInfo formatInfo = new(
             ModelFormatId.Tflite,
@@ -559,6 +559,11 @@ internal sealed class TfliteFormatReader : IModelFormatReader
         if (opCode.BuiltinCode == 32 && !string.IsNullOrEmpty(opCode.CustomCode))
         {
             attributes.Add(new RawAttribute("custom_code", new AttributeValue.String(opCode.CustomCode), null));
+            if (string.Equals(opCode.CustomCode, "ethos-u", StringComparison.OrdinalIgnoreCase))
+            {
+                attributes.Add(new RawAttribute("delegate.backend", new AttributeValue.String("ethos-u"), null));
+                attributes.Add(new RawAttribute("delegate.expandable", new AttributeValue.Bool(true), null));
+            }
         }
 
         // Field 3: builtin_options_type: BuiltinOptions (ubyte), Field 4: builtin_options (Table)
@@ -925,6 +930,7 @@ internal sealed class TfliteFormatReader : IModelFormatReader
 
     private static void ExtractModelMetadataEntries(
         FlatBufferTable modelTable,
+        List<BufferSliceInfo> buffers,
         Dictionary<string, string> metadata)
     {
         int count = modelTable.GetVectorLength(6);
@@ -936,6 +942,11 @@ internal sealed class TfliteFormatReader : IModelFormatReader
             if (!string.IsNullOrEmpty(metaName))
             {
                 metadata[$"metadata.{metaName}.buffer"] = metaBuffer.ToString(CultureInfo.InvariantCulture);
+                if (metaBuffer < (uint)buffers.Count && buffers[(int)metaBuffer].HasData)
+                {
+                    metadata[$"metadata.{metaName}.offset"] = buffers[(int)metaBuffer].StreamOffset.ToString(CultureInfo.InvariantCulture);
+                    metadata[$"metadata.{metaName}.length"] = buffers[(int)metaBuffer].ByteLength.ToString(CultureInfo.InvariantCulture);
+                }
             }
         }
     }

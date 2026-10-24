@@ -585,6 +585,26 @@
                          Foreground="{DynamicResource ShellTextSecondaryBrush}"
                          TextWrapping="Wrap"
                          IsVisible="{Binding SelectedNodeDocSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+              <!-- Unwrap Delegate Subgraph Action -->
+              <Button IsVisible="{Binding CanExpandSelectedDelegate}"
+                      Command="{Binding ExpandSelectedDelegateCommand}"
+                      Background="{DynamicResource ShellAccentSubtleBrush}"
+                      BorderBrush="{DynamicResource ShellAccentPrimaryBrush}"
+                      BorderThickness="1"
+                      CornerRadius="{DynamicResource RadiusSmall}"
+                      Margin="0,6,0,0"
+                      Padding="10,6"
+                      HorizontalAlignment="Left"
+                      Cursor="Hand"
+                      AutomationProperties.Name="Unwrap Delegate Subgraph"
+                      AutomationProperties.AutomationId="UnwrapDelegateSubgraphButton"
+                      ToolTip.Tip="Decompile and visualize the internal NPU delegate execution graph">
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                  <TextBlock Text="⚡" FontSize="11" Foreground="{DynamicResource ShellAccentPrimaryBrush}" />
+                  <TextBlock Text="Unwrap Delegate Subgraph ➔" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource ShellAccentPrimaryBrush}" />
+                </StackPanel>
+              </Button>
             </StackPanel>
 
             <!-- Close / Deselect Action Button -->
@@ -885,6 +905,54 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
+          </StackPanel>
+        </Border>
+
+        <!-- NPU Command Disassembly Section (When selected node has NPU commands) -->
+        <Border Background="{DynamicResource ShellSurfaceElevatedBrush}"
+                BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                BorderThickness="1"
+                CornerRadius="{DynamicResource RadiusMedium}"
+                Padding="12,10"
+                IsVisible="{Binding HasNpuDisassembly}"
+                AutomationProperties.Name="NPU Command Disassembly Panel"
+                AutomationProperties.AutomationId="NpuCommandDisassemblyPanel">
+          <StackPanel Spacing="8">
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <TextBlock Text="NPU Command Disassembly"
+                           FontSize="12"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource ShellTextPrimaryBrush}" />
+                <Border Background="{DynamicResource ShellAccentSubtleBrush}"
+                        BorderBrush="{DynamicResource ShellAccentPrimaryBrush}"
+                        BorderThickness="1"
+                        CornerRadius="{DynamicResource RadiusPill}"
+                        Padding="6,1">
+                  <TextBlock Text="ETHOS-U"
+                             FontFamily="{DynamicResource CodeFontFamily}"
+                             FontSize="9"
+                             FontWeight="Bold"
+                             Foreground="{DynamicResource ShellAccentPrimaryBrush}" />
+                </Border>
+              </StackPanel>
+            </Grid>
+
+            <Border Background="{DynamicResource ShellSurfaceBaseBrush}"
+                    BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                    BorderThickness="1"
+                    CornerRadius="{DynamicResource RadiusSmall}"
+                    MaxHeight="260">
+              <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                            VerticalScrollBarVisibility="Auto"
+                            Padding="8,6">
+                <SelectableTextBlock Text="{Binding NpuDisassemblyText}"
+                                     FontFamily="{DynamicResource CodeFontFamily}"
+                                     FontSize="10"
+                                     Foreground="{DynamicResource ShellTextPrimaryBrush}"
+                                     LineHeight="16" />
+              </ScrollViewer>
+            </Border>
           </StackPanel>
         </Border>
 

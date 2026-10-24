@@ -1,6 +1,6 @@
 # Wish W01 — Ethos-U Command Stream Unwrapping (TFLite `ethos-u` & ExecuTorch `EthosUBackend`)
 
-**Status:** Proposed
+**Status:** Done (Implemented on branch `stage/W01-ethos-u-command-stream`)
 **Depends on:** Stage **S03** (TFLite), Stage **S07** (ExecuTorch), Stage **S11** (subgraph breadcrumb drill-down & weight inspector)
 **Suggested branch when promoted:** `stage/Sxx-ethos-u-command-stream`
 

@@ -1,0 +1,34 @@
+{
+  "modelId": "tflite-tiny_cnn_int8_vela_u55",
+  "format": "TensorFlow Lite v3",
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "main",
+    "nodeCount": 1,
+    "operatorHistogram": {
+      "CUSTOM(ethos-u)": 1
+    }
+  },
+  "delegate": {
+    "architecture": "Ethos-U55-128",
+    "product": 0,
+    "macs": 128,
+    "shramKb": 24,
+    "commandWords": 756,
+    "totalNpuOperations": 91,
+    "operatorHistogram": {
+      "NPU_CONV": 3,
+      "NPU_DEPTHWISE": 2,
+      "NPU_MAXPOOL": 21,
+      "NPU_MUL": 27,
+      "NPU_DMA": 19,
+      "NPU_AVGPOOL": 3,
+      "NPU_SUB": 6,
+      "NPU_SHR": 2,
+      "NPU_REDUCE_SUM": 1,
+      "NPU_CLZ": 1,
+      "NPU_SHL": 1,
+      "NPU_ADD": 5
+    }
+  }
+}

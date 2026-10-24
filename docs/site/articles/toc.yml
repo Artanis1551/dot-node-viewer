@@ -10,6 +10,8 @@
       href: visualizer/webassembly.md
     - name: Inspecting Edge Conversions (.pt2 to .tflite / .pte)
       href: visualizer/inspecting-edge-conversions.md
+    - name: Inspecting Arm Ethos-U Delegates
+      href: visualizer/inspecting-ethos-u-delegates.md
     - name: Embedding GraphCanvas in Avalonia
       href: visualizer/embedding-controls.md
 - name: Reference
@@ -27,6 +29,8 @@
           href: formats/pytorch.md
         - name: Keras (.keras, .h5)
           href: formats/keras.md
+        - name: Arm Ethos-U NPU Delegate
+          href: formats/ethos-u.md
     - name: CLI Reference (DotNodeViewer.Cli)
       href: cli/reference.md
     - name: Domain Glossary

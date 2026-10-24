@@ -9,6 +9,7 @@ using Avalonia.Media;
 using Avalonia.Styling;
 using CommunityToolkit.Mvvm.Input;
 using DotNodeViewer.App.Rendering;
+using DotNodeViewer.App.ViewModels;
 using DotNodeViewer.Core.Ir;
 using DotNodeViewer.Layout;
 
@@ -562,7 +563,14 @@ public sealed class GraphCanvas : Control
         }
         else if (!isCtrl && e.Key == Key.Escape)
         {
-            SelectedNode = null;
+            if (SelectedNode is not null)
+            {
+                SelectedNode = null;
+            }
+            else if (DataContext is MainWindowViewModel vm && vm.Breadcrumbs.Count > 1)
+            {
+                vm.NavigateBackSubgraph();
+            }
             e.Handled = true;
         }
         else if (e.Key == Key.Tab)
@@ -707,6 +715,19 @@ public sealed class GraphCanvas : Control
             {
                 SelectedNode = hitNode;
                 InvalidateVisual();
+
+                if (e.ClickCount >= 2 && DataContext is MainWindowViewModel vm)
+                {
+                    if (vm.CanExpandSelectedDelegate)
+                    {
+                        vm.ExpandSelectedDelegateCommand.Execute(null);
+                    }
+                    else if (hitNode.GraphNode?.Attributes.FirstOrDefault(a => a.Value is AttributeValue.Graph)?.Value is AttributeValue.Graph g)
+                    {
+                        vm.DrillDownSubgraph(g.Value);
+                    }
+                }
+
                 e.Handled = true;
                 return;
             }
@@ -1339,8 +1360,10 @@ public sealed class GraphCanvas : Control
         double y,
         in ThemeBrushes brushes)
     {
-        string label = $"+ {badgeText}";
+        bool isDelegate = badgeText.Contains("Expandable", StringComparison.OrdinalIgnoreCase);
+        string label = isDelegate ? badgeText : $"+ {badgeText}";
         string cacheKey = $"fused:{label}:{brushes.IsDark}";
+        IBrush textBrush = isDelegate ? brushes.AccentPrimaryBrush : brushes.WarningBrush;
         if (!_textCache.TryGetValue(cacheKey, out FormattedText? ft))
         {
             Typeface tf = new(_uiFont, FontStyle.Normal, FontWeight.SemiBold);
@@ -1350,7 +1373,7 @@ public sealed class GraphCanvas : Control
                 FlowDirection.LeftToRight,
                 tf,
                 9.5,
-                brushes.WarningBrush)
+                textBrush)
             {
                 MaxTextHeight = 16.0,
                 Trimming = TextTrimming.CharacterEllipsis
@@ -1362,7 +1385,9 @@ public sealed class GraphCanvas : Control
         double badgeHeight = 16.0;
         Rect badgeRect = new(x, y + 1.0, badgeWidth, badgeHeight);
 
-        context.DrawRectangle(brushes.WarningSubtleBrush, brushes.WarningBorderPen, badgeRect, 4.0, 4.0);
+        IBrush bgBrush = isDelegate ? brushes.AccentSubtleBrush : brushes.WarningSubtleBrush;
+        IPen borderPen = isDelegate ? brushes.BorderAccentPen : brushes.WarningBorderPen;
+        context.DrawRectangle(bgBrush, borderPen, badgeRect, 4.0, 4.0);
         context.DrawText(ft, new Point(x + 6.0, y + 2.0));
     }
 
@@ -1486,6 +1511,7 @@ public sealed class GraphCanvas : Control
         public readonly IBrush TextPrimaryBrush;
         public readonly IBrush TextSecondaryBrush;
         public readonly IBrush AccentPrimaryBrush;
+        public readonly IBrush AccentSubtleBrush;
         public readonly IBrush SuccessBrush;
         public readonly IBrush SuccessSubtleBrush;
         public readonly IBrush WarningBrush;
@@ -1517,6 +1543,7 @@ public sealed class GraphCanvas : Control
             TextPrimaryBrush = ResolveBrush("ShellTextPrimaryBrush", isDark ? "#F1F5F9" : "#0F172A");
             TextSecondaryBrush = ResolveBrush("ShellTextSecondaryBrush", isDark ? "#94A3B8" : "#475569");
             AccentPrimaryBrush = ResolveBrush("ShellAccentPrimaryBrush", isDark ? "#38BDF8" : "#0284C7");
+            AccentSubtleBrush = ResolveBrush("ShellAccentSubtleBrush", isDark ? "#1E293B" : "#E0E7FF");
             SuccessBrush = ResolveBrush("ShellSuccessBrush", isDark ? "#10B981" : "#059669");
             SuccessSubtleBrush = ResolveBrush("ShellSuccessSubtleBrush", isDark ? "#133827" : "#DCFCE7");
             WarningBrush = ResolveBrush("ShellWarningBrush", isDark ? "#F59E0B" : "#D97706");

@@ -54,6 +54,7 @@ dot-node-viewer.slnx
 | [**PyTorch (`state_dict` & TorchScript)**](docs/site/articles/formats/pytorch.md) | `.pt`, `.pth` | `pytorch` | PKZIP container, safe `PickleMachine` VM (protocols 2–5, zero reflection), TorchScript Python AST mini-parser with module inlining, scripted `if` control flow fallback, hierarchical `state_dict` parameter grouping, and lazy weight slicing | **Supported (S08)** |
 | [**PyTorch ExportedProgram**](docs/site/articles/formats/pytorch.md#pytorch-2-exportedprogram-pt2) | `.pt2` | `pytorch-pt2` | `torch.export` PKZIP archive, `ExportedProgram` JSON schema, ATen operators, symbolic `SymInt` dimensions & `range_constraints`, parameter/buffer initializer isolation, and zero-allocation lazy stored weight slicing | **Supported (S09)** |
 | [**Keras v3 & Legacy HDF5**](docs/site/articles/formats/keras.md) | `.keras`, `.h5` | `keras` | Keras v3 PKZIP archive (`config.json` + `model.weights.h5`), legacy HDF5 `.h5` (`model_config`), pure C# `Hdf5File` reader over `RandomAccessSource`, Sequential and Functional graphs with residual skip connections, weights-only fallback, and contiguous dataset lazy slicing | **Supported (S10)** |
+| [**Arm Ethos-U NPU Delegate**](docs/site/articles/formats/ethos-u.md) | *(embedded in `.tflite` / `.pte`)* | `ethos-u` | On-demand hardware microcode decompilation for Ethos-U55/U65/U85, Vela `COP1` & driver payload `ETHU` readers, zero-allocation command stream decoder, register state machine, last-writer-wins address dataflow edge inference, and raw disassembly listing | **Supported (W01)** |
 
 ---
 
@@ -180,6 +181,20 @@ dotnet publish src/DotNodeViewer.Desktop -c Release -p:PublishAot=true -r linux-
 
 ---
 
+### Arm Ethos-U NPU Command Stream Unwrapping
+
+Neural networks compiled with the Arm Vela compiler (`.tflite`) or lowered via ExecuTorch (`EthosUBackend` in `.pte`) collapse dozens or hundreds of operators into a single opaque delegate node. `dot-node-viewer` provides on-demand microcode decompilation:
+
+- **Expandable Delegate Badge:** Collapsed nodes display an `Ethos-U · Expandable` badge and an `⚡ Unwrap Delegate Subgraph ➔` action button.
+- **Synthesized Dataflow:** Double-clicking or expanding decompiles the binary command stream, traces the register state machine, and reconstructs intermediate operator boundaries (`NPU_OP_CONV`, `NPU_OP_DEPTHWISE`, `NPU_OP_DMA`, `NPU_OP_POOL`, `NPU_OP_ELEMENTWISE`).
+- **Memory Address Edge Inference:** Activations are wired topologically by matching output buffer addresses to subsequent input feature map reads (`OFM` -> `IFM`).
+- **Hardware Register Inspection:** Properties sidebar displays IFM/OFM shapes, precisions, quantization zero points, kernel configuration, block configs, and an interactive scrollable monospace microcode disassembly listing.
+
+![Ethos-U Expanded Subgraph](docs/screenshots/W01/02-ethos-u-expanded-subgraph.png)
+*Figure 7: Decompiled Ethos-U NPU delegate execution graph with synthesized memory dataflow edges and breadcrumb navigation.*
+
+---
+
 ## NuGet Packages
 
 The core model parsing and layout engines are published as independent, AOT-compatible NuGet packages:
@@ -201,7 +216,7 @@ dotnet add package DotNodeViewer.Layout
 
 ## CLI Tool (`DotNodeViewer.Cli`)
 
-`DotNodeViewer.Cli` provides three commands for inspecting model files and generating golden regression snapshots:
+`DotNodeViewer.Cli` provides commands for inspecting model files, disassembling embedded NPU command streams, and generating golden regression snapshots:
 
 ```bash
 # Detect a model file's format ID from its header / container entries
@@ -209,6 +224,12 @@ dotnet run --project tools/DotNodeViewer.Cli -c Release -- detect <path-to-model
 
 # Print a human-readable summary of format, producer, subgraphs, inputs, and outputs
 dotnet run --project tools/DotNodeViewer.Cli -c Release -- inspect <path-to-model>
+
+# Inspect model architecture and decompile embedded delegate subgraphs
+dotnet run --project tools/DotNodeViewer.Cli -c Release -- inspect <path-to-model> --expand-delegates
+
+# Disassemble raw NPU hardware microcode instructions (byte offsets, hex, mnemonics)
+dotnet run --project tools/DotNodeViewer.Cli -c Release -- cmdstream <path-to-model> [--node <name>]
 
 # Emit a deterministic .expected.json topology snapshot to stdout
 dotnet run --project tools/DotNodeViewer.Cli -c Release -- snapshot <path-to-model> --id <model-id>
@@ -250,9 +271,11 @@ dotnet tool run docfx docs/site/docfx.json --serve
   - [Explanation: Performance Architecture & NativeAOT](docs/site/articles/architecture/performance-and-aot.md)
   - [How-To & Reference: Layered Graph Layout Engine (`DotNodeViewer.Layout`)](docs/site/articles/library/layout-engine.md)
   - [Reference: Supported Model Formats](docs/site/articles/formats/overview.md)
+  - [Reference: Arm Ethos-U NPU Delegate](docs/site/articles/formats/ethos-u.md)
   - [Reference: CLI Tool (`DotNodeViewer.Cli`)](docs/site/articles/cli/reference.md)
   - [Reference: Domain Glossary](docs/site/articles/glossary.md)
   - [How-To: Visualizer User Guide](docs/site/articles/visualizer/user-guide.md)
+  - [How-To: Inspecting Arm Ethos-U Delegates](docs/site/articles/visualizer/inspecting-ethos-u-delegates.md)
   - [How-To: Running in the Browser (WebAssembly)](docs/site/articles/visualizer/webassembly.md)
 - [**Development Prerequisites (`PREREQUISITES.md`)**](PREREQUISITES.md)
 - [**Domain Glossary (`GLOSSARY.md`)**](GLOSSARY.md)

@@ -1,0 +1,30 @@
+{
+  "modelId": "executorch-tiny_cnn_ethosu55",
+  "format": "ExecuTorch",
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "forward",
+    "nodeCount": 3,
+    "operatorHistogram": {
+      "quantized_decomposed::quantize_per_tensor.out": 1,
+      "Delegate (EthosUBackend)": 1,
+      "quantized_decomposed::dequantize_per_tensor.out": 1
+    }
+  },
+  "delegate": {
+    "architecture": "Ethos-U55-128",
+    "product": 0,
+    "macs": 128,
+    "shramKb": 24,
+    "commandWords": 262,
+    "totalNpuOperations": 53,
+    "operatorHistogram": {
+      "NPU_CONV": 2,
+      "NPU_DEPTHWISE": 1,
+      "NPU_MAXPOOL": 5,
+      "NPU_MUL": 1,
+      "NPU_DMA": 23,
+      "NPU_AVGPOOL": 21
+    }
+  }
+}

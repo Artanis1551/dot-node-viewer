@@ -15,6 +15,7 @@
 | [**PyTorch (`state_dict` & TorchScript)**](pytorch.md) | `.pt`, `.pth` | ZIP container + safe `PickleMachine` VM + TorchScript IR | **S08** | **Supported** |
 | [**PyTorch ExportedProgram**](pytorch.md#pytorch-2-exportedprogram-pt2) | `.pt2` | ZIP archive + `ExportedProgram` JSON (`models/*.json`) | **S09** | **Supported** |
 | [**Keras v3 & Legacy HDF5**](keras.md) | `.keras`, `.h5` | ZIP (`config.json` + `model.weights.h5`) / pure HDF5 (`Hdf5File`) | **S10** | **Supported** |
+| [**Arm Ethos-U NPU Delegate**](ethos-u.md) | *(embedded in `.tflite` / `.pte`)* | Vela `COP1` / `ETHU` microcode stream + on-demand unwrapping & register decoding | **W01** | **Supported** |
 
 ---
 

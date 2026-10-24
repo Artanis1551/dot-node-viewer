@@ -1,5 +1,6 @@
 using DotNodeViewer.App.ViewModels;
 using DotNodeViewer.Core.Ir;
+using DotNodeViewer.Layout;
 
 namespace DotNodeViewer.App.Tests;
 
@@ -210,6 +211,55 @@ public sealed class MainWindowViewModelTests
             await Assert.That(hasCtrlO).IsTrue();
             await Assert.That(hasCmdO).IsTrue();
         });
+    }
+
+    [Test]
+    public async Task LoadModelAsync_EthosUDelegate_UnwrapsAndInspectsNpuCommands()
+    {
+        string path = ResolveFixturePath("tflite/tiny_cnn_int8_vela_u55.tflite");
+        MainWindowViewModel vm = new();
+
+        await vm.LoadModelAsync(path);
+
+        await Assert.That(vm.HasModel).IsTrue();
+        await Assert.That(vm.CurrentLayout).IsNotNull();
+
+        // Find the CUSTOM(ethos-u) node
+        VisualNode? delegateVisualNode = vm.CurrentLayout!.Nodes.FirstOrDefault(n => n.GraphNode?.Operator.Name.Contains("ethos-u", StringComparison.OrdinalIgnoreCase) == true);
+        await Assert.That(delegateVisualNode).IsNotNull();
+
+        // Select the delegate node
+        vm.SelectedNode = delegateVisualNode;
+        await Assert.That(vm.CanExpandSelectedDelegate).IsTrue();
+        await Assert.That(vm.SelectedDelegateBackend).IsEqualTo("ethos-u");
+
+        // Unwrap the delegate
+        await vm.ExpandSelectedDelegateAsync();
+
+        // Breadcrumb and NPU inferred state
+        await Assert.That(vm.Breadcrumbs.Count).IsEqualTo(2);
+        await Assert.That(vm.CanNavigateBackSubgraph).IsTrue();
+        await Assert.That(vm.IsInferredNpuSubgraph).IsTrue();
+        await Assert.That(vm.SelectedSubgraph?.Name).Contains("Ethos-U");
+
+        // The synthesized graph should have NPU ops
+        await Assert.That(vm.CurrentLayout).IsNotNull();
+        await Assert.That(vm.CurrentLayout!.Nodes.Count).IsGreaterThan(0);
+
+        // Select an NPU operation node (excluding input/output terminal pills)
+        VisualNode? npuVisualNode = vm.CurrentLayout.Nodes.FirstOrDefault(n => n.GraphNode is not null);
+        await Assert.That(npuVisualNode).IsNotNull();
+        vm.SelectedNode = npuVisualNode;
+
+        await Assert.That(vm.HasNpuDisassembly).IsTrue();
+        await Assert.That(vm.NpuDisassemblyText).IsNotEmpty();
+        await Assert.That(vm.NpuDisassemblyText).Contains("NPU_SET_IFM");
+
+        // Navigate back
+        vm.NavigateBackSubgraph();
+        await Assert.That(vm.Breadcrumbs.Count).IsEqualTo(1);
+        await Assert.That(vm.CanNavigateBackSubgraph).IsFalse();
+        await Assert.That(vm.IsInferredNpuSubgraph).IsFalse();
     }
 
     private static string ResolveFixturePath(string relative)
