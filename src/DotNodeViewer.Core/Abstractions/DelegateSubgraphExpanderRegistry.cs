@@ -87,5 +87,28 @@ public sealed class DelegateSubgraphExpanderRegistry
 
         return await expander.ExpandAsync(modelStream, graph, node, cancellationToken).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Asynchronously extracts and formats the disassembled command lines for the specified delegate node using the first matching registered expander.
+    /// </summary>
+    /// <param name="modelStream">The seekable source model stream.</param>
+    /// <param name="graph">The container model graph.</param>
+    /// <param name="node">The delegate node to disassemble.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A value task producing the list of disassembled command strings, or <see langword="null"/>.</returns>
+    public async ValueTask<IReadOnlyList<string>?> DisassembleAsync(
+        Stream modelStream,
+        ModelGraph graph,
+        GraphNode node,
+        CancellationToken cancellationToken = default)
+    {
+        IDelegateSubgraphExpander? expander = FindExpander(graph, node);
+        if (expander is null)
+        {
+            return null;
+        }
+
+        return await expander.DisassembleAsync(modelStream, graph, node, cancellationToken).ConfigureAwait(false);
+    }
 }
 

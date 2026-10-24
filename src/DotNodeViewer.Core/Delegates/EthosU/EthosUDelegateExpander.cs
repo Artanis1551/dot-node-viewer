@@ -81,6 +81,81 @@ internal sealed class EthosUDelegateExpander : IDelegateSubgraphExpander
         return null;
     }
 
+    /// <inheritdoc/>
+    public async ValueTask<IReadOnlyList<string>?> DisassembleAsync(
+        Stream modelStream,
+        ModelGraph graph,
+        GraphNode node,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(modelStream);
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(node);
+
+        if (!modelStream.CanSeek)
+        {
+            throw new ModelParseException("Model stream must be seekable to disassemble delegate payloads.", 0, node.Name);
+        }
+
+        TensorDataSlice? cmdSlice = null;
+
+        // 1. ExecuTorch vela_bin_stream
+        NodeAttribute? processedAttr = node.Attributes.FirstOrDefault(a => string.Equals(a.Name, "processed", StringComparison.OrdinalIgnoreCase));
+        if (processedAttr?.Value is AttributeValue.Bytes bytesVal)
+        {
+            byte[] processedBuf = ArrayPool<byte>.Shared.Rent((int)bytesVal.Slice.ByteLength);
+            try
+            {
+                modelStream.Position = bytesVal.Slice.StreamOffset;
+                await modelStream.ReadExactlyAsync(processedBuf.AsMemory(0, (int)bytesVal.Slice.ByteLength), cancellationToken).ConfigureAwait(false);
+                VelaBinStream velaStream = VelaBinStreamReader.Read(processedBuf.AsSpan(0, (int)bytesVal.Slice.ByteLength), bytesVal.Slice.StreamOffset);
+                if (velaStream.CmdData is not null)
+                {
+                    cmdSlice = new TensorDataSlice(velaStream.CmdData.Offset, velaStream.CmdData.Length, DataType.UInt8, TensorDataEncoding.Raw);
+                }
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(processedBuf);
+            }
+        }
+        else if (node.Inputs.Count > 0 && node.Inputs[0].Tensors.Count > 0 && node.Inputs[0].Tensors[0].Data is TensorDataSlice tflSlice)
+        {
+            cmdSlice = tflSlice;
+        }
+
+        if (cmdSlice is null)
+        {
+            return null;
+        }
+
+        byte[] cmdBuf = ArrayPool<byte>.Shared.Rent((int)cmdSlice.ByteLength);
+        try
+        {
+            modelStream.Position = cmdSlice.StreamOffset;
+            await modelStream.ReadExactlyAsync(cmdBuf.AsMemory(0, (int)cmdSlice.ByteLength), cancellationToken).ConfigureAwait(false);
+
+            ReadOnlySpan<byte> span = cmdBuf.AsSpan(0, (int)cmdSlice.ByteLength);
+            EthosUDriverPayload driverPayload = EthosUDriverPayloadReader.Read(span, cmdSlice.StreamOffset);
+            ReadOnlySpan<byte> wordsSpan = span.Slice(driverPayload.CommandStreamByteOffset, driverPayload.CommandStreamByteLength);
+
+            var lines = new List<string>(driverPayload.CommandWordCount);
+            EthosUCommandStreamDecoder.Decode(wordsSpan, (in EthosUCommand cmd) =>
+            {
+                string line = cmd.IsCmd1
+                    ? string.Create(CultureInfo.InvariantCulture, $"0x{cmd.ByteOffset:X6}: {cmd.Payload:X8} {cmd.Param:X4} {cmd.Opcode:X4} - {cmd.Name}")
+                    : string.Create(CultureInfo.InvariantCulture, $"0x{cmd.ByteOffset:X6}:          {cmd.Param:X4} {cmd.Opcode:X4} - {cmd.Name}");
+                lines.Add(line);
+            });
+
+            return lines;
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(cmdBuf);
+        }
+    }
+
     private static async ValueTask<Subgraph?> ExpandTfliteDelegateAsync(
         Stream modelStream,
         ModelGraph graph,

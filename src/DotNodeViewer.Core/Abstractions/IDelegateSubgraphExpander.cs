@@ -33,5 +33,19 @@ public interface IDelegateSubgraphExpander
         ModelGraph graph,
         GraphNode node,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Asynchronously extracts and formats the disassembled hardware accelerator command lines for the specified delegate node.
+    /// </summary>
+    /// <param name="modelStream">The seekable source model stream.</param>
+    /// <param name="graph">The container model graph.</param>
+    /// <param name="node">The delegate node to disassemble.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A value task producing the list of disassembled command strings, or <see langword="null"/> if unsupported.</returns>
+    ValueTask<IReadOnlyList<string>?> DisassembleAsync(
+        Stream modelStream,
+        ModelGraph graph,
+        GraphNode node,
+        CancellationToken cancellationToken = default);
 }
 

@@ -1,10 +1,11 @@
+using System.Globalization;
 using DotNodeViewer.Core.Abstractions;
 using DotNodeViewer.Core.Ir;
 
 namespace DotNodeViewer.Cli;
 
 /// <summary>
-/// Provides the command-line entry point for <c>DotNodeViewer.Cli</c>, supporting <c>detect</c>, <c>inspect</c>, and <c>snapshot</c> commands.
+/// Provides the command-line entry point for <c>DotNodeViewer.Cli</c>, supporting <c>detect</c>, <c>inspect</c>, <c>cmdstream</c>, and <c>snapshot</c> commands.
 /// </summary>
 public static class Program
 {
@@ -62,7 +63,8 @@ public static class Program
             return command switch
             {
                 "detect" => await ExecuteDetectAsync(filePath, stdout, stderr, activeRegistry).ConfigureAwait(false),
-                "inspect" => await ExecuteInspectAsync(filePath, stdout, activeRegistry).ConfigureAwait(false),
+                "inspect" => await ExecuteInspectAsync(filePath, args, stdout, activeRegistry).ConfigureAwait(false),
+                "cmdstream" => await ExecuteCmdStreamAsync(filePath, args, stdout, stderr, activeRegistry).ConfigureAwait(false),
                 "snapshot" => await ExecuteSnapshotAsync(filePath, args, stdout, stderr, activeRegistry).ConfigureAwait(false),
                 _ => await HandleUnknownCommandAsync(args[0], stderr).ConfigureAwait(false),
             };
@@ -100,9 +102,19 @@ public static class Program
 
     private static async Task<int> ExecuteInspectAsync(
         string filePath,
+        string[] args,
         TextWriter stdout,
         ModelFormatRegistry registry)
     {
+        bool expandDelegates = false;
+        for (int i = 2; i < args.Length; i++)
+        {
+            if (string.Equals(args[i], "--expand-delegates", StringComparison.OrdinalIgnoreCase))
+            {
+                expandDelegates = true;
+            }
+        }
+
         await using FileStream stream = new(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
         ModelGraph graph = await registry.ReadAsync(
             stream,
@@ -142,6 +154,44 @@ public static class Program
                     await stdout.WriteLineAsync($"    - {edge.Name}: {edge.Descriptor.DataType} {shapeStr}").ConfigureAwait(false);
                 }
             }
+
+            if (expandDelegates)
+            {
+                for (int n = 0; n < subgraph.Nodes.Count; n++)
+                {
+                    GraphNode node = subgraph.Nodes[n];
+                    IDelegateSubgraphExpander? expander = DelegateSubgraphExpanderRegistry.Default.FindExpander(graph, node);
+                    if (expander is not null)
+                    {
+                        Subgraph? expanded = await expander.ExpandAsync(stream, graph, node).ConfigureAwait(false);
+                        if (expanded is not null)
+                        {
+                            await stdout.WriteLineAsync().ConfigureAwait(false);
+                            await stdout.WriteLineAsync($"  [Delegate Expansion] '{node.Name}' ({expander.BackendId}) -> {expanded.Name}:").ConfigureAwait(false);
+                            await stdout.WriteLineAsync($"    Synthesized Nodes:   {expanded.Nodes.Count}").ConfigureAwait(false);
+                            await stdout.WriteLineAsync($"    Synthesized Tensors: {expanded.Tensors.Count}").ConfigureAwait(false);
+
+                            Dictionary<string, int> histogram = new(StringComparer.Ordinal);
+                            int dmaCount = 0;
+                            foreach (GraphNode opNode in expanded.Nodes)
+                            {
+                                histogram[opNode.Operator.Name] = histogram.GetValueOrDefault(opNode.Operator.Name) + 1;
+                                if (string.Equals(opNode.Operator.Name, "NPU_DMA", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    dmaCount++;
+                                }
+                            }
+
+                            await stdout.WriteLineAsync($"    DMA Operations:      {dmaCount}").ConfigureAwait(false);
+                            await stdout.WriteLineAsync("    Operator Distribution:").ConfigureAwait(false);
+                            foreach (KeyValuePair<string, int> kvp in histogram.OrderByDescending(k => k.Value).ThenBy(k => k.Key, StringComparer.Ordinal))
+                            {
+                                await stdout.WriteLineAsync($"      - {kvp.Key}: {kvp.Value}").ConfigureAwait(false);
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         if (graph.Diagnostics.Count > 0)
@@ -153,6 +203,78 @@ public static class Program
                 ParseDiagnostic diag = graph.Diagnostics[i];
                 await stdout.WriteLineAsync($"  [{diag.Severity}] {diag.Code}: {diag.Message}").ConfigureAwait(false);
             }
+        }
+
+        return 0;
+    }
+
+    private static async Task<int> ExecuteCmdStreamAsync(
+        string filePath,
+        string[] args,
+        TextWriter stdout,
+        TextWriter stderr,
+        ModelFormatRegistry registry)
+    {
+        string? targetNodeName = null;
+        for (int i = 2; i < args.Length; i++)
+        {
+            if (string.Equals(args[i], "--node", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+            {
+                targetNodeName = args[++i];
+            }
+        }
+
+        await using FileStream stream = new(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        ModelGraph graph = await registry.ReadAsync(
+            stream,
+            new ModelReadOptions { FileName = Path.GetFileName(filePath) }).ConfigureAwait(false);
+
+        GraphNode? targetNode = null;
+        foreach (Subgraph sg in graph.Subgraphs)
+        {
+            foreach (GraphNode n in sg.Nodes)
+            {
+                if (targetNodeName is not null)
+                {
+                    if (string.Equals(n.Name, targetNodeName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        targetNode = n;
+                        break;
+                    }
+                }
+                else if (DelegateSubgraphExpanderRegistry.Default.FindExpander(graph, n) is not null)
+                {
+                    targetNode = n;
+                    break;
+                }
+            }
+
+            if (targetNode is not null)
+            {
+                break;
+            }
+        }
+
+        if (targetNode is null)
+        {
+            string context = targetNodeName is not null ? $"node '{targetNodeName}'" : "any expandable delegate node";
+            await stderr.WriteLineAsync($"Error: Could not find {context} in '{filePath}'.").ConfigureAwait(false);
+            return 2;
+        }
+
+        IReadOnlyList<string>? lines = await DelegateSubgraphExpanderRegistry.Default.DisassembleAsync(stream, graph, targetNode).ConfigureAwait(false);
+        if (lines is null || lines.Count == 0)
+        {
+            await stderr.WriteLineAsync($"Error: Could not disassemble command stream for node '{targetNode.Name}'.").ConfigureAwait(false);
+            return 2;
+        }
+
+        await stdout.WriteLineAsync($"Disassembled command stream for '{targetNode.Name}' ({lines.Count} commands):").ConfigureAwait(false);
+        await stdout.WriteLineAsync("Offset    Payload  Param Code - Command").ConfigureAwait(false);
+        await stdout.WriteLineAsync("---------------------------------------").ConfigureAwait(false);
+        for (int i = 0; i < lines.Count; i++)
+        {
+            await stdout.WriteLineAsync(lines[i]).ConfigureAwait(false);
         }
 
         return 0;
@@ -212,8 +334,9 @@ public static class Program
         writer.WriteLine("Usage: DotNodeViewer.Cli <command> <file> [options]");
         writer.WriteLine();
         writer.WriteLine("Commands:");
-        writer.WriteLine("  detect <file>                     Print the detected model format ID");
-        writer.WriteLine("  inspect <file>                    Print a human-readable model graph summary");
-        writer.WriteLine("  snapshot <file> --id <model-id>   Print the golden .expected.json topology snapshot");
+        writer.WriteLine("  detect <file>                               Print the detected model format ID");
+        writer.WriteLine("  inspect <file> [--expand-delegates]          Print a human-readable model graph summary");
+        writer.WriteLine("  cmdstream <file> [--node <name>]            Print raw disassembled NPU register commands");
+        writer.WriteLine("  snapshot <file> --id <model-id>             Print the golden .expected.json topology snapshot");
     }
 }
