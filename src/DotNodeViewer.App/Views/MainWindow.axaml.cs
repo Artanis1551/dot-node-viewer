@@ -39,9 +39,9 @@ public partial class MainWindow : Window
             AllowMultiple = false,
             FileTypeFilter =
             [
-                new FilePickerFileType("Supported Models (*.onnx, *.tflite)")
+                new FilePickerFileType("All Supported Models (*.onnx, *.tflite, *.pte, *.pt, *.pt2, *.keras, *.h5)")
                 {
-                    Patterns = ["*.onnx", "*.tflite"]
+                    Patterns = ["*.onnx", "*.tflite", "*.pte", "*.pt", "*.pt2", "*.keras", "*.h5"]
                 },
                 new FilePickerFileType("ONNX Models (*.onnx)")
                 {
@@ -50,6 +50,18 @@ public partial class MainWindow : Window
                 new FilePickerFileType("TensorFlow Lite Models (*.tflite)")
                 {
                     Patterns = ["*.tflite"]
+                },
+                new FilePickerFileType("ExecuTorch Models (*.pte)")
+                {
+                    Patterns = ["*.pte"]
+                },
+                new FilePickerFileType("PyTorch Models (*.pt, *.pt2)")
+                {
+                    Patterns = ["*.pt", "*.pt2"]
+                },
+                new FilePickerFileType("Keras Models (*.keras, *.h5)")
+                {
+                    Patterns = ["*.keras", "*.h5"]
                 },
                 FilePickerFileTypes.All
             ]
