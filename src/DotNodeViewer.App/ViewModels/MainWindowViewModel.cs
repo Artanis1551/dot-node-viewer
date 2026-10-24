@@ -97,6 +97,24 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string? _selectedNodeDocSummary;
 
     [ObservableProperty]
+    private bool _isInferredNpuSubgraph;
+
+    [ObservableProperty]
+    private bool _canNavigateBackSubgraph;
+
+    [ObservableProperty]
+    private bool _canExpandSelectedDelegate;
+
+    [ObservableProperty]
+    private string? _selectedDelegateBackend;
+
+    [ObservableProperty]
+    private bool _hasNpuDisassembly;
+
+    [ObservableProperty]
+    private string _npuDisassemblyText = string.Empty;
+
+    [ObservableProperty]
     private string _formatDisplayName = string.Empty;
 
     [ObservableProperty]
@@ -432,6 +450,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
             // Breadcrumbs
             Breadcrumbs.Clear();
+            CanNavigateBackSubgraph = false;
+            IsInferredNpuSubgraph = false;
             SelectedSubgraph = model.PrimarySubgraph;
             if (SelectedSubgraph is not null)
             {
@@ -600,6 +620,45 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     /// <summary>
+    /// Asynchronously unwraps the selected hardware accelerator delegate node into a synthesized subgraph and navigates into it.
+    /// </summary>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    [RelayCommand]
+    public async Task ExpandSelectedDelegateAsync(CancellationToken cancellationToken = default)
+    {
+        if (SelectedNode?.GraphNode is not GraphNode gn || CurrentModel is null)
+        {
+            return;
+        }
+
+        IDelegateSubgraphExpander? expander = DelegateSubgraphExpanderRegistry.Default.FindExpander(CurrentModel, gn);
+        if (expander is null)
+        {
+            return;
+        }
+
+        Stream? stream = OpenModelStream();
+        if (stream is null)
+        {
+            return;
+        }
+
+        try
+        {
+            Subgraph? expanded = await expander.ExpandAsync(stream, CurrentModel, gn, cancellationToken).ConfigureAwait(true);
+            if (expanded is not null)
+            {
+                DrillDownSubgraph(expanded);
+            }
+        }
+        finally
+        {
+            await stream.DisposeAsync().ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
     /// Drills down into a nested child subgraph (e.g. from an If or Loop branch attribute).
     /// </summary>
     /// <param name="subgraph">The child subgraph to inspect.</param>
@@ -708,6 +767,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         SelectedSubgraph = subgraph;
         SelectedNode = null;
+        CanNavigateBackSubgraph = Breadcrumbs.Count > 1;
+        IsInferredNpuSubgraph = subgraph.Name.Contains("Ethos-U", StringComparison.OrdinalIgnoreCase);
         PopulateSubgraphSummaries(subgraph);
 
         if (CurrentModel is not null)
@@ -739,6 +800,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
         SelectedNodeAttributes.Clear();
         SelectedNodeInputs.Clear();
         SelectedNodeOutputs.Clear();
+        CanExpandSelectedDelegate = false;
+        SelectedDelegateBackend = null;
+        HasNpuDisassembly = false;
+        NpuDisassemblyText = string.Empty;
 
         if (node is null)
         {
@@ -769,6 +834,19 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 ? gn.Operator.Version.Value.ToString(CultureInfo.InvariantCulture)
                 : null;
             SelectedNodeDocSummary = $"{gn.Operator.Name} ({gn.Operator.Category})";
+
+            if (CurrentModel is not null && DelegateSubgraphExpanderRegistry.Default.FindExpander(CurrentModel, gn) is IDelegateSubgraphExpander expander)
+            {
+                CanExpandSelectedDelegate = true;
+                SelectedDelegateBackend = expander.BackendId;
+            }
+
+            NodeAttribute? cmdAttr = gn.Attributes.FirstOrDefault(a => string.Equals(a.Name, "commands", StringComparison.OrdinalIgnoreCase));
+            if (cmdAttr?.Value is AttributeValue.StringList cmdList && cmdList.Values.Count > 0)
+            {
+                HasNpuDisassembly = true;
+                NpuDisassemblyText = string.Join(Environment.NewLine, cmdList.Values);
+            }
 
             // Attributes
             for (int i = 0; i < gn.Attributes.Count; i++)

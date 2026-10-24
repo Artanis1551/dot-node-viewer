@@ -127,26 +127,72 @@
           </StackPanel>
         </Button>
 
-        <!-- Subgraph Selector (when model loaded) -->
+        <!-- Subgraph / Breadcrumb Navigation (when model loaded) -->
         <StackPanel Grid.Column="2"
                     Orientation="Horizontal"
                     Spacing="8"
                     Margin="24,0,0,0"
                     VerticalAlignment="Center"
                     IsVisible="{Binding HasModel}">
-          <TextBlock Text="Subgraph:"
-                     Foreground="{DynamicResource ShellTextSecondaryBrush}"
-                     FontSize="12"
-                     VerticalAlignment="Center" />
-          <ComboBox AutomationProperties.Name="Subgraph Selector"
-                    AutomationProperties.AutomationId="SubgraphSelector"
-                    ItemsSource="{Binding Subgraphs}"
-                    SelectedItem="{Binding SelectedSubgraph}"
-                    DisplayMemberBinding="{Binding Name}"
-                    MinWidth="140"
-                    FontSize="12"
-                    CornerRadius="{DynamicResource RadiusSmall}"
-                    VerticalAlignment="Center" />
+          <!-- Root Subgraph dropdown (visible when at root) -->
+          <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding !CanNavigateBackSubgraph}">
+            <TextBlock Text="Subgraph:"
+                       Foreground="{DynamicResource ShellTextSecondaryBrush}"
+                       FontSize="12"
+                       VerticalAlignment="Center" />
+            <ComboBox AutomationProperties.Name="Subgraph Selector"
+                      AutomationProperties.AutomationId="SubgraphSelector"
+                      ItemsSource="{Binding Subgraphs}"
+                      SelectedItem="{Binding SelectedSubgraph}"
+                      DisplayMemberBinding="{Binding Name}"
+                      MinWidth="140"
+                      FontSize="12"
+                      CornerRadius="{DynamicResource RadiusSmall}"
+                      VerticalAlignment="Center" />
+          </StackPanel>
+
+          <!-- Breadcrumb navigation (visible when drilled down into a subgraph / delegate) -->
+          <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding CanNavigateBackSubgraph}">
+            <Button Classes="toolbar-btn"
+                    Command="{Binding NavigateBackSubgraphCommand}"
+                    ToolTip.Tip="Back to parent graph (Esc)"
+                    AutomationProperties.Name="Back to parent graph"
+                    AutomationProperties.AutomationId="NavigateBackSubgraphButton"
+                    Padding="8,4">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <TextBlock Text="←" FontWeight="Bold" />
+                <TextBlock Text="Back" FontSize="11" />
+              </StackPanel>
+            </Button>
+
+            <ItemsControl ItemsSource="{Binding Breadcrumbs}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:SubgraphBreadcrumbItem">
+                  <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <Button Classes="toolbar-btn"
+                            Padding="6,3"
+                            Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SelectBreadcrumbCommand}"
+                            CommandParameter="{Binding}"
+                            IsEnabled="{Binding !IsCurrent}">
+                      <TextBlock Text="{Binding Name}"
+                                 FontFamily="{DynamicResource CodeFontFamily}"
+                                 FontSize="11" />
+                    </Button>
+                    <TextBlock Text="›"
+                               Foreground="{DynamicResource ShellTextSecondaryBrush}"
+                               FontSize="12"
+                               VerticalAlignment="Center"
+                               IsVisible="{Binding !IsCurrent}" />
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
         </StackPanel>
 
         <!-- Theme Toggle -->
@@ -298,6 +344,36 @@
                                 SelectedNode="{Binding SelectedNode, Mode=TwoWay}"
                                 AutomationProperties.Name="Graph Canvas"
                                 AutomationProperties.AutomationId="GraphCanvas" />
+
+          <!-- NPU Inferred Subgraph Notice Banner (Top-Center) -->
+          <Border HorizontalAlignment="Center"
+                  VerticalAlignment="Top"
+                  Margin="16,12"
+                  Background="{DynamicResource ShellSurfaceElevatedBrush}"
+                  BorderBrush="{DynamicResource ShellAccentPrimaryBrush}"
+                  BorderThickness="1"
+                  CornerRadius="{DynamicResource RadiusPill}"
+                  Padding="14,6"
+                  IsVisible="{Binding IsInferredNpuSubgraph}"
+                  AutomationProperties.Name="NPU Inferred Subgraph Banner"
+                  AutomationProperties.AutomationId="NpuInferredSubgraphBanner">
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+              <Border Background="{DynamicResource ShellAccentSubtleBrush}"
+                      CornerRadius="{DynamicResource RadiusPill}"
+                      Padding="6,2">
+                <TextBlock Text="ETHOS-U"
+                           FontFamily="{DynamicResource CodeFontFamily}"
+                           FontSize="9.5"
+                           FontWeight="Bold"
+                           Foreground="{DynamicResource ShellAccentPrimaryBrush}" />
+              </Border>
+              <TextBlock Text="Decoded from NPU command stream — edges inferred from memory addresses"
+                         FontSize="11.5"
+                         FontWeight="Medium"
+                         Foreground="{DynamicResource ShellTextPrimaryBrush}"
+                         VerticalAlignment="Center" />
+            </StackPanel>
+          </Border>
 
           <!-- Canvas Floating Controls Overlay (Bottom-Right) -->
           <Border HorizontalAlignment="Right"

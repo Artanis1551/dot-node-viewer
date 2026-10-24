@@ -357,6 +357,16 @@ public sealed class ModelGraphLayoutAdapter
         for (int i = 0; i < node.Attributes.Count; i++)
         {
             NodeAttribute attr = node.Attributes[i];
+            if (string.Equals(attr.Name, "delegate.backend", StringComparison.OrdinalIgnoreCase) &&
+                attr.Value is AttributeValue.String deb)
+            {
+                return $"{deb.Value} · Expandable";
+            }
+        }
+
+        for (int i = 0; i < node.Attributes.Count; i++)
+        {
+            NodeAttribute attr = node.Attributes[i];
             if (string.Equals(attr.Name, "fused_activation_function", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(attr.Name, "activation", StringComparison.OrdinalIgnoreCase))
             {
