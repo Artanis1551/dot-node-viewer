@@ -6,6 +6,8 @@
   items:
     - name: Visualizer User Guide
       href: visualizer/user-guide.md
+    - name: Deploying WebAssembly (WASM) Head
+      href: visualizer/webassembly.md
     - name: Inspecting Edge Conversions (.pt2 to .tflite / .pte)
       href: visualizer/inspecting-edge-conversions.md
     - name: Embedding GraphCanvas in Avalonia
@@ -35,4 +37,7 @@
       href: library/unified-graph-ir.md
     - name: Layered Graph Layout Engine
       href: library/layout-engine.md
+    - name: Performance Architecture & NativeAOT
+      href: architecture/performance-and-aot.md
+
 
