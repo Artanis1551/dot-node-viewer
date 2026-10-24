@@ -1,6 +1,6 @@
 # How-To Guide: Using the `dot-node-viewer` Desktop Visualizer
 
-This guide walks through using the cross-platform `dot-node-viewer` desktop visualizer (`DotNodeViewer.Desktop`) to open neural network models, navigate layered computational graph topologies on the interactive canvas, inspect node attributes and weights, review tensor dimensions and quantization schemes, and toggle between dark and light themes.
+This guide walks through using the cross-platform `dot-node-viewer` desktop visualizer (`DotNodeViewer.Desktop`) to open neural network models, navigate layered computational graph topologies, inspect on-demand weights and quantization schemes, drill down into nested subgraphs, search operators and tensors, and analyze model architecture telemetry.
 
 ---
 
@@ -22,14 +22,17 @@ The application opens with an inviting empty-state card offering drag-and-drop t
 
 ### 1.2 Direct Model Launch
 
-Pass the relative or absolute path of an ONNX (`.onnx`) or TensorFlow Lite (`.tflite`) file directly to the executable:
+Pass the relative or absolute path of any supported neural network model (`.onnx`, `.tflite`, `.pte`, `.pt`, `.pt2`, `.keras`, `.h5`) directly to the executable:
 
 ```bash
 # Launch with an ONNX model
-dotnet run --project src/DotNodeViewer.Desktop -c Release -- tests/DotNodeViewer.Core.Tests/Fixtures/onnx/tiny_cnn_dynamic_batch.onnx
+dotnet run --project src/DotNodeViewer.Desktop -c Release -- tests/DotNodeViewer.Core.Tests/Fixtures/onnx/if_subgraph.onnx
 
 # Launch with a quantized TensorFlow Lite model
 dotnet run --project src/DotNodeViewer.Desktop -c Release -- tests/DotNodeViewer.Core.Tests/Fixtures/tflite/tiny_cnn_int8.tflite
+
+# Launch with an ExecuTorch delegated model
+dotnet run --project src/DotNodeViewer.Desktop -c Release -- tests/DotNodeViewer.Core.Tests/Fixtures/executorch/tiny_cnn_xnnpack.pte
 ```
 
 The application immediately streams the model on a background thread, extracts the Unified Graph IR, runs the layered layout engine, and presents the interactive graph topology.
@@ -43,14 +46,14 @@ When a model is opened, `dot-node-viewer` displays the graph topology on a high-
 ![Interactive Graph Canvas](../../images/s06/01-canvas-onnx-dynamic-batch.png)
 
 ### 2.1 Pan and Zoom Navigation
-- **Pan:** Click and drag anywhere on empty canvas space, drag with middle-mouse button, or two-finger scroll on trackpads.
-- **Zoom Around Cursor:** Hold `Ctrl` and scroll the mouse wheel, pinch on trackpads, or use the mouse wheel directly.
-- **Floating HUD Controls:** Located in the bottom-right corner of the canvas:
-  - `+`: Zoom in by 25%.
-  - `-`: Zoom out by 20%.
-  - `Fit`: Automatically scale and center the entire graph to fit the viewport.
-  - `1:1`: Reset zoom to 100% scale.
-- **Zoom Percentage Indicator:** Displayed in the bottom-left pill indicator (e.g. `100%`, `75%`).
+- **Pan:** Click and drag anywhere on empty canvas space, drag with middle/right mouse button, use keyboard arrow keys (`Left`, `Right`, `Up`, `Down`), or two-finger scroll on trackpads.
+- **Zoom Around Cursor:** Hold `Ctrl` and scroll the mouse wheel, pinch on trackpads, or use `Ctrl` + `+` / `Ctrl` + `-`.
+- **Keyboard Shortcuts:**
+  - `F` or `Ctrl+0`: Zoom to fit the entire graph into the visible canvas.
+  - `Tab` / `Shift+Tab`: Cycle focus through nodes in topological order.
+  - `Up` / `Down`: Navigate to immediate predecessor or successor nodes along dataflow edges.
+  - `Escape`: Clear current selection or close open search/inspect panels.
+- **Floating HUD Controls:** Located in the bottom-right corner of the canvas (`+`, `-`, `Fit`, `1:1`).
 
 ### 2.2 Semantic Operator Nodes
 Each operator node is rendered as a clean rounded card styled according to the design system:
@@ -60,55 +63,87 @@ Each operator node is rendered as a clean rounded card styled according to the d
 - **Collapsed Parameter Rows:** Static single-consumer weights and biases (like convolutional kernel filters or dense weights) are rendered directly inside the node card with compact shape pills (e.g., `W · float32 [64, 3, 3, 3]`), reducing visual clutter while keeping key dimensions accessible.
 - **Fused Activation Badges:** When an operator carries a fused non-linearity (such as `+ RELU`), it is highlighted with an amber badge.
 
-### 2.3 Routed Tensor Edges & Quantization Indicators
-- **Cubic Bézier Splines:** Smooth curve routing with directional arrowheads indicating dataflow direction.
-- **Midpoint Shape Pills:** At medium and high zoom levels, activation tensor shapes (such as `[batch, 64, 112, 112]`) are rendered directly along the edge.
-- **Quantization Indicators:** Edges carrying quantized integer data (`INT8` / `UINT8`) feature an emerald green accent stroke and an emerald indicator badge, highlighting hardware-accelerated datatypes.
+### 2.3 1-Hop Neighborhood Highlighting & Dimming
+Selecting any node on the canvas dynamically highlights its immediate upstream predecessors and downstream successors:
+- **Predecessor Edges & Ports:** Rendered with an amber warning accent.
+- **Successor Edges & Ports:** Rendered with an emerald success accent.
+- **Unrelated Branches:** All non-adjacent nodes and edges fade to 25% opacity, eliminating clutter in deep or branched networks.
+
+![ExecuTorch Neighborhood Highlighting](../../images/s11/03-executorch-xnnpack-neighborhood.png)
+
+### 2.4 Graph Minimap
+The collapsible minimap in the bottom-left corner displays a high-level silhouette of the entire graph layout:
+- **Viewport Rectangle:** Indicates current visible bounds.
+- **Interactive Dragging:** Click or drag inside the minimap to pan canvas view to that region.
+- **Toggle Button:** Click `Minimap` in the header bar to collapse or expand the overlay.
+
+![Keras Skip Connections and Minimap Dark](../../images/s11/05-keras-residual-minimap-dark.png)
 
 ---
 
-## 3. Contextual Properties Sidebar (v1)
+## 3. Fast Categorized Search & Filter
 
-The right sidebar updates contextually based on the active selection:
+Press `Ctrl+F` or click the **Search** icon in the toolbar to activate the instant search panel.
 
-### 3.1 Graph Overview (No Selection)
-When no node is selected, the sidebar displays model-level telemetry:
-- **Format & Producer:** Container format badge (e.g., `ONNX (IR v9)` or `TensorFlow Lite (v3)`) and producer string.
-- **Model Metrics:** Total nodes, edges, tensors, and quantized tensors.
-- **Model Inputs & Outputs:** Formal names, shapes, and quantization badges (`INT8`, `FP32`, `FP16`, `INT4`) with scale and zero-point parameters.
-- **Operator Category Distribution:** Summary breakdown across categories.
+![PyTorch Model Search Panel](../../images/s11/04-pytorch-search.png)
 
-### 3.2 Node Inspector (Node Selected)
-Clicking any node on the canvas selects it with a glowing accent border and opens the Node Inspector:
-
-![Node Inspector Sidebar](../../images/s06/02-canvas-node-selected-properties.png)
-
-- **Operator Title & Category:** Heading showing the operator name and category badge.
-- **Metadata:** Domain and opset/schema version.
-- **Typed Attributes:** Lists declared operator attributes (such as `strides`, `pads`, `kernel_shape`, `dilations`, `group`) with their native types (`Int64[]`, `Float64`, `String`, `TensorShape`).
-- **Inputs & Weights:** Distinguishes runtime activation inputs from static initializers and weights, displaying shapes, data types, and affine quantization parameters.
-- **Outputs:** Shows all output tensors produced by the operator.
-- **Deselection:** Click the `✕` button or click on empty canvas to return to the Graph Overview.
+- **Instant Matching:** Filters across:
+  - **Node Identifiers:** Exact node names and scoped instance paths (e.g. `conv_0`, `/backbone/layer1`).
+  - **Operator Types:** Canonical op names (e.g. `Conv`, `BatchNormalization`, `Relu`).
+  - **Operator Categories:** Functional groupings (e.g. `Activation`, `Layer`, `Tensor`).
+  - **Tensor Names:** Inputs, outputs, and intermediate activation tensors.
+- **Direct Jump:** Use arrow keys or mouse click to select a search result; the canvas smoothly centers on the target node and selects it.
 
 ---
 
-## 4. Quantized Models Inspection
+## 4. On-Demand Tensor Weight Inspector
 
-When opening quantized models such as TensorFlow Lite `INT8` networks, `dot-node-viewer` provides dedicated telemetry:
+To inspect numerical weights without paying eager allocation costs on model load, `dot-node-viewer` lazily reads slices on demand.
 
-![Loaded Quantized TFLite Model](../../images/s06/03-canvas-tflite-quantized-int8.png)
+![TFLite Weight Inspector](../../images/s11/02-tflite-weight-inspector.png)
 
-- Quantized weights display emerald `Q` / `INT8` badges.
-- Scale factors and zero-point offsets are presented in tabular notation.
-- Quantized edge dataflow is visibly differentiated from floating-point tensors.
+### 4.1 Inspecting Initializer & Weight Payloads
+1. Click any node containing weights (such as a Convolution or Dense layer).
+2. In the right-hand **Properties Panel**, locate the input tensor in the **Inputs & Weights** section.
+3. Click the **Inspect Weights** button next to the tensor.
+4. The embedded inspector panel decodes up to 64 KB of raw tensor values directly from the model stream.
+
+### 4.2 Inspector Telemetry & Formats
+- **Metadata:** Displays data type (e.g., `Float32`, `Float16`, `BFloat16`, `Int8`, `UInt8`), shape dimensions, element count, and stream byte range (`Offset`, `ByteLength`).
+- **Summary Statistics:** Computes minimum, maximum, mean, percentage of zero values, and NaN / Infinity counts across the sampled window.
+- **Raw vs. Dequantized Preview:** For quantized tensors (`INT8`, `UINT8`), displays both raw stored integer bytes and affine-dequantized real values based on the tensor's scale and zero-point parameters.
+- **External Shards:** For models utilizing external weight binaries (such as ONNX external data or PyTorch `.pt` ZIP archives), displays external file path references safely.
 
 ---
 
-## 5. Theme Switching (Dark & Light)
+## 5. Subgraph Breadcrumb Drill-Down
+
+Modern models frequently embed control-flow blocks (`If` branches, `Loop` bodies, or submodules).
+
+![ONNX Subgraph Drilldown](../../images/s11/01-onnx-subgraph-drilldown.png)
+
+- **Drill-Down Trigger:** In the Properties Panel under **Attributes**, attributes containing nested subgraphs offer a **Drill Down** button.
+- **Breadcrumb Navigation:** The header displays the active path hierarchy (e.g., `Root: main > If_0: then_branch`).
+- **Parent Traversal:** Click any parent breadcrumb item or press the **< Back** button to ascend one level.
+
+---
+
+## 6. Architecture & Telemetry Bar
+
+The top status bar provides at-a-glance architecture metrics for the active graph:
+- **Total Parameters:** Parameter count (e.g., `2.4M params`).
+- **Memory Footprint:** Uncompressed weight volume (e.g., `9.6 MB`).
+- **Precision Distribution:** Breakdown across precision formats (`INT8`, `FP32`, `FP16`, `BF16`).
+- **Hardware Delegates:** Highlights hardware acceleration delegates (e.g., `XNNPACK (2 blocks)`).
+- **Diagnostics Warning Drawer:** If non-fatal anomalies occur during model parsing, an amber diagnostic pill indicates the warning count; clicking it opens a drawer detailing each diagnostic with file byte offsets and node context.
+
+---
+
+## 7. Theme Switching (Dark & Light)
 
 Toggle themes at any time using the `Theme` button in the top toolbar:
 
-- **Dark Theme (Default):** Deep graphite background (`#12151B`) with high-contrast text (`#F1F5F9`).
-- **Light Theme:** Clean porcelain background (`#F8FAFC`) with titanium boundaries and high-legibility navy text (`#0F172A`).
+![Light Theme Mode](../../images/s11/06-keras-residual-minimap-light.png)
 
-![Light Theme Mode](../../images/s06/05-canvas-light-theme.png)
+- **Dark Theme (Default):** Deep graphite canvas (`#12151B`) with high-contrast text (`#F1F5F9`).
+- **Light Theme:** Clean porcelain canvas (`#F8FAFC`) with titanium boundaries and high-legibility text (`#0F172A`).

@@ -547,3 +547,68 @@ Every stage agent MUST read this file before starting work and append a completi
   - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
   - `python3 tools/ci/report-tested-models.py keras`
 - **Next Stage:** Run **Stage S11** (`docs/roadmap/stages/S11-ui-iteration-2-polish-inspector-and-navigation.md`).
+
+---
+
+### Stage S11 — UI Iteration 2: Polish, Inspector & Navigation
+- **Branch:** `stage/S11-ui-polish-and-inspector`
+- **Commits:**
+  - `S11: add on-demand TensorDataSlice weight inspector with stats and dequantization preview`
+  - `S11: add fast categorized search panel with keyboard navigation and camera jump`
+  - `S11: add subgraph breadcrumb trail and drill-down navigation`
+  - `S11: add interactive Minimap control, 1-hop neighborhood highlighting, and architecture bar`
+  - `S11: extract shared MainView UserControl and capture live verification screenshots across 5 formats`
+  - `S11: update README, DocFX documentation site, and PROGRESS.md`
+- **What Was Built:**
+  - **On-Demand `TensorDataSlice` Weight Inspector (`TensorInspectorViewModel.cs`, `internal`):**
+    - Zero eager allocation on load: seeks and streams up to 64 KB of raw tensor weights on demand via `Stream` over `TensorDataSlice`.
+    - Supports Float32, Float16, BFloat16, Float64, Int8, UInt8, Int16, UInt16, Int32, UInt32, Int64, UInt64, Bool, and VarintPacked.
+    - Real-time statistics: minimum, maximum, mean, percentage of zero values, and NaN / Infinity counts.
+    - Affine dequantization preview: for quantized `INT8` / `UINT8` tensors, decodes and formats real-valued dequantized numbers ($q_{real} = (q_{int} - z) \times s$) alongside stored raw integer representations.
+    - External tensor shard display: safely presents path references and stream bounds for sharded weights (ONNX external data, PyTorch ZIP archives).
+    - Embedded sub-panel integrated into `PropertiesPanelView.axaml` with inspect triggers on inputs, weights, and overview lists.
+  - **Fast Categorized Search & Filter (`SearchPanelViewModel.cs`, `internal`):**
+    - Instant indexing across Node instance names, Operator types, Operator categories, and Tensor names.
+    - Keyboard-accessible floating dropdown activated via `Ctrl+F` or toolbar search button.
+    - Keyboard navigation (`Up`/`Down`, `Enter`, `Escape`) and smooth camera centering (`CenterOnNode`) on matched nodes.
+  - **Subgraph Breadcrumb Drill-Down (`MainWindowViewModel.cs`):**
+    - Hierarchical breadcrumb navigation (`Root: main > If_0: then_branch`) tracking active subgraph traversal.
+    - Drill-down action buttons on graph attributes (`AttributeValue.Graph` / `AttributeValue.GraphList`).
+    - Back button (`< Back`) and breadcrumb selection for ascending the hierarchy.
+  - **Canvas & UX Polish (`GraphCanvas.cs`, `MinimapControl.cs`, `MainWindow.axaml`):**
+    - `MinimapControl`: collapsible bottom-left silhouette overlay with draggable viewport indicator for spatial orientation.
+    - 1-hop neighborhood highlighting: selecting a node highlights immediate upstream predecessors (amber `WarningBrush`) and downstream successors (emerald `SuccessBrush`) while dimming unrelated graph branches to 25% opacity.
+    - Full keyboard navigation suite: `Tab` / `Shift+Tab` cycles selection in topological order; `Up` / `Down` traverses connected dataflow paths; `F` or `Ctrl+0` zooms to fit; `Escape` clears selection or closes search.
+    - Architecture & Conversion Summary Bar: reports active parameter count, uncompressed weight volume, precision mix (`INT8: 92% · FP32: 8%`), and hardware delegate blocks (`XNNPACK`).
+    - Diagnostics Warning Drawer: non-fatal parser warnings (`ParseDiagnostic`) surfaced via an amber warning pill that toggles an expandable diagnostics drawer with file byte offsets and node context.
+  - **Cross-Platform Architecture Refactoring:**
+    - Extracted shared `MainView` (`UserControl`) from `MainWindow.axaml` so the visualizer runs identically across Desktop (`MainWindow` hosting `MainView`) and WebAssembly (`ISingleViewApplicationLifetime` hosting `MainView`).
+  - **Comprehensive Unit & ViewModel Tests:**
+    - Added `TensorInspectorViewModelTests` (5 tests verifying exact byte bounding with `ByteCountingStream`, affine dequantization, BFloat16 decoding, external file reference safety).
+    - Added `SearchPanelViewModelTests` (5 tests verifying node name, op type, and tensor name search, result selection, and keyboard navigation).
+    - Added `SubgraphNavigationAndSummaryTests` (5 tests verifying breadcrumb drill-down and back navigation, TFLite INT8 precision & param calculation, ExecuTorch delegate detection, minimap collapse/expand, diagnostics binding).
+  - **Mandatory Live Desktop Verification Across 5 Formats (`tools/capture_s11_screenshots.py`):**
+    - Automated live background desktop verification using X11 / AT-SPI 2 automation.
+    - Captured 6 full-resolution (2200x1500) screenshots across ONNX, TFLite, ExecuTorch, PyTorch `.pt2`, and Keras `.keras` under `docs/screenshots/S11/` and `docs/site/images/s11/`.
+- **`README.md` & `docs/site/` Updates:**
+  - Updated root [`README.md`](../../README.md) visualizer feature list and added screenshots for inspector, neighborhood highlighting, search, and minimap.
+  - Updated [`docs/site/articles/visualizer/user-guide.md`](../site/articles/visualizer/user-guide.md) with comprehensive guides for weight inspector, categorized search, breadcrumbs, minimap, and architecture bar.
+  - Authored new Diátaxis How-To article [`docs/site/articles/visualizer/inspecting-edge-conversions.md`](../site/articles/visualizer/inspecting-edge-conversions.md) for validating PyTorch `.pt2` to TFLite / ExecuTorch edge conversions.
+  - Updated [`docs/site/articles/toc.yml`](../site/articles/toc.yml).
+  - Verified `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors` passes with 0 warnings.
+- **New ADRs Recorded:** None (strictly followed ADRs `0001`–`0007`).
+- **Deviations & Known Limitations:** None.
+- **Test Count:** 150 passed (`DotNodeViewer.Core.Tests`: 95, `DotNodeViewer.Layout.Tests`: 13, `DotNodeViewer.App.Tests`: 42), 0 failed, 0 skipped.
+- **Screenshots Taken:**
+  - [ONNX Subgraph Drill-Down](../screenshots/S11/01-onnx-subgraph-drilldown.png)
+  - [TFLite On-Demand Weight Inspector](../screenshots/S11/02-tflite-weight-inspector.png)
+  - [ExecuTorch XNNPACK Delegate & Neighborhood Highlighting](../screenshots/S11/03-executorch-xnnpack-neighborhood.png)
+  - [PyTorch Fast Categorized Search](../screenshots/S11/04-pytorch-search.png)
+  - [Keras Functional Skip-Connection & Minimap Dark](../screenshots/S11/05-keras-residual-minimap-dark.png)
+  - [Keras Functional Skip-Connection & Minimap Light](../screenshots/S11/06-keras-residual-minimap-light.png)
+- **Verification Commands Run:**
+  - `dotnet build dot-node-viewer.slnx -c Release --no-restore`
+  - `dotnet test --solution dot-node-viewer.slnx -c Release --no-build`
+  - `python3 tools/capture_s11_screenshots.py`
+  - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
+- **Next Stage:** Run **Stage S12** (`docs/roadmap/stages/S12-wasm-aot-and-perf.md`).
