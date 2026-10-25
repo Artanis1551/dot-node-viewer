@@ -11,7 +11,7 @@ This guide walks through using `dot-node-viewer` to inspect and cross-verify mod
 Before conversion, open the source `.pt2` model to establish the ground-truth topology and parameter footprint:
 
 ```bash
-dotnet run --project src/DotNodeViewer.Desktop -c Release -- models/export/tiny_cnn_export.pt2
+dotnet run --project src/DotNodeViewer.Desktop -c Release -- tests/DotNodeViewer.Core.Tests/Fixtures/pytorch_pt2/tiny_cnn_export.pt2
 ```
 
 ![PyTorch Model Search Panel](../../images/s11/04-pytorch-search.png)
@@ -20,6 +20,7 @@ dotnet run --project src/DotNodeViewer.Desktop -c Release -- models/export/tiny_
 1. **Model Inputs & Outputs:** Verify that dynamic batch dimensions (e.g., `batch` or `s0`) and channel order match your inference contract in the Model Overview card.
 2. **Total Parameters:** Note the total parameter count in the top Architecture Bar (e.g., `12.5K params`).
 3. **Control-Flow & Subgraphs:** If the model includes conditioned branches (`torch.ops.higher_order.cond`), verify that submodules appear in the breadcrumb trail.
+4. **Search:** Press `Ctrl+F` to search for specific operators (e.g., `conv`) and verify their attributes.
 
 ---
 
@@ -30,7 +31,7 @@ During quantization (`torch.ao.quantization` or TFLite Converter post-training q
 Open the resulting `.tflite` model:
 
 ```bash
-dotnet run --project src/DotNodeViewer.Desktop -c Release -- models/tflite/tiny_cnn_int8.tflite
+dotnet run --project src/DotNodeViewer.Desktop -c Release -- tests/DotNodeViewer.Core.Tests/Fixtures/tflite/tiny_cnn_int8.tflite
 ```
 
 ![TFLite Weight Inspector](../../images/s11/02-tflite-weight-inspector.png)
@@ -47,24 +48,24 @@ dotnet run --project src/DotNodeViewer.Desktop -c Release -- models/tflite/tiny_
 
 ---
 
-## 3. Step 3: Verifying ExecuTorch Delegate Partitioning (`.pte`)
+## 3. Step 3: Verifying ExecuTorch Graph Dataflow & Neighborhoods (`.pte`)
 
-When targeting microcontrollers, mobile NPUs, or CPU backends with ExecuTorch, operators are partitioned into delegated subgraphs (such as XNNPACK, CoreML, or QNN).
+When targeting microcontrollers, mobile NPUs, or embedded CPU runtimes with ExecuTorch, operators and tensors are serialized into compact FlatBuffers programs.
 
-Open the partitioned `.pte` model:
+Open the compiled `.pte` model:
 
 ```bash
-dotnet run --project src/DotNodeViewer.Desktop -c Release -- models/executorch/tiny_cnn_xnnpack.pte
+dotnet run --project src/DotNodeViewer.Desktop -c Release -- tests/DotNodeViewer.Core.Tests/Fixtures/executorch/tiny_mlp_portable.pte
 ```
 
 ![ExecuTorch Neighborhood Highlighting](../../images/s11/03-executorch-xnnpack-neighborhood.png)
 
-### 3.1 Delegate Verification
-1. **Delegate Block Count:** Check the Architecture Bar for the delegate badge (e.g., `XNNPACK (1 block)`).
-2. **Delegate Node Boundaries:**
-   - Click the delegated operator node on the canvas.
-   - Observe the **1-Hop Neighborhood Highlighting**: the predecessor activations leading into the delegate and successor activations exiting it are highlighted with emerald and amber accent pens, while non-delegate nodes are dimmed to 25% opacity.
-3. **Delegate Attributes:** In the Properties Panel, review the `custom_code` or delegate identifier and verify that no unintended operators fell back to un-accelerated CPU kernels.
+### 3.1 Dataflow & Neighborhood Verification
+1. **Model Architecture:** Review the sequence of linear transformations, activations, and dataflow connections across the graph.
+2. **1-Hop Neighborhood Highlighting:**
+   - Select an intermediate operator node (such as `aten::relu.out`) on the canvas.
+   - Observe the **1-Hop Neighborhood Highlighting**: the predecessor activations leading into the node are highlighted with an amber indicator, and successor activations exiting it are highlighted with an emerald indicator, while unrelated graph branches fade to 25% opacity.
+3. **Operator & Tensor Attributes:** In the Properties Panel, review input/output tensor shapes, datatypes, and parameter metadata.
 
 ---
 

@@ -72,7 +72,7 @@ Navigate to `http://localhost:8080` in your web browser (Chrome, Firefox, Safari
 ### Drag-and-Drop in WebAssembly
 
 Drag-and-drop in the browser head is routed natively through Avalonia's HTML5 drag events onto `MainView`:
-- **Visual Feedback:** Dropping a file triggers the same responsive dashed-border drop overlay as the desktop shell.
+- **Drop Feedback:** Dragging a file displays the drop target overlay with candidate format validation.
 - **Client-Side File Streaming:** Dropped browser files have no local filesystem path (`TryGetLocalPath()` returns `null`). `MainView` reads the file via `IStorageFile.OpenReadAsync()` and feeds chunks into `BrowserStreamAdapter.CreateSeekableStreamFactoryAsync`, parsing the model completely in-memory inside the browser tab without server uploads.
 
 ---
