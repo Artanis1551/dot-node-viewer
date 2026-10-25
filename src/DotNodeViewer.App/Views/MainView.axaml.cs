@@ -321,11 +321,21 @@ public partial class MainView : UserControl
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
-        if (e.Key == Key.Escape && DataContext is MainWindowViewModel vm && vm.IsDropTargetActive)
+        if (e.Key == Key.Escape && DataContext is MainWindowViewModel vm)
         {
-            _dragDepth = 0;
-            vm.SetDropTargetState(isActive: false);
-            e.Handled = true;
+            if (vm.IsSearchOpen)
+            {
+                vm.CloseSearch();
+                e.Handled = true;
+                return;
+            }
+
+            if (vm.IsDropTargetActive)
+            {
+                _dragDepth = 0;
+                vm.SetDropTargetState(isActive: false);
+                e.Handled = true;
+            }
         }
     }
 }

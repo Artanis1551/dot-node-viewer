@@ -207,6 +207,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public MainWindowViewModel()
     {
         SearchPanel.NavigateToNodeRequested = node => NavigateToNode(node);
+        SearchPanel.PropertyChanged += (s, e) =>
+        {
+            if (e.PropertyName == nameof(SearchPanel.Query) && IsSearchOpen && CurrentLayout is not null)
+            {
+                SearchPanel.PerformSearch(CurrentLayout);
+            }
+        };
         TrySeedRecentFiles();
     }
 
@@ -909,6 +916,19 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
     }
 
+    partial void OnIsSearchOpenChanged(bool value)
+    {
+        SearchPanel.IsOpen = value;
+        if (value && CurrentLayout is not null)
+        {
+            SearchPanel.PerformSearch(CurrentLayout);
+        }
+        else if (!value)
+        {
+            SearchPanel.ClearSearch();
+        }
+    }
+
     /// <summary>
     /// Toggles the visibility of the fast search panel.
     /// </summary>
@@ -916,14 +936,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public void ToggleSearch()
     {
         IsSearchOpen = !IsSearchOpen;
-        if (IsSearchOpen && CurrentLayout is not null)
-        {
-            SearchPanel.PerformSearch(CurrentLayout);
-        }
-        else if (!IsSearchOpen)
-        {
-            SearchPanel.ClearSearch();
-        }
     }
 
     /// <summary>
@@ -933,7 +945,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public void CloseSearch()
     {
         IsSearchOpen = false;
-        SearchPanel.ClearSearch();
     }
 
     /// <summary>

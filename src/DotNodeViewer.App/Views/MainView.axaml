@@ -18,6 +18,10 @@
     <KeyBinding Gesture="Ctrl+O" Command="{Binding OpenModelCommand}" />
     <KeyBinding Gesture="Cmd+O" Command="{Binding OpenModelCommand}" />
 
+    <!-- Fast Search: Ctrl+F on Linux/Windows, Cmd+F on macOS -->
+    <KeyBinding Gesture="Ctrl+F" Command="{Binding ToggleSearchCommand}" />
+    <KeyBinding Gesture="Cmd+F" Command="{Binding ToggleSearchCommand}" />
+
     <!-- Zoom and Navigation Gestures (Ctrl on Linux/Windows, Cmd on macOS) -->
     <KeyBinding Gesture="Ctrl+Add" Command="{Binding #Canvas.ZoomInCommand}" />
     <KeyBinding Gesture="Cmd+Add" Command="{Binding #Canvas.ZoomInCommand}" />
@@ -229,8 +233,24 @@
           </StackPanel>
         </StackPanel>
 
-        <!-- Theme Toggle -->
+        <!-- Fast Search Action -->
         <Button Grid.Column="3"
+                Classes="toolbar-btn"
+                Command="{Binding ToggleSearchCommand}"
+                ToolTip.Tip="Search Operators &amp; Tensors (Ctrl+F / ⌘F)"
+                AutomationProperties.Name="Search"
+                AutomationProperties.AutomationId="SearchToolbarButton"
+                Margin="8,0"
+                VerticalAlignment="Center"
+                IsVisible="{Binding HasModel}">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <TextBlock Text="🔍" FontSize="11" VerticalAlignment="Center" />
+            <TextBlock Text="Search" FontSize="12" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+
+        <!-- Theme Toggle -->
+        <Button Grid.Column="4"
                 Classes="toolbar-btn"
                 Command="{Binding ToggleThemeCommand}"
                 AutomationProperties.Name="Theme Toggle"
@@ -686,6 +706,100 @@
             </Border>
 
           </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- 6. FAST CATEGORIZED SEARCH OVERLAY POPUP -->
+      <Border IsVisible="{Binding IsSearchOpen}"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Top"
+              Margin="0,20,0,0"
+              Width="540"
+              MaxHeight="450"
+              Background="{DynamicResource ShellSurfaceElevatedBrush}"
+              BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+              BorderThickness="1"
+              CornerRadius="{DynamicResource RadiusMedium}"
+              ZIndex="90"
+              AutomationProperties.Name="Search Overlay"
+              AutomationProperties.AutomationId="SearchOverlay">
+        <Grid RowDefinitions="Auto,*" Margin="14">
+          <!-- Search Input Header -->
+          <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,0,0,10">
+            <TextBlock Grid.Column="0" Text="🔍" FontSize="13" Foreground="{DynamicResource ShellTextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <TextBox Grid.Column="1"
+                     x:Name="SearchInputBox"
+                     Text="{Binding SearchPanel.Query, Mode=TwoWay}"
+                     Watermark="Search operators, nodes, categories, tensors... (Esc to close)"
+                     FontSize="12.5"
+                     Padding="8,6"
+                     AutomationProperties.Name="Search Input"
+                     AutomationProperties.AutomationId="SearchInputBox" />
+            <Border Grid.Column="2"
+                    IsVisible="{Binding SearchPanel.HasResults}"
+                    Background="{DynamicResource ShellSurfaceBaseBrush}"
+                    CornerRadius="{DynamicResource RadiusPill}"
+                    Padding="8,2"
+                    Margin="8,0"
+                    VerticalAlignment="Center">
+              <TextBlock Text="{Binding SearchPanel.ResultCount, StringFormat='{}{0} matches'}"
+                         FontSize="11"
+                         Foreground="{DynamicResource ShellTextSecondaryBrush}" />
+            </Border>
+            <Button Grid.Column="3"
+                    Classes="toolbar-btn"
+                    Command="{Binding CloseSearchCommand}"
+                    Padding="6,4"
+                    ToolTip.Tip="Close Search (Esc)"
+                    AutomationProperties.Name="Close Search"
+                    AutomationProperties.AutomationId="CloseSearchButton"
+                    VerticalAlignment="Center">
+              <TextBlock Text="✕" FontSize="11" />
+            </Button>
+          </Grid>
+
+          <!-- Search Results List -->
+          <Border Grid.Row="1"
+                  IsVisible="{Binding SearchPanel.HasResults}"
+                  BorderBrush="{DynamicResource ShellBorderMutedBrush}"
+                  BorderThickness="0,1,0,0"
+                  Padding="0,6,0,0">
+            <ScrollViewer MaxHeight="350">
+              <ItemsControl ItemsSource="{Binding SearchPanel.Results}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:SearchResultItem">
+                    <Button Classes="sample-btn"
+                            Command="{Binding $parent[UserControl].((vm:MainWindowViewModel)DataContext).SearchPanel.SelectResultCommand}"
+                            CommandParameter="{Binding}"
+                            HorizontalAlignment="Stretch"
+                            Margin="0,2"
+                            Padding="8,6">
+                      <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Border Grid.Column="0"
+                                Classes="format-pill"
+                                Margin="0,0,8,0"
+                                Padding="6,2"
+                                VerticalAlignment="Center">
+                          <TextBlock Text="{Binding CategoryDisplayName}"
+                                     FontSize="10"
+                                     FontWeight="Bold" />
+                        </Border>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                          <TextBlock Text="{Binding Title}"
+                                     FontFamily="{DynamicResource CodeFontFamily}"
+                                     FontWeight="SemiBold"
+                                     FontSize="12" />
+                          <TextBlock Text="{Binding Subtitle}"
+                                     FontSize="10.5"
+                                     Foreground="{DynamicResource ShellTextSecondaryBrush}" />
+                        </StackPanel>
+                      </Grid>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </Border>
         </Grid>
       </Border>
 
