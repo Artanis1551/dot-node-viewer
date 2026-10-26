@@ -22,3 +22,4 @@ This folder holds **feature briefs for work we want to do after the planned road
 | [W06](W06-drag-and-drop-model-loading.md) | Cross-Platform Drag-and-Drop Model Loading & Visual Drop Target UX | S05, S06, S11, S12 | Done |
 | [W07](W07-github-pages-documentation-deployment.md) | Automated DocFX Documentation Deployment via GitHub Pages | S00, S01, S12 | Done |
 | [W08](W08-wpf-model-viewer-control.md) | WPF Model Viewer Control (`DotNodeViewer.Wpf`) | S01, S04, S06 | Proposed |
+| [W09](W09-external-tensor-shards-and-pytorch-dictionaries.md) | External Tensor Shard Loading (ONNX .bin Shards & PyTorch .pt Dictionaries) | S01, S02, S08, S11, S12 | Proposed |
