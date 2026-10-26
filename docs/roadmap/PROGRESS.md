@@ -21,6 +21,7 @@ Every stage agent MUST read this file before starting work and append a completi
 | **S12** | [`S12-browser-wasm-aot-and-perf-hardening.md`](stages/S12-browser-wasm-aot-and-perf-hardening.md) | `stage/S12-wasm-aot-and-perf` | Pending | `DotNodeViewer.Browser` WASM head, NativeAOT publish, perf audit, NuGet packaging |
 | **S13** | [`S13-avalonia-12-migration.md`](stages/S13-avalonia-12-migration.md) | `stage/S13-avalonia-12-migration` | Optional | Migrate Avalonia `11.3.12` → `12.x` via `avalonia-12-migration` skill |
 | **W01** | [`W01-ethos-u-command-stream-unwrapping.md`](../wishes/W01-ethos-u-command-stream-unwrapping.md) | `stage/W01-ethos-u-command-stream` | Complete | On-demand Ethos-U NPU command stream unwrapping (TFLite & ExecuTorch), zero-allocation decoder, address inference, CLI, UI drill-down & live screenshots |
+| **W07** | [`W07-github-pages-documentation-deployment.md`](../wishes/W07-github-pages-documentation-deployment.md) | `infra/github-pages-docs-deployment` | Complete | Automated DocFX deployment via GitHub Pages (`.github/workflows/docs.yml`), `.nojekyll`, Wasm co-hosting seam |
 
 ---
 
@@ -791,4 +792,31 @@ Every stage agent MUST read this file before starting work and append a completi
   - `dotnet test dot-node-viewer.slnx -c Release`
   - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
   - `python3 tools/capture_w06_screenshots.py`
+
+### Wish W07 — Automated DocFX Documentation Deployment via GitHub Pages
+- **Branch:** `infra/github-pages-docs-deployment`
+- **Commits:**
+  - `W07: add GitHub Actions workflow and metadata for DocFX GitHub Pages deployment`
+- **What Was Built:**
+  - **Dedicated Deployment Workflow (`.github/workflows/docs.yml`):**
+    - Configured automated GitHub Actions workflow triggered on `push` to `main` (path-filtered to `docs/**`, `src/**`, `global.json`, `.config/dotnet-tools.json`, `.github/workflows/docs.yml`) and manual `workflow_dispatch`.
+    - Configured deployment permissions (`contents: read`, `pages: write`, `id-token: write`) and concurrency serialization (`group: "pages"`, `cancel-in-progress: false`).
+    - Enforced full Git checkout (`fetch-depth: 0`) for Git contribution timestamps, restored .NET 10 SDK via `global.json`, restored local tools, and built solution in Release mode.
+    - Added strict DocFX API metadata generation and site compilation with `--warningsAsErrors`.
+    - Added `.nojekyll` touch guard in `docs/site/_site/` to disable Jekyll processing on GitHub Pages, ensuring underscore-prefixed directories and modern template assets render properly.
+    - Integrated standard GitHub Pages deployment actions (`actions/configure-pages@v5`, `actions/upload-pages-artifact@v3`, `actions/deploy-pages@v4`) targeting the `github-pages` environment.
+    - Established explicit deployment seam comments for Stage S12 to co-host the interactive WebAssembly viewer (`DotNodeViewer.Browser`) directly under `docs/site/_site/demo/`.
+  - **Site Index & Readme Updates:**
+    - Updated repository root [`README.md`](../../README.md) with GitHub Pages documentation status badge and live site links (`https://artanis1551.github.io/dot-node-viewer/`).
+    - Updated [`docs/site/index.md`](../site/index.md) highlighting continuous deployment to GitHub Pages.
+    - Updated [`docs/wishes/README.md`](../wishes/README.md) and [`docs/wishes/W07-github-pages-documentation-deployment.md`](../wishes/W07-github-pages-documentation-deployment.md) status to `Done`.
+- **New ADRs Recorded:** None.
+- **Deviations & Known Limitations:**
+  - GitHub repository settings require one-time manual selection of `GitHub Actions` as the Pages build source (under `Settings` -> `Pages` -> `Build and deployment` -> `Source`).
+- **Test Count:** 200 passed (all existing unit, layout, and UI tests remain green).
+- **Verification Commands Run:**
+  - `dotnet build dot-node-viewer.slnx -c Release`
+  - `dotnet tool run docfx metadata docs/site/docfx.json --warningsAsErrors`
+  - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
+
 

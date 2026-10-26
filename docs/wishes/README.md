@@ -20,5 +20,5 @@ This folder holds **feature briefs for work we want to do after the planned road
 | [W04](W04-scoped-model-read-context.md) | Scoped Model Read Context and Centralized Buffer Cache Lifecycle | S01, S08, S10 | Proposed |
 | [W05](W05-unified-operator-classification-and-heuristics.md) | Unified Operator Classification, Normalization and Heuristic Inference | S01, S02, S03, S07, S08, S10 | Proposed |
 | [W06](W06-drag-and-drop-model-loading.md) | Cross-Platform Drag-and-Drop Model Loading & Visual Drop Target UX | S05, S06, S11, S12 | Done |
-| [W07](W07-github-pages-documentation-deployment.md) | Automated DocFX Documentation Deployment via GitHub Pages | S00, S01, S12 | Proposed |
+| [W07](W07-github-pages-documentation-deployment.md) | Automated DocFX Documentation Deployment via GitHub Pages | S00, S01, S12 | Done |
 | [W08](W08-wpf-model-viewer-control.md) | WPF Model Viewer Control (`DotNodeViewer.Wpf`) | S01, S04, S06 | Proposed |
