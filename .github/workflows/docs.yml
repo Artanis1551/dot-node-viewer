@@ -48,6 +48,9 @@ jobs:
       - name: Restore .NET local tools
         run: dotnet tool restore
 
+      - name: Install WebAssembly build tools workload
+        run: sudo $(which dotnet) workload install wasm-tools
+
       - name: Build solution (Release, zero warnings)
         run: dotnet build dot-node-viewer.slnx -c Release
 

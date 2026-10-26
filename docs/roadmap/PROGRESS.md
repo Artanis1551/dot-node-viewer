@@ -801,7 +801,7 @@ Every stage agent MUST read this file before starting work and append a completi
   - **Dedicated Deployment Workflow (`.github/workflows/docs.yml`):**
     - Configured automated GitHub Actions workflow triggered on `push` to `main` (path-filtered to `docs/**`, `src/**`, `global.json`, `.config/dotnet-tools.json`, `.github/workflows/docs.yml`) and manual `workflow_dispatch`.
     - Configured deployment permissions (`contents: read`, `pages: write`, `id-token: write`) and concurrency serialization (`group: "pages"`, `cancel-in-progress: false`).
-    - Enforced full Git checkout (`fetch-depth: 0`) for Git contribution timestamps, restored .NET 10 SDK via `global.json`, restored local tools, and built solution in Release mode.
+    - Enforced full Git checkout (`fetch-depth: 0`) for Git contribution timestamps, restored .NET 10 SDK via `global.json`, restored local tools, installed the `wasm-tools` workload (`sudo $(which dotnet) workload install wasm-tools`), and built solution in Release mode.
     - Added strict DocFX API metadata generation and site compilation with `--warningsAsErrors`.
     - Added `.nojekyll` touch guard in `docs/site/_site/` to disable Jekyll processing on GitHub Pages, ensuring underscore-prefixed directories and modern template assets render properly.
     - Added automated WebAssembly compilation and co-hosting: runs `dotnet publish src/DotNodeViewer.Browser -c Release -r browser-wasm` and copies client-side AppBundle directly into `docs/site/_site/demo/`.
