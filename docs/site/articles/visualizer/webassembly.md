@@ -2,6 +2,10 @@
 
 DotNodeViewer provides a first-class WebAssembly target (`DotNodeViewer.Browser`) powered by Avalonia 11 for WebAssembly (`Avalonia.Browser`) and `.NET 10`. This head runs entirely client-side in the user's browser without requiring server-side compute or transferring neural network model weights over the network.
 
+> [!TIP]
+> **Try the Live Online Demo:**  
+> You can run `dot-node-viewer` directly in your browser without installing anything at [**https://artanis1551.github.io/dot-node-viewer/demo/**](https://artanis1551.github.io/dot-node-viewer/demo/). The WebAssembly build is continuously deployed to GitHub Pages on every release.
+
 ---
 
 ## Architecture & Lifetimes

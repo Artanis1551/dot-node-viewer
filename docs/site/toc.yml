@@ -3,5 +3,7 @@
 - name: API Reference
   href: api/
   topicHref: api/index.md
+- name: Live WebAssembly Demo
+  href: https://artanis1551.github.io/dot-node-viewer/demo/
 
 

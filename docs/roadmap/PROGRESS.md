@@ -21,7 +21,7 @@ Every stage agent MUST read this file before starting work and append a completi
 | **S12** | [`S12-browser-wasm-aot-and-perf-hardening.md`](stages/S12-browser-wasm-aot-and-perf-hardening.md) | `stage/S12-wasm-aot-and-perf` | Pending | `DotNodeViewer.Browser` WASM head, NativeAOT publish, perf audit, NuGet packaging |
 | **S13** | [`S13-avalonia-12-migration.md`](stages/S13-avalonia-12-migration.md) | `stage/S13-avalonia-12-migration` | Optional | Migrate Avalonia `11.3.12` → `12.x` via `avalonia-12-migration` skill |
 | **W01** | [`W01-ethos-u-command-stream-unwrapping.md`](../wishes/W01-ethos-u-command-stream-unwrapping.md) | `stage/W01-ethos-u-command-stream` | Complete | On-demand Ethos-U NPU command stream unwrapping (TFLite & ExecuTorch), zero-allocation decoder, address inference, CLI, UI drill-down & live screenshots |
-| **W07** | [`W07-github-pages-documentation-deployment.md`](../wishes/W07-github-pages-documentation-deployment.md) | `infra/github-pages-docs-deployment` | Complete | Automated DocFX deployment via GitHub Pages (`.github/workflows/docs.yml`), `.nojekyll`, Wasm co-hosting seam |
+| **W07** | [`W07-github-pages-documentation-deployment.md`](../wishes/W07-github-pages-documentation-deployment.md) | `infra/github-pages-docs-deployment` | Complete | Automated DocFX & WebAssembly deployment via GitHub Pages (`.github/workflows/docs.yml`), `.nojekyll`, co-hosted `/demo/` |
 
 ---
 
@@ -804,11 +804,12 @@ Every stage agent MUST read this file before starting work and append a completi
     - Enforced full Git checkout (`fetch-depth: 0`) for Git contribution timestamps, restored .NET 10 SDK via `global.json`, restored local tools, and built solution in Release mode.
     - Added strict DocFX API metadata generation and site compilation with `--warningsAsErrors`.
     - Added `.nojekyll` touch guard in `docs/site/_site/` to disable Jekyll processing on GitHub Pages, ensuring underscore-prefixed directories and modern template assets render properly.
+    - Added automated WebAssembly compilation and co-hosting: runs `dotnet publish src/DotNodeViewer.Browser -c Release -r browser-wasm` and copies client-side AppBundle directly into `docs/site/_site/demo/`.
     - Integrated standard GitHub Pages deployment actions (`actions/configure-pages@v5`, `actions/upload-pages-artifact@v3`, `actions/deploy-pages@v4`) targeting the `github-pages` environment.
-    - Established explicit deployment seam comments for Stage S12 to co-host the interactive WebAssembly viewer (`DotNodeViewer.Browser`) directly under `docs/site/_site/demo/`.
-  - **Site Index & Readme Updates:**
-    - Updated repository root [`README.md`](../../README.md) with GitHub Pages documentation status badge and live site links (`https://artanis1551.github.io/dot-node-viewer/`).
-    - Updated [`docs/site/index.md`](../site/index.md) highlighting continuous deployment to GitHub Pages.
+  - **Site Navigation, Index & Readme Updates:**
+    - Updated [`docs/site/toc.yml`](../site/toc.yml) adding top-level navbar link to `Live WebAssembly Demo` (`https://artanis1551.github.io/dot-node-viewer/demo/`).
+    - Updated repository root [`README.md`](../../README.md) with GitHub Pages documentation status badge and live site links (`https://artanis1551.github.io/dot-node-viewer/` and `https://artanis1551.github.io/dot-node-viewer/demo/`).
+    - Updated [`docs/site/index.md`](../site/index.md) and [`docs/site/articles/visualizer/webassembly.md`](../site/articles/visualizer/webassembly.md) highlighting continuous deployment and live demo links.
     - Updated [`docs/wishes/README.md`](../wishes/README.md) and [`docs/wishes/W07-github-pages-documentation-deployment.md`](../wishes/W07-github-pages-documentation-deployment.md) status to `Done`.
 - **New ADRs Recorded:** None.
 - **Deviations & Known Limitations:**
