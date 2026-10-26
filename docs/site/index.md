@@ -4,6 +4,10 @@ Welcome to the documentation for **`dot-node-viewer`**, a high-performance, Nati
 
 This documentation site is continuously published to GitHub Pages at [https://artanis1551.github.io/dot-node-viewer/](https://artanis1551.github.io/dot-node-viewer/) on every push to `main` via automated GitHub Actions. The repository source code and issue tracker are available on GitHub at [Artanis1551/dot-node-viewer](https://github.com/Artanis1551/dot-node-viewer).
 
+> [!TIP]
+> **Try the Live WebAssembly App in Your Browser:**  
+> Run the full `dot-node-viewer` visualizer directly in your browser with zero installation at [**https://artanis1551.github.io/dot-node-viewer/demo/**](https://artanis1551.github.io/dot-node-viewer/demo/). Drag and drop or open any supported model (`.onnx`, `.tflite`, `.pte`, `.pt`, `.pt2`, `.keras`, `.h5`) to inspect its topology entirely client-side.
+
 ---
 
 ## Documentation Structure (Diátaxis)

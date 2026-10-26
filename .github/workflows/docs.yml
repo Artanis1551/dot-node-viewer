@@ -57,17 +57,14 @@ jobs:
       - name: Build DocFX documentation site
         run: dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors
 
+      - name: Publish WebAssembly Browser Viewer
+        run: |
+          dotnet publish src/DotNodeViewer.Browser -c Release -r browser-wasm
+          mkdir -p docs/site/_site/demo
+          cp -r src/DotNodeViewer.Browser/bin/Release/net10.0/browser-wasm/AppBundle/* docs/site/_site/demo/
+
       - name: Ensure .nojekyll exists
         run: touch docs/site/_site/.nojekyll
-
-      # Stage S12 Co-Hosting Seam:
-      # Once DotNodeViewer.Browser (Wasm head) is finalized in Stage S12,
-      # publish and copy the distribution to docs/site/_site/demo/ here:
-      # - name: Publish WebAssembly Viewer (Stage S12 Seam)
-      #   run: |
-      #     dotnet publish src/DotNodeViewer.Browser -c Release -r browser-wasm -o ./wasm-dist
-      #     mkdir -p docs/site/_site/demo
-      #     cp -R ./wasm-dist/AppBundle/* docs/site/_site/demo/ || cp -R ./wasm-dist/* docs/site/_site/demo/
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
@@ -80,4 +77,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-

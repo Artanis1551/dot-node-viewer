@@ -6,7 +6,7 @@
 
 ## Goal
 
-Provide fully automated, continuous publishing of the `dot-node-viewer` DocFX documentation website (`docs/site/`) to **GitHub Pages** on every push to `main` (and via manual `workflow_dispatch`). This ensures that Diátaxis architecture guides, format support matrices, CLI manuals, and C# XML API references for `DotNodeViewer.Core` and `DotNodeViewer.Layout` are publicly accessible online with zero drift from the codebase. In addition, establish a deployment seam for Stage S12 to co-host the interactive WebAssembly viewer (`DotNodeViewer.Browser`) directly alongside the documentation site.
+Provide fully automated, continuous publishing of the `dot-node-viewer` DocFX documentation website (`docs/site/`) and interactive WebAssembly viewer (`DotNodeViewer.Browser`) to **GitHub Pages** on every push to `main` (and via manual `workflow_dispatch`). This ensures that Diátaxis architecture guides, format support matrices, CLI manuals, and C# XML API references for `DotNodeViewer.Core` and `DotNodeViewer.Layout` are publicly accessible online with zero drift from the codebase, while co-hosting the interactive WebAssembly viewer under `/demo/` directly alongside the documentation site.
 
 ## Background & Friction
 
@@ -79,12 +79,12 @@ The pipeline enforces the repository's strict quality rules before publishing:
    - `actions/upload-pages-artifact@v3` with `path: docs/site/_site`
    - `actions/deploy-pages@v4` targeting the `github-pages` environment.
 
-### 3. Stage S12 WebAssembly Head Co-Hosting Seam
+### 3. WebAssembly Head Co-Hosting (`/demo/`)
 
-Prepare the workflow structure so that once Stage S12 (`DotNodeViewer.Browser`) is completed:
-- `dotnet publish src/DotNodeViewer.Browser -c Release -o ./wasm-dist` can be executed.
-- The compiled Wasm distribution can be copied into `docs/site/_site/demo/`.
-- The DocFX documentation site can link directly to `[Live WebAssembly Demo](demo/index.html)` in its top-level navigation bar (`docs/site/toc.yml`).
+The workflow directly builds and packages `DotNodeViewer.Browser` targeting `browser-wasm`:
+- `dotnet publish src/DotNodeViewer.Browser -c Release -r browser-wasm` compiles the client-side WebAssembly AppBundle.
+- The compiled Wasm distribution from `AppBundle/` is copied into `docs/site/_site/demo/`.
+- The DocFX documentation site links directly to `Live WebAssembly Demo` in its top-level navigation bar (`docs/site/toc.yml`).
 
 ### 4. Configuration & Repository Metadata Updates
 
