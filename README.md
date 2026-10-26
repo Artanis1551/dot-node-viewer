@@ -1,6 +1,11 @@
 # `dot-node-viewer`
 
+[![CI](https://github.com/Artanis1551/dot-node-viewer/actions/workflows/ci.yml/badge.svg)](https://github.com/Artanis1551/dot-node-viewer/actions/workflows/ci.yml)
+[![Documentation](https://github.com/Artanis1551/dot-node-viewer/actions/workflows/docs.yml/badge.svg)](https://artanis1551.github.io/dot-node-viewer/)
+
 **`dot-node-viewer`** is a high-performance, NativeAOT- and WebAssembly-compatible `.NET 10` rewrite of [Netron](https://github.com/lutzroeder/netron), split into reusable pure-C# libraries for neural network graph extraction (`DotNodeViewer.Core`) and layered graph layout (`DotNodeViewer.Layout`), paired with a cross-platform Avalonia visualizer (`DotNodeViewer.App`, `DotNodeViewer.Desktop`, `DotNodeViewer.Browser`) and CLI tool (`DotNodeViewer.Cli`).
+
+📖 **Live Documentation & API Reference:** [https://artanis1551.github.io/dot-node-viewer/](https://artanis1551.github.io/dot-node-viewer/)
 
 ---
 
@@ -269,6 +274,7 @@ dotnet tool run docfx docs/site/docfx.json --serve
 
 ## Documentation & Governance
 
+- [**Live Documentation Website (GitHub Pages)**](https://artanis1551.github.io/dot-node-viewer/)
 - [**Documentation Website Source (`docs/site/`)**](docs/site/index.md)
   - [Tutorial: Getting Started](docs/site/articles/getting-started.md)
   - [Explanation: Unified Graph IR & Architecture](docs/site/articles/library/unified-graph-ir.md)

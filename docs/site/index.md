@@ -2,6 +2,8 @@
 
 Welcome to the documentation for **`dot-node-viewer`**, a high-performance, NativeAOT- and WebAssembly-compatible .NET 10 neural network model parser, layered layout engine, and cross-platform Avalonia visualizer inspired by Netron.
 
+This documentation site is continuously published to GitHub Pages at [https://artanis1551.github.io/dot-node-viewer/](https://artanis1551.github.io/dot-node-viewer/) on every push to `main` via automated GitHub Actions. The repository source code and issue tracker are available on GitHub at [Artanis1551/dot-node-viewer](https://github.com/Artanis1551/dot-node-viewer).
+
 ---
 
 ## Documentation Structure (Diátaxis)

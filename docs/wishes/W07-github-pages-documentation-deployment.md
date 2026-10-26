@@ -1,6 +1,6 @@
 # Wish W07 — Automated DocFX Documentation Deployment via GitHub Pages
 
-**Status:** Proposed  
+**Status:** Done (Implemented on branch `infra/github-pages-docs-deployment`)  
 **Depends on:** Stage **S00** (Bootstrap & CI Governance), Stage **S01** (Unified IR & DocFX Setup), Stage **S12** (WebAssembly Head)  
 **Suggested branch when promoted:** `infra/github-pages-docs-deployment`  
 

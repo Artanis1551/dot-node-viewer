@@ -1,0 +1,83 @@
+name: Deploy Documentation
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - 'src/**'
+      - 'global.json'
+      - '.config/dotnet-tools.json'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+env:
+  DOTNET_NOLOGO: "1"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  AVALONIA_TELEMETRY_OPTOUT: "1"
+
+jobs:
+  build-and-deploy:
+    name: Build & Deploy DocFX to Pages
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore .NET local tools
+        run: dotnet tool restore
+
+      - name: Build solution (Release, zero warnings)
+        run: dotnet build dot-node-viewer.slnx -c Release
+
+      - name: Extract DocFX C# API metadata
+        run: dotnet tool run docfx metadata docs/site/docfx.json --warningsAsErrors
+
+      - name: Build DocFX documentation site
+        run: dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors
+
+      - name: Ensure .nojekyll exists
+        run: touch docs/site/_site/.nojekyll
+
+      # Stage S12 Co-Hosting Seam:
+      # Once DotNodeViewer.Browser (Wasm head) is finalized in Stage S12,
+      # publish and copy the distribution to docs/site/_site/demo/ here:
+      # - name: Publish WebAssembly Viewer (Stage S12 Seam)
+      #   run: |
+      #     dotnet publish src/DotNodeViewer.Browser -c Release -r browser-wasm -o ./wasm-dist
+      #     mkdir -p docs/site/_site/demo
+      #     cp -R ./wasm-dist/AppBundle/* docs/site/_site/demo/ || cp -R ./wasm-dist/* docs/site/_site/demo/
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/site/_site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
