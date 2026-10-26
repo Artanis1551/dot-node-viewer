@@ -23,3 +23,4 @@ This folder holds **feature briefs for work we want to do after the planned road
 | [W07](W07-github-pages-documentation-deployment.md) | Automated DocFX Documentation Deployment via GitHub Pages | S00, S01, S12 | Done |
 | [W08](W08-wpf-model-viewer-control.md) | WPF Model Viewer Control (`DotNodeViewer.Wpf`) | S01, S04, S06 | Proposed |
 | [W09](W09-external-tensor-shards-and-pytorch-dictionaries.md) | External Tensor Shard Loading (ONNX .bin Shards & PyTorch .pt Dictionaries) | S01, S02, S08, S11, S12 | Proposed |
+| [W10](W10-nuget-package-deployment-and-tag-versioning.md) | Automated NuGet Package Deployment and Git Tag Versioning | S00, S01, S04 | Proposed |
