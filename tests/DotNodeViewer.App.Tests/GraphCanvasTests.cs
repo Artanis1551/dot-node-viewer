@@ -272,6 +272,45 @@ public sealed class GraphCanvasTests
         });
     }
 
+    [Test]
+    public async Task GraphCanvas_RenderWithSelectionAndPanZoom_ReusesVisibleElementBuffersCleanly()
+    {
+        string path = ResolveFixturePath("tflite/tiny_cnn_int8.tflite");
+        MainWindowViewModel vm = new();
+        await vm.LoadModelAsync(path);
+
+        await Assert.That(vm.CurrentLayout).IsNotNull();
+
+        await HeadlessAppSession.DispatchAsync(async () =>
+        {
+            GraphCanvas canvas = new()
+            {
+                Layout = vm.CurrentLayout
+            };
+
+            canvas.Measure(new Size(800, 600));
+            canvas.Arrange(new Rect(0, 0, 800, 600));
+            canvas.ZoomToFit();
+
+            VisualNode convNode = vm.CurrentLayout!.Nodes.First(n => n.Kind == VisualNodeKind.Operator);
+            canvas.SelectedNode = convNode;
+
+            using RenderTargetBitmap bitmap = new(new PixelSize(800, 600));
+            bitmap.Render(canvas);
+
+            // Pan completely off-screen, render (empty visible buffers), then pan back onto selected node
+            Vector savedPan = canvas.PanOffset;
+            canvas.PanOffset = new Vector(-10000, -10000);
+            bitmap.Render(canvas);
+
+            canvas.Zoom = 1.25;
+            canvas.PanOffset = savedPan;
+            bitmap.Render(canvas);
+
+            await Assert.That(canvas.SelectedNode).IsSameReferenceAs(convNode);
+        });
+    }
+
     private static string ResolveFixturePath(string relative)
     {
         string? dir = AppContext.BaseDirectory;
