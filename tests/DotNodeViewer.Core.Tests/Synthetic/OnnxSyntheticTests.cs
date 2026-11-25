@@ -248,6 +248,8 @@ public sealed class OnnxSyntheticTests
     [Arguments("CausalConvWithState", 2, "output_2")]
     [Arguments("LinearAttention", 0, "output")]
     [Arguments("LinearAttention", 1, "present_state")]
+    [Arguments("LinearAttention", 2, "states")]
+    [Arguments("LinearAttention", 3, "output_3")]
     [Arguments("GroupedMatMul", 0, "output")]
     [Arguments("GeGLU", 0, "Y")]
     [Arguments("DequantizePacked", 0, "y")]
@@ -349,6 +351,53 @@ public sealed class OnnxSyntheticTests
         await Assert.That(dequant.Operator.Version).IsEqualTo(29);
         await Assert.That(dequant.Inputs[0].Name).IsEqualTo("x");
         await Assert.That(dequant.Outputs[0].Name).IsEqualTo("y");
+    }
+
+    [Test]
+    public async Task ReadAsync_LinearAttentionWithTrajectoryOutput_MapsAllThreeFormalOutputPorts()
+    {
+        byte[] linearAttnNode = BuildNodeProto(
+            "linear_attn_0",
+            "LinearAttention",
+            "",
+            ["q", "k", "v", "", "decay_in", "beta_in"],
+            ["attn_out", "state_final", "state_traj"],
+            [BuildAttributeString("update_rule", "gated_delta")]);
+
+        byte[] inputQ = BuildValueInfo("q", elemType: 1, [BuildDimensionFixed(1), BuildDimensionFixed(3), BuildDimensionFixed(8)]);
+        byte[] outputAttn = BuildValueInfo("attn_out", elemType: 1, [BuildDimensionFixed(1), BuildDimensionFixed(3), BuildDimensionFixed(8)]);
+
+        using MemoryStream graphBody = new();
+        WriteLengthDelimited(graphBody, 1, linearAttnNode);
+        WriteStringField(graphBody, 2, "linear_attention_trajectory");
+        WriteLengthDelimited(graphBody, 11, inputQ);
+        WriteLengthDelimited(graphBody, 12, outputAttn);
+
+        using MemoryStream model = new();
+        WriteTag(model, 1, 0);
+        WriteVarint(model, 10);
+        WriteLengthDelimited(model, 7, graphBody.ToArray());
+        using (MemoryStream opsetOnnx = new())
+        {
+            WriteStringField(opsetOnnx, 1, "");
+            WriteTag(opsetOnnx, 2, 0);
+            WriteVarint(opsetOnnx, 29);
+            WriteLengthDelimited(model, 8, opsetOnnx.ToArray());
+        }
+
+        using MemoryStream stream = new(model.ToArray());
+        ModelGraph graph = await OnnxFormatReader.Instance.ReadAsync(stream);
+        GraphNode node = graph.PrimarySubgraph!.Nodes[0];
+
+        await Assert.That(node.Operator.Name).IsEqualTo("LinearAttention");
+        await Assert.That(node.Operator.Category).IsEqualTo(OperatorCategory.Layer);
+        await Assert.That(node.Operator.Domain).IsEqualTo("ai.onnx");
+        await Assert.That(node.Operator.Version).IsEqualTo(29);
+        await Assert.That(node.Inputs.Select(p => p.Name).ToArray())
+            .IsEquivalentTo(["query", "key", "value", "past_state", "decay", "beta"]);
+        await Assert.That(node.Inputs[3].Tensors.Count).IsEqualTo(0);
+        await Assert.That(node.Outputs.Select(p => p.Name).ToArray())
+            .IsEquivalentTo(["output", "present_state", "states"]);
     }
 
     private static byte[] BuildSyntheticOnnxModel(

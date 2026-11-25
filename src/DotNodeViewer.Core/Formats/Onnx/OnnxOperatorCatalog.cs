@@ -467,10 +467,17 @@ internal static class OnnxOperatorCatalog
             or "Flatten" or "Identity" or "Dropout" or "LayerNormalization"
             or "Pack" or "Unpack" or "LogCumSumExp"
             when index == 0 => "Y",
-        "CausalConvWithState" or "LinearAttention" => index switch
+        "CausalConvWithState" => index switch
         {
             0 => "output",
             1 => "present_state",
+            _ => $"output_{index}",
+        },
+        "LinearAttention" => index switch
+        {
+            0 => "output",
+            1 => "present_state",
+            2 => "states",
             _ => $"output_{index}",
         },
         "BatchNormalization" => index switch
