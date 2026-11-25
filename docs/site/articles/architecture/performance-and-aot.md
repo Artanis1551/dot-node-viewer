@@ -14,8 +14,9 @@ DotNodeViewer adheres to strict allocation guardrails:
 * **Lazy Weight Slicing:** Weights and biases are never loaded during graph parsing. The reader registers a `TensorDataSlice(StreamOffset, ByteLength, DataType, Encoding)`. Raw weight bytes are only read on-demand when a tensor is selected in the UI inspector or evaluated via `TensorDataLoader`.
 
 ### 2. Rendering Optimization in `GraphCanvas`
-During pan and zoom operations, the graph canvas renders at 60 fps. In Stage S12, a comprehensive performance audit eliminated hot-path allocations:
-* **Neighborhood ID Caching:** 1-hop upstream and downstream neighborhood ID sets (`HashSet<string>`) are precomputed and cached on node selection changes rather than re-allocated every animation frame.
+During pan and zoom operations, the graph canvas renders at 60 fps. Performance hardening eliminated hot-path allocations across both `DotNodeViewer.Layout` and `DotNodeViewer.App`:
+* **Zero-Allocation Spatial Grid & Reusable Frame Buffers:** `VisualSubgraphLayout` embeds `SpatialGridIndex` using dense integer indices, extent-clamped cell ranges, precomputed immutable `PositionedEdge.Bounds`, and stack-allocated/pooled bitset deduplication. `GraphCanvas.Render` queries `Layout.GetVisibleElements(...)` into persistent `_visibleNodesBuffer` and `_visibleEdgesBuffer` lists, avoiding per-frame `List<T>` and `HashSet<string>` allocations.
+* **Neighborhood ID Caching:** 1-hop upstream and downstream neighborhood ID sets (`HashSet<string>`) are precomputed from `VisualSubgraphLayout` adjacency tables on node selection changes rather than re-allocated or scanned every animation frame.
 * **String Allocation Elimination:** Interpolated strings on the render loop and property formatters were refactored to use `string.Create(CultureInfo.InvariantCulture, ...)` and stack-allocated spans.
 * **Ordinal String Comparisons:** Internal format sniffers and keyword matchers use `StringComparison.Ordinal` and `StringComparison.OrdinalIgnoreCase` to bypass culture table lookups.
 

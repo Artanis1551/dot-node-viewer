@@ -1,6 +1,6 @@
 # Wish W02 — Visual Subgraph Layout Spatial Partitioning, Viewport Culling & Adjacency
 
-**Status:** Accepted  
+**Status:** Done  
 **Depends on:** Stage **S04** (Sugiyama layout engine), Stage **S06** (GraphCanvas)  
 **Suggested branch when promoted:** `refactor/visual-subgraph-layout-spatial-indexing`  
 

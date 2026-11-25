@@ -15,8 +15,8 @@ This folder holds **feature briefs for work we want to do after the planned road
 | ID | Title | Depends on | Status |
 |---|---|---|---|
 | [W01](W01-ethos-u-command-stream-unwrapping.md) | Ethos-U Command Stream Unwrapping (TFLite & ExecuTorch) | S03, S07, S11 | Done |
-| [W02](W02-visual-subgraph-layout-spatial-indexing.md) | Visual Subgraph Layout Spatial Partitioning, Viewport Culling & Adjacency | S04, S06 | Accepted |
-| [W03](W03-zero-allocation-model-probe-and-zip-directory.md) | Unified Zero-Allocation Model Probe and ZIP Directory Seam | S01, S08 | Accepted |
+| [W02](W02-visual-subgraph-layout-spatial-indexing.md) | Visual Subgraph Layout Spatial Partitioning, Viewport Culling & Adjacency | S04, S06 | Done |
+| [W03](W03-zero-allocation-model-probe-and-zip-directory.md) | Unified Zero-Allocation Model Probe and ZIP Directory Seam | S01, S08 | Done |
 | [W04](W04-scoped-model-read-context.md) | Scoped Model Read Context and Centralized Buffer Cache Lifecycle | S01, S08, S10 | Proposed |
 | [W05](W05-unified-operator-classification-and-heuristics.md) | Unified Operator Classification, Normalization and Heuristic Inference | S01, S02, S03, S07, S08, S10 | Proposed |
 | [W06](W06-drag-and-drop-model-loading.md) | Cross-Platform Drag-and-Drop Model Loading & Visual Drop Target UX | S05, S06, S11, S12 | Done |

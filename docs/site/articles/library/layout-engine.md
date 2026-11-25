@@ -17,7 +17,7 @@ flowchart LR
     E --> F["6. Edge Routing (Cubic Bezier & Endpoint Restoration)"]
 ```
 
-1. **Aciclicity (Cycle Removal):** Performs an iterative (stack-safe) depth-first search to identify back-edges in cyclic graphs and temporarily reverses their direction during ranking and ordering, restoring their original `Source -> Target` orientation after coordinate assignment (`PositionedEdge.IsReversed = true`).
+1. **Acyclicity (Cycle Removal):** Performs an iterative (stack-safe) depth-first search to identify back-edges in cyclic graphs and temporarily reverses their direction during ranking and ordering, restoring their original `Source -> Target` orientation after coordinate assignment (`PositionedEdge.IsReversed = true`).
 2. **Layer Assignment (Ranking):** Computes an initial topological longest-path ranking followed by an iteration-capped tight-tree slack-minimization pass that pulls source and intermediate nodes closer to their consumers.
 3. **Normalization:** Splits long edges spanning multiple layers (`rankDelta > 1`) into unit-length segments connected through lightweight dummy routing vertices so long edges reserve horizontal channels across intermediate layers.
 4. **Crossing Minimization:** Sweeps alternating top-down and bottom-up passes using port-aware barycenter weights combined with adjacent-exchange transposition to reduce edge crossings.
@@ -66,6 +66,36 @@ foreach (VisualNode node in visualLayout.Nodes)
 - **Boundary Terminal Pills:** `Subgraph.Inputs` and `Subgraph.Outputs` are represented as compact `VisualNodeKind.GraphInput` and `VisualNodeKind.GraphOutput` terminal pills.
 - **Fused Activation Badges:** Operator attributes such as TFLite's `fused_activation_function` (`RELU`, `RELU6`, `TANH`) are surfaced via `VisualNode.FusedActivationBadge` and factored into the node card's measured height.
 - **Custom Text Measurement (`ITextMeasurer`):** Headless callers use `MonospaceTextMeasurer.Default`, while UI renderers (such as `DotNodeViewer.App`) supply a font-aware `ITextMeasurer` implementation so node box widths match rendered glyph metrics.
+
+---
+
+## Spatial Queries, Viewport Culling & Adjacency (`VisualSubgraphLayout`)
+
+`VisualSubgraphLayout` embeds a 2D spatial hash grid (`SpatialGridIndex`), precomputed immutable edge bounding boxes (`PositionedEdge.Bounds` / `VisualEdge.Bounds`), and thread-safe 1-hop adjacency tables so renderers, minimaps, search jumps, and headless tests can query layout geometry directly without maintaining duplicate UI-side indices:
+
+- **Point Hit-Testing:** `FindNodeAt(double worldX, double worldY)` and `FindNodeAt(LayoutPoint point)` return the top-most `VisualNode` containing the point in `O(1)` average time.
+- **Viewport Culling (Standard & Zero-Allocation):**
+  - `GetVisibleElements(BoundingBox viewport)` returns a `VisibleLayoutElements` struct containing visible nodes and edges.
+  - `GetVisibleElements(BoundingBox viewport, List<VisualNode> visibleNodes, List<VisualEdge> visibleEdges)` (and the split `nodeViewport` / `edgeViewport` overload, as well as `FindNodesInRegion` / `FindEdgesInRegion` buffer overloads) populate caller-owned `List<T>` buffers using stack-allocated or pooled bitset deduplication—achieving **0 bytes allocated per warm frame**.
+- **Precomputed Edge Bounding Boxes:** `PositionedEdge.Bounds` is eagerly computed once at construction across all polyline `Points`, `BezierSegments` control points, and `LabelAnchor`, and uses inclusive axis-aligned intersection (`BoundingBox.IntersectsInclusive`) so straight vertical or horizontal edges are never falsely culled at viewport borders.
+- **1-Hop Adjacency & Edge Lookup:** `EdgesById`, `GetConnectedEdges(nodeId)`, `GetIncomingEdges(nodeId)`, `GetOutgoingEdges(nodeId)`, `GetPredecessors(nodeId)`, `GetSuccessors(nodeId)`, and `GetAdjacentNodes(nodeId)` provide thread-safe `O(1)` neighborhood queries for highlighting and keyboard navigation.
+
+```csharp
+// Point hit-testing and 1-hop neighborhood inspection:
+VisualNode? hit = visualLayout.FindNodeAt(worldX, worldY);
+if (hit is not null)
+{
+    IReadOnlyList<VisualEdge> connected = visualLayout.GetConnectedEdges(hit.Id);
+    IReadOnlyList<VisualNode> neighbors = visualLayout.GetAdjacentNodes(hit.Id);
+    Console.WriteLine($"{hit.Title}: {connected.Count} edges, {neighbors.Count} adjacent nodes");
+}
+
+// Zero-allocation per-frame viewport culling:
+List<VisualNode> visibleNodes = new(64);
+List<VisualEdge> visibleEdges = new(128);
+BoundingBox viewport = new(0, 0, 1280, 720);
+visualLayout.GetVisibleElements(viewport, visibleNodes, visibleEdges);
+```
 
 ---
 
