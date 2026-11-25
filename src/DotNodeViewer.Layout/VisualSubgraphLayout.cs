@@ -84,7 +84,7 @@ public sealed record VisualEdge(
     PositionedEdge Layout)
 {
     /// <summary>
-    /// Gets the axis-aligned <see cref="BoundingBox"/> enclosing all routed points of this visual edge.
+    /// Gets the axis-aligned <see cref="BoundingBox"/> enclosing all routed points, Bézier control points, and label anchor of this visual edge.
     /// </summary>
     public BoundingBox Bounds => Layout.Bounds;
 }
@@ -100,7 +100,7 @@ public readonly record struct VisibleLayoutElements(
 
 /// <summary>
 /// Represents the complete positioned visual layout of a <see cref="DotNodeViewer.Core.Ir.Subgraph"/> produced by <see cref="ModelGraphLayoutAdapter"/>,
-/// equipped with an embedded 2D spatial hash grid, precomputed edge bounds, viewport culling, and 1-hop adjacency queries.
+/// equipped with an embedded 2D spatial hash grid, precomputed edge bounds, viewport culling, and thread-safe 1-hop adjacency queries.
 /// </summary>
 /// <param name="Subgraph">The source <see cref="DotNodeViewer.Core.Ir.Subgraph"/> from <c>DotNodeViewer.Core</c>.</param>
 /// <param name="PositionedGraph">The underlying <see cref="DotNodeViewer.Layout.PositionedGraph"/> computed by <see cref="SugiyamaLayoutEngine"/>.</param>
@@ -115,13 +115,7 @@ public sealed record VisualSubgraphLayout(
     IReadOnlyDictionary<string, VisualNode> NodesById)
 {
     private readonly SpatialGridIndex _spatialIndex = new(Nodes, Edges);
-    private readonly Dictionary<string, VisualEdge> _edgesById = new(Edges.Count, StringComparer.Ordinal);
-    private readonly Dictionary<string, List<VisualEdge>> _connectedEdgesByNodeId = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, List<VisualEdge>> _incomingEdgesByNodeId = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, List<VisualEdge>> _outgoingEdgesByNodeId = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, List<VisualNode>> _adjacentNodesByNodeId = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, List<VisualNode>> _predecessorsByNodeId = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, List<VisualNode>> _successorsByNodeId = new(StringComparer.Ordinal);
+    private readonly AdjacencyIndex _adjacency = new(Nodes, Edges, NodesById);
 
     /// <summary>
     /// Gets the overall bounding box of the positioned subgraph layout.
@@ -131,121 +125,7 @@ public sealed record VisualSubgraphLayout(
     /// <summary>
     /// Gets a fast lookup dictionary mapping <see cref="VisualEdge.Id"/> to its <see cref="VisualEdge"/>.
     /// </summary>
-    public IReadOnlyDictionary<string, VisualEdge> EdgesById => _edgesById;
-
-    // Initialization logic for indices
-    private void InitializeIndices()
-    {
-        for (int i = 0; i < Edges.Count; i++)
-        {
-            VisualEdge edge = Edges[i];
-            _edgesById.TryAdd(edge.Id, edge);
-
-            string src = edge.Layout.SourceNodeId;
-            string tgt = edge.Layout.TargetNodeId;
-
-            AddConnectedEdge(src, edge);
-            AddConnectedEdge(tgt, edge);
-
-            AddIncomingEdge(tgt, edge);
-            AddOutgoingEdge(src, edge);
-        }
-
-        foreach (var (tgtId, inEdges) in _incomingEdgesByNodeId)
-        {
-            List<VisualNode> preds = [];
-            HashSet<string> seen = new(StringComparer.Ordinal);
-            for (int i = 0; i < inEdges.Count; i++)
-            {
-                string srcId = inEdges[i].Layout.SourceNodeId;
-                if (seen.Add(srcId) && NodesById.TryGetValue(srcId, out VisualNode? srcNode))
-                {
-                    preds.Add(srcNode);
-                }
-            }
-
-            _predecessorsByNodeId[tgtId] = preds;
-        }
-
-        foreach (var (srcId, outEdges) in _outgoingEdgesByNodeId)
-        {
-            List<VisualNode> succs = [];
-            HashSet<string> seen = new(StringComparer.Ordinal);
-            for (int i = 0; i < outEdges.Count; i++)
-            {
-                string tgtId = outEdges[i].Layout.TargetNodeId;
-                if (seen.Add(tgtId) && NodesById.TryGetValue(tgtId, out VisualNode? tgtNode))
-                {
-                    succs.Add(tgtNode);
-                }
-            }
-
-            _successorsByNodeId[srcId] = succs;
-        }
-
-        for (int i = 0; i < Nodes.Count; i++)
-        {
-            string id = Nodes[i].Id;
-            List<VisualNode> adj = [];
-            HashSet<string> seen = new(StringComparer.Ordinal);
-            if (_predecessorsByNodeId.TryGetValue(id, out var preds))
-            {
-                for (int p = 0; p < preds.Count; p++)
-                {
-                    if (seen.Add(preds[p].Id))
-                    {
-                        adj.Add(preds[p]);
-                    }
-                }
-            }
-
-            if (_successorsByNodeId.TryGetValue(id, out var succs))
-            {
-                for (int s = 0; s < succs.Count; s++)
-                {
-                    if (seen.Add(succs[s].Id))
-                    {
-                        adj.Add(succs[s]);
-                    }
-                }
-            }
-
-            _adjacentNodesByNodeId[id] = adj;
-        }
-    }
-
-    private void AddConnectedEdge(string nodeId, VisualEdge edge)
-    {
-        if (!_connectedEdgesByNodeId.TryGetValue(nodeId, out List<VisualEdge>? list))
-        {
-            list = [];
-            _connectedEdgesByNodeId[nodeId] = list;
-        }
-
-        list.Add(edge);
-    }
-
-    private void AddIncomingEdge(string targetNodeId, VisualEdge edge)
-    {
-        if (!_incomingEdgesByNodeId.TryGetValue(targetNodeId, out List<VisualEdge>? list))
-        {
-            list = [];
-            _incomingEdgesByNodeId[targetNodeId] = list;
-        }
-
-        list.Add(edge);
-    }
-
-    private void AddOutgoingEdge(string sourceNodeId, VisualEdge edge)
-    {
-        if (!_outgoingEdgesByNodeId.TryGetValue(sourceNodeId, out List<VisualEdge>? list))
-        {
-            list = [];
-            _outgoingEdgesByNodeId[sourceNodeId] = list;
-        }
-
-        list.Add(edge);
-    }
+    public IReadOnlyDictionary<string, VisualEdge> EdgesById => _adjacency.EdgesById;
 
     /// <summary>
     /// Queries the spatial grid for a <see cref="VisualNode"/> whose bounding box contains the given world coordinates.
@@ -284,12 +164,32 @@ public sealed record VisualSubgraphLayout(
         _spatialIndex.FindNodesInRegion(region);
 
     /// <summary>
+    /// Populates <paramref name="destination"/> with all unique nodes whose bounding boxes intersect <paramref name="region"/>
+    /// without allocating intermediate collections.
+    /// </summary>
+    /// <param name="region">The query bounding box in layout space.</param>
+    /// <param name="destination">The caller-owned list cleared and populated with matching <see cref="VisualNode"/> instances.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="destination"/> is <see langword="null"/>.</exception>
+    public void FindNodesInRegion(BoundingBox region, List<VisualNode> destination) =>
+        _spatialIndex.FindNodesInRegion(region, destination);
+
+    /// <summary>
     /// Queries the spatial grid for all routed edges whose bounding boxes intersect the specified bounding box.
     /// </summary>
     /// <param name="region">The query bounding box in layout space.</param>
     /// <returns>A list of unique intersecting <see cref="VisualEdge"/> instances.</returns>
     public IReadOnlyList<VisualEdge> FindEdgesInRegion(BoundingBox region) =>
         _spatialIndex.FindEdgesInRegion(region);
+
+    /// <summary>
+    /// Populates <paramref name="destination"/> with all unique routed edges whose bounding boxes intersect or touch <paramref name="region"/>
+    /// without allocating intermediate collections.
+    /// </summary>
+    /// <param name="region">The query bounding box in layout space.</param>
+    /// <param name="destination">The caller-owned list cleared and populated with matching <see cref="VisualEdge"/> instances.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="destination"/> is <see langword="null"/>.</exception>
+    public void FindEdgesInRegion(BoundingBox region, List<VisualEdge> destination) =>
+        _spatialIndex.FindEdgesInRegion(region, destination);
 
     /// <summary>
     /// Queries the spatial grid for all visual nodes and routed edges intersecting the specified viewport region.
@@ -300,14 +200,48 @@ public sealed record VisualSubgraphLayout(
         new(_spatialIndex.FindNodesInRegion(viewport), _spatialIndex.FindEdgesInRegion(viewport));
 
     /// <summary>
+    /// Populates <paramref name="visibleNodes"/> and <paramref name="visibleEdges"/> with all visual nodes and routed edges
+    /// intersecting <paramref name="viewport"/> without allocating new result collections.
+    /// </summary>
+    /// <param name="viewport">The visible viewport bounding box in layout space.</param>
+    /// <param name="visibleNodes">The caller-owned list cleared and populated with visible <see cref="VisualNode"/> instances.</param>
+    /// <param name="visibleEdges">The caller-owned list cleared and populated with visible <see cref="VisualEdge"/> instances.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="visibleNodes"/> or <paramref name="visibleEdges"/> is <see langword="null"/>.</exception>
+    public void GetVisibleElements(BoundingBox viewport, List<VisualNode> visibleNodes, List<VisualEdge> visibleEdges) =>
+        GetVisibleElements(viewport, viewport, visibleNodes, visibleEdges);
+
+    /// <summary>
+    /// Populates <paramref name="visibleNodes"/> and <paramref name="visibleEdges"/> using separate node and edge cull regions
+    /// (for example, an expanded edge region for arrowheads and shape labels) without allocating new result collections.
+    /// </summary>
+    /// <param name="nodeViewport">The visible bounding box for node culling in layout space.</param>
+    /// <param name="edgeViewport">The visible bounding box for edge culling in layout space.</param>
+    /// <param name="visibleNodes">The caller-owned list cleared and populated with visible <see cref="VisualNode"/> instances.</param>
+    /// <param name="visibleEdges">The caller-owned list cleared and populated with visible <see cref="VisualEdge"/> instances.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="visibleNodes"/> or <paramref name="visibleEdges"/> is <see langword="null"/>.</exception>
+    public void GetVisibleElements(
+        BoundingBox nodeViewport,
+        BoundingBox edgeViewport,
+        List<VisualNode> visibleNodes,
+        List<VisualEdge> visibleEdges)
+    {
+        ArgumentNullException.ThrowIfNull(visibleNodes);
+        ArgumentNullException.ThrowIfNull(visibleEdges);
+
+        _spatialIndex.FindNodesInRegion(nodeViewport, visibleNodes);
+        _spatialIndex.FindEdgesInRegion(edgeViewport, visibleEdges);
+    }
+
+    /// <summary>
     /// Gets all routed visual edges directly connected to the specified node (either as source or target).
     /// </summary>
     /// <param name="nodeId">The unique visual node identifier.</param>
     /// <returns>A read-only list of connected visual edges, or an empty list if no edges connect to the node.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="nodeId"/> is <see langword="null"/>.</exception>
     public IReadOnlyList<VisualEdge> GetConnectedEdges(string nodeId)
     {
-        EnsureIndicesInitialized();
-        return _connectedEdgesByNodeId.TryGetValue(nodeId, out var list) ? list : [];
+        ArgumentNullException.ThrowIfNull(nodeId);
+        return _adjacency.ConnectedEdgesByNodeId.TryGetValue(nodeId, out VisualEdge[]? edges) ? edges : [];
     }
 
     /// <summary>
@@ -315,10 +249,11 @@ public sealed record VisualSubgraphLayout(
     /// </summary>
     /// <param name="nodeId">The unique visual node identifier.</param>
     /// <returns>A read-only list of incoming visual edges, or an empty list if none exist.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="nodeId"/> is <see langword="null"/>.</exception>
     public IReadOnlyList<VisualEdge> GetIncomingEdges(string nodeId)
     {
-        EnsureIndicesInitialized();
-        return _incomingEdgesByNodeId.TryGetValue(nodeId, out var list) ? list : [];
+        ArgumentNullException.ThrowIfNull(nodeId);
+        return _adjacency.IncomingEdgesByNodeId.TryGetValue(nodeId, out VisualEdge[]? edges) ? edges : [];
     }
 
     /// <summary>
@@ -326,10 +261,11 @@ public sealed record VisualSubgraphLayout(
     /// </summary>
     /// <param name="nodeId">The unique visual node identifier.</param>
     /// <returns>A read-only list of outgoing visual edges, or an empty list if none exist.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="nodeId"/> is <see langword="null"/>.</exception>
     public IReadOnlyList<VisualEdge> GetOutgoingEdges(string nodeId)
     {
-        EnsureIndicesInitialized();
-        return _outgoingEdgesByNodeId.TryGetValue(nodeId, out var list) ? list : [];
+        ArgumentNullException.ThrowIfNull(nodeId);
+        return _adjacency.OutgoingEdgesByNodeId.TryGetValue(nodeId, out VisualEdge[]? edges) ? edges : [];
     }
 
     /// <summary>
@@ -337,10 +273,11 @@ public sealed record VisualSubgraphLayout(
     /// </summary>
     /// <param name="nodeId">The unique visual node identifier.</param>
     /// <returns>A read-only list of unique adjacent visual nodes.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="nodeId"/> is <see langword="null"/>.</exception>
     public IReadOnlyList<VisualNode> GetAdjacentNodes(string nodeId)
     {
-        EnsureIndicesInitialized();
-        return _adjacentNodesByNodeId.TryGetValue(nodeId, out var list) ? list : [];
+        ArgumentNullException.ThrowIfNull(nodeId);
+        return _adjacency.AdjacentNodesByNodeId.TryGetValue(nodeId, out VisualNode[]? nodes) ? nodes : [];
     }
 
     /// <summary>
@@ -348,10 +285,11 @@ public sealed record VisualSubgraphLayout(
     /// </summary>
     /// <param name="nodeId">The unique visual node identifier.</param>
     /// <returns>A read-only list of unique upstream predecessor visual nodes.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="nodeId"/> is <see langword="null"/>.</exception>
     public IReadOnlyList<VisualNode> GetPredecessors(string nodeId)
     {
-        EnsureIndicesInitialized();
-        return _predecessorsByNodeId.TryGetValue(nodeId, out var list) ? list : [];
+        ArgumentNullException.ThrowIfNull(nodeId);
+        return _adjacency.PredecessorsByNodeId.TryGetValue(nodeId, out VisualNode[]? nodes) ? nodes : [];
     }
 
     /// <summary>
@@ -359,19 +297,146 @@ public sealed record VisualSubgraphLayout(
     /// </summary>
     /// <param name="nodeId">The unique visual node identifier.</param>
     /// <returns>A read-only list of unique downstream successor visual nodes.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="nodeId"/> is <see langword="null"/>.</exception>
     public IReadOnlyList<VisualNode> GetSuccessors(string nodeId)
     {
-        EnsureIndicesInitialized();
-        return _successorsByNodeId.TryGetValue(nodeId, out var list) ? list : [];
+        ArgumentNullException.ThrowIfNull(nodeId);
+        return _adjacency.SuccessorsByNodeId.TryGetValue(nodeId, out VisualNode[]? nodes) ? nodes : [];
     }
 
-    private bool _indicesInitialized;
-    private void EnsureIndicesInitialized()
+    private sealed class AdjacencyIndex
     {
-        if (!_indicesInitialized)
+        public Dictionary<string, VisualEdge> EdgesById { get; }
+        public Dictionary<string, VisualEdge[]> ConnectedEdgesByNodeId { get; }
+        public Dictionary<string, VisualEdge[]> IncomingEdgesByNodeId { get; }
+        public Dictionary<string, VisualEdge[]> OutgoingEdgesByNodeId { get; }
+        public Dictionary<string, VisualNode[]> PredecessorsByNodeId { get; }
+        public Dictionary<string, VisualNode[]> SuccessorsByNodeId { get; }
+        public Dictionary<string, VisualNode[]> AdjacentNodesByNodeId { get; }
+
+        public AdjacencyIndex(
+            IReadOnlyList<VisualNode> nodes,
+            IReadOnlyList<VisualEdge> edges,
+            IReadOnlyDictionary<string, VisualNode> nodesById)
         {
-            InitializeIndices();
-            _indicesInitialized = true;
+            EdgesById = new Dictionary<string, VisualEdge>(edges.Count, StringComparer.Ordinal);
+
+            Dictionary<string, List<VisualEdge>> connected = new(nodes.Count, StringComparer.Ordinal);
+            Dictionary<string, List<VisualEdge>> incoming = new(nodes.Count, StringComparer.Ordinal);
+            Dictionary<string, List<VisualEdge>> outgoing = new(nodes.Count, StringComparer.Ordinal);
+
+            for (int i = 0; i < edges.Count; i++)
+            {
+                VisualEdge edge = edges[i];
+                EdgesById.TryAdd(edge.Id, edge);
+
+                string src = edge.Layout.SourceNodeId;
+                string tgt = edge.Layout.TargetNodeId;
+
+                AddEdge(connected, src, edge);
+                if (!string.Equals(src, tgt, StringComparison.Ordinal))
+                {
+                    AddEdge(connected, tgt, edge);
+                }
+
+                AddEdge(incoming, tgt, edge);
+                AddEdge(outgoing, src, edge);
+            }
+
+            ConnectedEdgesByNodeId = FreezeEdges(connected);
+            IncomingEdgesByNodeId = FreezeEdges(incoming);
+            OutgoingEdgesByNodeId = FreezeEdges(outgoing);
+
+            PredecessorsByNodeId = new Dictionary<string, VisualNode[]>(incoming.Count, StringComparer.Ordinal);
+            foreach ((string tgtId, List<VisualEdge> inEdges) in incoming)
+            {
+                PredecessorsByNodeId[tgtId] = CollectUniqueNodes(inEdges, isSource: true, nodesById);
+            }
+
+            SuccessorsByNodeId = new Dictionary<string, VisualNode[]>(outgoing.Count, StringComparer.Ordinal);
+            foreach ((string srcId, List<VisualEdge> outEdges) in outgoing)
+            {
+                SuccessorsByNodeId[srcId] = CollectUniqueNodes(outEdges, isSource: false, nodesById);
+            }
+
+            AdjacentNodesByNodeId = new Dictionary<string, VisualNode[]>(nodes.Count, StringComparer.Ordinal);
+            for (int i = 0; i < nodes.Count; i++)
+            {
+                string id = nodes[i].Id;
+                PredecessorsByNodeId.TryGetValue(id, out VisualNode[]? preds);
+                SuccessorsByNodeId.TryGetValue(id, out VisualNode[]? succs);
+
+                if ((preds is null || preds.Length == 0) && (succs is null || succs.Length == 0))
+                {
+                    continue;
+                }
+
+                List<VisualNode> adj = new((preds?.Length ?? 0) + (succs?.Length ?? 0));
+                HashSet<string> seen = new(StringComparer.Ordinal);
+
+                AddUniqueNodes(preds, seen, adj);
+                AddUniqueNodes(succs, seen, adj);
+
+                AdjacentNodesByNodeId[id] = adj.ToArray();
+            }
+        }
+
+        private static void AddEdge(Dictionary<string, List<VisualEdge>> map, string nodeId, VisualEdge edge)
+        {
+            if (!map.TryGetValue(nodeId, out List<VisualEdge>? list))
+            {
+                list = [];
+                map[nodeId] = list;
+            }
+
+            list.Add(edge);
+        }
+
+        private static Dictionary<string, VisualEdge[]> FreezeEdges(Dictionary<string, List<VisualEdge>> source)
+        {
+            Dictionary<string, VisualEdge[]> result = new(source.Count, StringComparer.Ordinal);
+            foreach ((string key, List<VisualEdge> list) in source)
+            {
+                result[key] = list.ToArray();
+            }
+
+            return result;
+        }
+
+        private static VisualNode[] CollectUniqueNodes(
+            List<VisualEdge> edges,
+            bool isSource,
+            IReadOnlyDictionary<string, VisualNode> nodesById)
+        {
+            List<VisualNode> result = new(edges.Count);
+            HashSet<string> seen = new(StringComparer.Ordinal);
+            for (int i = 0; i < edges.Count; i++)
+            {
+                string neighborId = isSource ? edges[i].Layout.SourceNodeId : edges[i].Layout.TargetNodeId;
+                if (seen.Add(neighborId) && nodesById.TryGetValue(neighborId, out VisualNode? neighborNode))
+                {
+                    result.Add(neighborNode);
+                }
+            }
+
+            return result.ToArray();
+        }
+
+        private static void AddUniqueNodes(VisualNode[]? source, HashSet<string> seen, List<VisualNode> destination)
+        {
+            if (source is null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < source.Length; i++)
+            {
+                VisualNode node = source[i];
+                if (seen.Add(node.Id))
+                {
+                    destination.Add(node);
+                }
+            }
         }
     }
 }

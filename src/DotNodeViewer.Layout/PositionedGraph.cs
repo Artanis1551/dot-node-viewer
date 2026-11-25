@@ -74,35 +74,73 @@ public sealed record PositionedEdge(
     LayoutPoint? LabelAnchor,
     string? Label)
 {
-    private BoundingBox? _bounds;
-
     /// <summary>
-    /// Gets the axis-aligned <see cref="BoundingBox"/> enclosing all routed points of this edge.
+    /// Gets the axis-aligned <see cref="BoundingBox"/> enclosing all routed points, Bézier control points, and label anchor of this edge.
     /// </summary>
-    public BoundingBox Bounds => _bounds ??= ComputeBounds(Points);
+    public BoundingBox Bounds { get; } = ComputeBounds(Points, BezierSegments, LabelAnchor);
 
-    private static BoundingBox ComputeBounds(IReadOnlyList<LayoutPoint> points)
+    private static BoundingBox ComputeBounds(
+        IReadOnlyList<LayoutPoint>? points,
+        IReadOnlyList<CubicBezierSegment>? bezierSegments,
+        LayoutPoint? labelAnchor)
     {
-        if (points.Count == 0)
+        double minX = double.PositiveInfinity;
+        double minY = double.PositiveInfinity;
+        double maxX = double.NegativeInfinity;
+        double maxY = double.NegativeInfinity;
+        bool hasAny = false;
+
+        if (points is not null)
         {
-            return new BoundingBox(0, 0, 0, 0);
+            for (int i = 0; i < points.Count; i++)
+            {
+                ExpandBounds(points[i], ref minX, ref minY, ref maxX, ref maxY, ref hasAny);
+            }
         }
 
-        double minX = double.MaxValue;
-        double minY = double.MaxValue;
-        double maxX = double.MinValue;
-        double maxY = double.MinValue;
-
-        for (int i = 0; i < points.Count; i++)
+        if (bezierSegments is not null)
         {
-            LayoutPoint p = points[i];
-            if (p.X < minX) minX = p.X;
-            if (p.X > maxX) maxX = p.X;
-            if (p.Y < minY) minY = p.Y;
-            if (p.Y > maxY) maxY = p.Y;
+            for (int i = 0; i < bezierSegments.Count; i++)
+            {
+                CubicBezierSegment seg = bezierSegments[i];
+                ExpandBounds(seg.Start, ref minX, ref minY, ref maxX, ref maxY, ref hasAny);
+                ExpandBounds(seg.Control1, ref minX, ref minY, ref maxX, ref maxY, ref hasAny);
+                ExpandBounds(seg.Control2, ref minX, ref minY, ref maxX, ref maxY, ref hasAny);
+                ExpandBounds(seg.End, ref minX, ref minY, ref maxX, ref maxY, ref hasAny);
+            }
         }
 
-        return new BoundingBox(minX, minY, Math.Max(0, maxX - minX), Math.Max(0, maxY - minY));
+        if (labelAnchor.HasValue)
+        {
+            ExpandBounds(labelAnchor.Value, ref minX, ref minY, ref maxX, ref maxY, ref hasAny);
+        }
+
+        if (!hasAny)
+        {
+            return BoundingBox.Empty;
+        }
+
+        return new BoundingBox(minX, minY, Math.Max(0.0, maxX - minX), Math.Max(0.0, maxY - minY));
+    }
+
+    private static void ExpandBounds(
+        LayoutPoint point,
+        ref double minX,
+        ref double minY,
+        ref double maxX,
+        ref double maxY,
+        ref bool hasAny)
+    {
+        if (!double.IsFinite(point.X) || !double.IsFinite(point.Y))
+        {
+            return;
+        }
+
+        if (point.X < minX) minX = point.X;
+        if (point.X > maxX) maxX = point.X;
+        if (point.Y < minY) minY = point.Y;
+        if (point.Y > maxY) maxY = point.Y;
+        hasAny = true;
     }
 }
 
