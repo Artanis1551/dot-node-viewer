@@ -24,7 +24,7 @@ flowchart LR
         DC --- PL
     end
 
-    PL --> HDR["XNNHeader (32-byte header, magic 'XH00')\nflatbuffer_offset / flatbuffer_size / constant_data_offset"]
+    PL --> HDR["XNNHeader (30-byte header, magic 'XH00' at offset 4)\nflatbuffer_offset / flatbuffer_size / constant_data_offset / constant_data_size"]
     HDR --> FB["fb_xnnpack.XNNGraph FlatBuffer (identifier 'XN01')\nxnodes, xvalues, input_ids, output_ids, constant_data"]
     FB --> SG["Synthesized Subgraph (XNNPACK ops + explicit tensor edges + lazy weight slices)"]
 ```
@@ -33,10 +33,10 @@ flowchart LR
 > The schema details below summarize ExecuTorch's `backends/xnnpack/serialization/schema.fbs` and Netron's XNNPACK FlatBuffer loader. **The implementing agent must verify every FlatBuffer vtable field index and `XNodeUnion` discriminant against the pinned upstream ExecuTorch revision** and record that revision in the format documentation.
 
 1. **Delegate Storage in `.pte`:**
-   - `ExecuTorchFormatReader` already extracts `BackendDelegate.processed` (both `INLINE` and `SEGMENT` data locations) as a lazy `TensorDataSlice` attribute (`delegate.processed_data`) on `Delegate (XnnpackBackend)` nodes.
+   - `ExecuTorchFormatReader` already extracts `BackendDelegate.processed` (both `INLINE` and `SEGMENT` data locations) as a lazy `AttributeValue.Bytes(TensorDataSlice)` attribute named `processed` on `Delegate (XnnpackBackend)` nodes (matching `EthosUDelegateExpander`).
 2. **XNNPACK Header (`XNNHeader`):**
-   - Lowered payloads begin with an `XNNHeader` (magic `"XH00"`) specifying the relative offset and byte length of the `XNNGraph` FlatBuffer table and the trailing `constant_data` buffer region.
-   - Older or inline payloads may start directly with the FlatBuffer (`"XN01"` identifier at offset 4). The decoder should validate both forms safely.
+   - Lowered payloads begin with an `XNNHeader` (**30 bytes**: 4-byte zero padding, magic `"XH00"` at bytes `4..8`, `uint16` header length, `uint32` `flatbuffer_offset`, `uint32` `flatbuffer_size`, `uint32` `constant_data_offset`, `uint64` `constant_data_size`) specifying the relative offset and byte length of the `XNNGraph` FlatBuffer table and the trailing `constant_data` buffer region.
+   - Older or inline payloads may start directly with the FlatBuffer (`"XN01"` identifier at offset 4, matching the `"XH00"` offset). The decoder must validate all header offsets and lengths against the processed slice bounds before reading (guarding against out-of-bounds header values).
 3. **`fb_xnnpack.XNNGraph` Schema:**
    - `xvalues`: Vector of `XValue` union entries (`XNNTensorValue`, `XNNQuantizedTensorValue`) carrying data type, dimensions, constant buffer index, external I/O ID, and quantization parameters (`PerTensor` / `PerChannel` / `PerChannelGroup` scales and zero-points).
    - `xnodes`: Vector of `XNode` union entries (`XNodeUnion`) representing lowered XNNPACK operators, including standard layers (`XNNConv2d`, `XNNDepthwiseConv2d`, `XNNFullyConnected`, `XNNAdd`, `XNNMultiply`, `XNNSoftmax`, `XNNHardswish`, `XNNStaticResizeBilinear2d`, `XNNBatchMatrixMultiply`, `XNNScaledDotProductAttention`, `XNNConvert`, `XNNStaticReshape`, `XNNStaticTranspose`, etc.) as well as newer `fb_xnnpack.XNodeUnion` additions tracked in Netron:
@@ -83,7 +83,7 @@ flowchart LR
      - `delegate.expandable = true`
    - Preserve $O(1)$ lazy behavior during `ReadAsync` — do **not** read or decode the XNNPACK FlatBuffer payload eagerly.
 2. **Internal XNNPACK Decoder (`src/DotNodeViewer.Core/Delegates/Xnnpack/`, all `internal`):**
-   - `XnnpackHeaderReader`: parses and bounds-checks the optional 32-byte `XH00` header, extracting the FlatBuffer slice offset/length and constant-data base offset.
+   - `XnnpackHeaderReader`: parses and bounds-checks the optional 30-byte `XH00` header (magic at offset 4), extracting the FlatBuffer slice offset/length and constant-data offset/length.
    - `XnnpackOperatorCatalog`: maps `fb_xnnpack.XNodeUnion` enum discriminants (including `49: XNNDepthToSpace2d` and `50: _XNNStaticReduce`) to canonical operator names, formal port names, and semantic `OperatorCategory` values. Unknown union discriminants map safely to `OperatorCategory.Unknown` with a `ParseDiagnostic` warning instead of throwing.
    - `XnnpackGraphDecoder`: reuses the existing zero-allocation `FlatBufferTable` / span primitives in `DotNodeViewer.Core.IO` to decode `XNNGraph` (`xvalues`, `xnodes`, `input_ids`, `output_ids`, `constant_data`) into a `Subgraph`.
    - Lazy weight slicing: map constant tensor buffers to `TensorDataSlice` pointing directly to their exact absolute byte offset inside the `.pte` stream (using `ArrayPool<byte>.Shared` only for the FlatBuffer metadata table, never allocating constant weight buffers).

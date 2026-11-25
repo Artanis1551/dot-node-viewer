@@ -73,7 +73,7 @@ flowchart LR
 ## Open Design Questions (Resolve via ADR Before Coding)
 
 1. **Frozen IR Additions (ADR Required):**
-   - Add `ModelFormatId.Mlir => new("mlir")` to `DotNodeViewer.Core.Ir.ModelFormatInfo`.
+   - Add `ModelFormatId.Mlir => new("mlir")` to `DotNodeViewer.Core.Ir.ModelFormatId` (defined in `ModelFormatInfo.cs`).
    - Decide whether to extend `DotNodeViewer.Core.Ir.DataType` with `Float8E5M3Fnu`, `MxInt8`, and `Complex32` (`complex<float16>`) in the same ADR (along with decoding support in `TensorInspectorViewModel`), or defer those enum members to a dedicated IR v1.x DataType ADR.
 2. **Phased Delivery: Bytecode + Textual Scope:**
    - **MLIR Bytecode (`.mlirbc`):** Binary container with `"ML\xEFR"` magic, varint-encoded sections, and binary resource blobs (naturally compatible with zero-allocation lazy `TensorDataSlice` slicing).

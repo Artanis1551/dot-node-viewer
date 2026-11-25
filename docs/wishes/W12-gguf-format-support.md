@@ -57,9 +57,9 @@ flowchart LR
 ## Open Design Questions (Resolve via ADR Before Coding)
 
 1. **Frozen IR Additions (ADR Required):**
-   - Add `ModelFormatId.Gguf => new("gguf")` to `DotNodeViewer.Core.Ir.ModelFormatInfo`.
+   - Add `ModelFormatId.Gguf => new("gguf")` to `DotNodeViewer.Core.Ir.ModelFormatId` (defined in `ModelFormatInfo.cs`).
    - Decide how GGML block-quantized tensor types (`Q4_0`, `Q4_1`, `Q5_0`, `Q5_1`, `Q8_0`, `Q8_1`, `Q2_K`–`Q6_K`, `Q8_K`, `IQ1_S`–`IQ4_XS`, `TQ1_0`, `TQ2_0`, `MXFP4`) map onto `DataType`, `BlockQuantization`, and `TensorDataEncoding`:
-     - Recommended: map exact unquantized types (`F32`, `F16`, `BF16`, `F64`, `I8`, `I16`, `I32`, `I64`) to existing `DataType` values; map block-quantized types using `BlockQuantization(Bits, BlockSize, ...)` on `TensorDescriptor.Quantization` plus an explicit `TensorDataEncoding` (e.g. `Opaque` or `GgmlQuantizedBlock`) so `TensorInspectorViewModel` displays raw hex/block metadata safely without misinterpreting super-block headers as dense floats.
+     - Recommended: map exact unquantized types (`F32`, `F16`, `BF16`, `F64`, `I8`, `I16`, `I32`, `I64`) to existing `DataType` values; map block-quantized types using `BlockQuantization(Scheme, BlockSize, Bits)` on `TensorDescriptor.Quantization` plus an explicit `TensorDataEncoding` (e.g. `Opaque` or `GgmlQuantizedBlock`) so `TensorInspectorViewModel` displays raw hex/block metadata safely without misinterpreting super-block headers as dense floats.
 2. **Block-Level Graph Synthesis & Subgraph Strategy:**
    - Should each repeated block (`blk.0`, `blk.1`, …) appear as a grouped node/module in the primary subgraph, or should each block expand into a child `Subgraph` (with an option for flat vs. hierarchical view)?
    - How should unseen `general.architecture` values fall back? Recommended: **data-driven prefix grouping** (grouping by `blk.{n}.<component>` / longest common dot-prefix) supplemented by architecture-specific metadata templates for well-known families (`llama`, `qwen*`, `deepseek*` including `deepseek41` Engram, `mistral-large4`, `lfm3`, `kimi-k31`, `kokoro`, `moshi`, `limite`, `whisper`, `gemma*`, `phi*`, `mamba*`).
