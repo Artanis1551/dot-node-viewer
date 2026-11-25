@@ -397,5 +397,197 @@ public sealed class TensorInspectorViewModelTests
         await Assert.That(vm.MaxValue).IsEqualTo(7.0);
         await Assert.That(vm.MeanValue).IsEqualTo(-0.5);
     }
+
+    [Test]
+    public async Task InspectAsync_DecodesFloat8E4M3_All256BytePatterns_MatchesOcpSpecStatistics()
+    {
+        byte[] allBytes = new byte[256];
+        for (int i = 0; i < 256; i++)
+        {
+            allBytes[i] = (byte)i;
+        }
+
+        using MemoryStream stream = new(allBytes);
+        TensorDataSlice slice = new(StreamOffset: 0, ByteLength: 256, DataType: DataType.Float8E4M3);
+        TensorDescriptor desc = new(DataType: DataType.Float8E4M3, Shape: new TensorShape([new TensorDimension.Fixed(256)]));
+        TensorEdge tensor = new("fp8_e4m3_all256", desc, TensorKind.Initializer, Data: slice);
+
+        TensorInspectorViewModel vm = new();
+        await vm.InspectAsync(tensor, stream);
+
+        // OCP E4M3FN has exact +/- symmetry, 2 zeros (0x00, 0x80), 2 NaNs (0x7F, 0xFF), 0 Infinities, range [-448, 448].
+        await Assert.That(vm.SampledElementCount).IsEqualTo(256);
+        await Assert.That(vm.PreviewValues.Count).IsEqualTo(64);
+        await Assert.That(vm.HasNaN).IsTrue();
+        await Assert.That(vm.HasInfinity).IsFalse();
+        await Assert.That(vm.MinValue).IsEqualTo(-448.0);
+        await Assert.That(vm.MaxValue).IsEqualTo(448.0);
+        await Assert.That(vm.MeanValue!.Value).IsEqualTo(0.0).Within(1e-12);
+        await Assert.That(vm.ZeroPercentage!.Value).IsEqualTo(2.0 * 100.0 / 256.0).Within(1e-9);
+    }
+
+    [Test]
+    public async Task InspectAsync_DecodesFloat8E5M2_All256BytePatterns_MatchesOcpSpecStatistics()
+    {
+        byte[] allBytes = new byte[256];
+        for (int i = 0; i < 256; i++)
+        {
+            allBytes[i] = (byte)i;
+        }
+
+        using MemoryStream stream = new(allBytes);
+        TensorDataSlice slice = new(StreamOffset: 0, ByteLength: 256, DataType: DataType.Float8E5M2);
+        TensorDescriptor desc = new(DataType: DataType.Float8E5M2, Shape: new TensorShape([new TensorDimension.Fixed(256)]));
+        TensorEdge tensor = new("fp8_e5m2_all256", desc, TensorKind.Initializer, Data: slice);
+
+        TensorInspectorViewModel vm = new();
+        await vm.InspectAsync(tensor, stream);
+
+        // OCP E5M2 has exact +/- symmetry, 2 zeros (0x00, 0x80), 2 Infs (0x7C, 0xFC), 6 NaNs, range [-57344, 57344].
+        await Assert.That(vm.SampledElementCount).IsEqualTo(256);
+        await Assert.That(vm.PreviewValues.Count).IsEqualTo(64);
+        await Assert.That(vm.HasNaN).IsTrue();
+        await Assert.That(vm.HasInfinity).IsTrue();
+        await Assert.That(vm.MinValue).IsEqualTo(-57344.0);
+        await Assert.That(vm.MaxValue).IsEqualTo(57344.0);
+        await Assert.That(vm.MeanValue!.Value).IsEqualTo(0.0).Within(1e-12);
+        await Assert.That(vm.ZeroPercentage!.Value).IsEqualTo(2.0 * 100.0 / 256.0).Within(1e-9);
+    }
+
+    [Test]
+    public async Task InspectAsync_DecodesVarintPackedLowBitOnnxTensors_UnpacksFp8Int4AndUInt4()
+    {
+        // ONNX TensorProto.int32_data (VarintPacked) for FLOAT8E4M3FN: [0x38 (1.0), 0x3C (1.5), 0x7E (448.0)] + truncated trailing varint 0xF8
+        byte[] fp8E4Varints = [0x38, 0x3C, 0x7E, 0xF8];
+        using (MemoryStream stream = new(fp8E4Varints))
+        {
+            TensorDataSlice slice = new(0, fp8E4Varints.Length, DataType.Float8E4M3, TensorDataEncoding.VarintPacked);
+            TensorDescriptor desc = new(DataType.Float8E4M3, new TensorShape([new TensorDimension.Fixed(3)]));
+            TensorInspectorViewModel vm = new();
+            await vm.InspectAsync(new TensorEdge("onnx_fp8_e4m3_int32", desc, TensorKind.Initializer, Data: slice), stream);
+
+            await Assert.That(vm.SampledElementCount).IsEqualTo(3);
+            await Assert.That(vm.PreviewValues[0].RawValue).IsEqualTo("1");
+            await Assert.That(vm.PreviewValues[1].RawValue).IsEqualTo("1.5");
+            await Assert.That(vm.PreviewValues[2].RawValue).IsEqualTo("448");
+        }
+
+        // ONNX TensorProto.int32_data (VarintPacked) for FLOAT8E5M2: [0x3C (1.0), 0x3E (1.5), 0x7B (57344.0)]
+        byte[] fp8E5Varints = [0x3C, 0x3E, 0x7B];
+        using (MemoryStream stream = new(fp8E5Varints))
+        {
+            TensorDataSlice slice = new(0, fp8E5Varints.Length, DataType.Float8E5M2, TensorDataEncoding.VarintPacked);
+            TensorDescriptor desc = new(DataType.Float8E5M2, new TensorShape([new TensorDimension.Fixed(3)]));
+            TensorInspectorViewModel vm = new();
+            await vm.InspectAsync(new TensorEdge("onnx_fp8_e5m2_int32", desc, TensorKind.Initializer, Data: slice), stream);
+
+            await Assert.That(vm.SampledElementCount).IsEqualTo(3);
+            await Assert.That(vm.PreviewValues[0].RawValue).IsEqualTo("1");
+            await Assert.That(vm.PreviewValues[1].RawValue).IsEqualTo("1.5");
+            await Assert.That(vm.PreviewValues[2].RawValue).IsEqualTo("57344");
+        }
+
+        // ONNX TensorProto.int32_data (VarintPacked) for INT4 shape [5]:
+        // varints [248 (0xF8 -> 0xF8 0x01), 16 (0x10), 7 (0x07)] -> [-8, -1, 0, 1, 7] (trailing nibble trimmed)
+        byte[] int4Varints = [0xF8, 0x01, 0x10, 0x07];
+        using (MemoryStream stream = new(int4Varints))
+        {
+            TensorDataSlice slice = new(0, int4Varints.Length, DataType.Int4, TensorDataEncoding.VarintPacked);
+            TensorDescriptor desc = new(DataType.Int4, new TensorShape([new TensorDimension.Fixed(5)]));
+            TensorInspectorViewModel vm = new();
+            await vm.InspectAsync(new TensorEdge("onnx_int4_int32", desc, TensorKind.Initializer, Data: slice), stream);
+
+            await Assert.That(vm.SampledElementCount).IsEqualTo(5);
+            await Assert.That(vm.PreviewValues.Select(p => p.RawValue).ToArray())
+                .IsEquivalentTo(["-8", "-1", "0", "1", "7"]);
+            await Assert.That(vm.MinValue).IsEqualTo(-8.0);
+            await Assert.That(vm.MaxValue).IsEqualTo(7.0);
+        }
+
+        // ONNX TensorProto.int32_data (VarintPacked) for UINT4 shape [5]:
+        // varints [16 (0x10), 248 (0xF8 -> 0xF8 0x01), 7 (0x07)] -> [0, 1, 8, 15, 7]
+        byte[] uint4Varints = [0x10, 0xF8, 0x01, 0x07];
+        using (MemoryStream stream = new(uint4Varints))
+        {
+            TensorDataSlice slice = new(0, uint4Varints.Length, DataType.UInt4, TensorDataEncoding.VarintPacked);
+            TensorDescriptor desc = new(DataType.UInt4, new TensorShape([new TensorDimension.Fixed(5)]));
+            TensorInspectorViewModel vm = new();
+            await vm.InspectAsync(new TensorEdge("onnx_uint4_int32", desc, TensorKind.Initializer, Data: slice), stream);
+
+            await Assert.That(vm.SampledElementCount).IsEqualTo(5);
+            await Assert.That(vm.PreviewValues.Select(p => p.RawValue).ToArray())
+                .IsEquivalentTo(["0", "1", "8", "15", "7"]);
+        }
+    }
+
+    [Test]
+    public async Task InspectAsync_DecodesInt4_HandlesScalarZeroDimOverflowShapeAndLarge64KBCap()
+    {
+        // 1. Scalar shape [] with 1 byte (0xF5): low nibble 5, high nibble padding ignored
+        using (MemoryStream scalarStream = new([0xF5]))
+        {
+            TensorDataSlice slice = new(0, 1, DataType.Int4);
+            TensorDescriptor desc = new(DataType.Int4, TensorShape.Scalar);
+            TensorInspectorViewModel vm = new();
+            await vm.InspectAsync(new TensorEdge("int4_scalar", desc, TensorKind.Initializer, Data: slice), scalarStream);
+
+            await Assert.That(vm.SampledElementCount).IsEqualTo(1);
+            await Assert.That(vm.PreviewValues.Count).IsEqualTo(1);
+            await Assert.That(vm.PreviewValues[0].RawValue).IsEqualTo("5");
+        }
+
+        // 2. Zero-dimension shape [0] with 1 padding byte -> 0 sampled elements, no statistics
+        using (MemoryStream zeroStream = new([0x00]))
+        {
+            TensorDataSlice slice = new(0, 1, DataType.Int4);
+            TensorDescriptor desc = new(DataType.Int4, new TensorShape([new TensorDimension.Fixed(0)]));
+            TensorInspectorViewModel vm = new();
+            await vm.InspectAsync(new TensorEdge("int4_empty", desc, TensorKind.Initializer, Data: slice), zeroStream);
+
+            await Assert.That(vm.SampledElementCount).IsEqualTo(0);
+            await Assert.That(vm.PreviewValues.Count).IsEqualTo(0);
+            await Assert.That(vm.HasStatistics).IsFalse();
+        }
+
+        // 3. Overflowing shape [long.MaxValue, 2] -> safely falls back to bytes.Length * 2 nibbles
+        using (MemoryStream overflowStream = new([0x87]))
+        {
+            TensorDataSlice slice = new(0, 1, DataType.Int4);
+            TensorDescriptor desc = new(
+                DataType.Int4,
+                new TensorShape([new TensorDimension.Fixed(long.MaxValue), new TensorDimension.Fixed(2)]));
+            TensorInspectorViewModel vm = new();
+            await vm.InspectAsync(new TensorEdge("int4_overflow_shape", desc, TensorKind.Initializer, Data: slice), overflowStream);
+
+            await Assert.That(vm.SampledElementCount).IsEqualTo(2);
+            await Assert.That(vm.PreviewValues[0].RawValue).IsEqualTo("7");
+            await Assert.That(vm.PreviewValues[1].RawValue).IsEqualTo("-8");
+        }
+
+        // 4. Large 100 KB packed Int4 slice -> read capped at 64 KB (65536 bytes = 131072 nibbles), preview capped at 64
+        const int largeBytes = 100 * 1024;
+        byte[] payload = new byte[largeBytes];
+        Array.Fill(payload, (byte)0x87); // alternating [7, -8]
+        using (ByteCountingStream largeStream = new(payload))
+        {
+            TensorDataSlice slice = new(0, largeBytes, DataType.Int4);
+            TensorDescriptor desc = new(DataType.Int4, new TensorShape([new TensorDimension.Fixed(largeBytes * 2L)]));
+            TensorInspectorViewModel vm = new();
+            await vm.InspectAsync(new TensorEdge("int4_large", desc, TensorKind.Initializer, Data: slice), largeStream);
+
+            await Assert.That(largeStream.TotalBytesRead).IsEqualTo(65536);
+            await Assert.That(vm.SampledElementCount).IsEqualTo(131072);
+            await Assert.That(vm.PreviewValues.Count).IsEqualTo(64);
+            await Assert.That(vm.MinValue).IsEqualTo(-8.0);
+            await Assert.That(vm.MaxValue).IsEqualTo(7.0);
+            await Assert.That(vm.MeanValue).IsEqualTo(-0.5);
+
+            // 5. Inspecting a data-less tensor afterwards resets SampledElementCount to 0
+            TensorEdge noDataTensor = new("activation", new TensorDescriptor(DataType.Float32, null), TensorKind.Activation);
+            await vm.InspectAsync(noDataTensor, largeStream);
+            await Assert.That(vm.SampledElementCount).IsEqualTo(0);
+            await Assert.That(vm.HasStatistics).IsFalse();
+        }
+    }
 }
 

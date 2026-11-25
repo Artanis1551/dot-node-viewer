@@ -159,6 +159,7 @@ public sealed partial class TensorInspectorViewModel : ObservableObject
         ShapeText = tensor.Descriptor.Shape?.ToDisplayString() ?? "[]";
         PreviewValues.Clear();
         ErrorMessage = null;
+        SampledElementCount = 0;
         HasStatistics = false;
         HasDequantization = false;
         QuantizationDescription = null;
@@ -261,22 +262,26 @@ public sealed partial class TensorInspectorViewModel : ObservableObject
         double affineScale = affine is not null && affine.Scale.Count > 0 ? affine.Scale[0] : 1.0;
         long affineZp = affine is not null && affine.ZeroPoint.Count > 0 ? affine.ZeroPoint[0] : 0;
 
+        long? expectedElementCount = TryGetKnownElementCount(tensor.Descriptor.Shape);
+
         if (slice.Encoding == TensorDataEncoding.EthosUCompressedWeights)
         {
             for (int i = 0; i < bytes.Length; i++)
             {
                 byte b = bytes[i];
                 rawValues.Add(b);
-                formattedRaws.Add($"0x{b:X2}");
+                if (formattedRaws.Count < MaxPreviewElements)
+                {
+                    formattedRaws.Add($"0x{b:X2}");
+                }
             }
         }
         else if (slice.Encoding == TensorDataEncoding.VarintPacked)
         {
-            DecodeVarints(bytes, slice.DataType, rawValues, formattedRaws);
+            DecodeVarints(bytes, slice.DataType, expectedElementCount, rawValues, formattedRaws);
         }
         else
         {
-            long? expectedElementCount = TryGetKnownElementCount(tensor.Descriptor.Shape);
             DecodeRawBytes(bytes, slice.DataType, expectedElementCount, rawValues, formattedRaws);
         }
 
@@ -356,7 +361,10 @@ public sealed partial class TensorInspectorViewModel : ObservableObject
                 {
                     float f = DecodeFloat8E4M3(bytes[i]);
                     numericValues.Add(f);
-                    formattedRaws.Add(f.ToString("G5", CultureInfo.InvariantCulture));
+                    if (formattedRaws.Count < MaxPreviewElements)
+                    {
+                        formattedRaws.Add(f.ToString("G5", CultureInfo.InvariantCulture));
+                    }
                 }
                 break;
 
@@ -365,7 +373,10 @@ public sealed partial class TensorInspectorViewModel : ObservableObject
                 {
                     float f = DecodeFloat8E5M2(bytes[i]);
                     numericValues.Add(f);
-                    formattedRaws.Add(f.ToString("G5", CultureInfo.InvariantCulture));
+                    if (formattedRaws.Count < MaxPreviewElements)
+                    {
+                        formattedRaws.Add(f.ToString("G5", CultureInfo.InvariantCulture));
+                    }
                 }
                 break;
 
@@ -378,7 +389,10 @@ public sealed partial class TensorInspectorViewModel : ObservableObject
                     int nibble = (i & 1) == 0 ? (packed & 0x0F) : ((packed >> 4) & 0x0F);
                     int signed = (nibble & 0x08) != 0 ? nibble - 16 : nibble;
                     numericValues.Add(signed);
-                    formattedRaws.Add(signed.ToString(CultureInfo.InvariantCulture));
+                    if (formattedRaws.Count < MaxPreviewElements)
+                    {
+                        formattedRaws.Add(signed.ToString(CultureInfo.InvariantCulture));
+                    }
                 }
                 break;
             }
@@ -391,7 +405,10 @@ public sealed partial class TensorInspectorViewModel : ObservableObject
                     byte packed = bytes[i >> 1];
                     int unsigned = (i & 1) == 0 ? (packed & 0x0F) : ((packed >> 4) & 0x0F);
                     numericValues.Add(unsigned);
-                    formattedRaws.Add(unsigned.ToString(CultureInfo.InvariantCulture));
+                    if (formattedRaws.Count < MaxPreviewElements)
+                    {
+                        formattedRaws.Add(unsigned.ToString(CultureInfo.InvariantCulture));
+                    }
                 }
                 break;
             }
@@ -495,6 +512,7 @@ public sealed partial class TensorInspectorViewModel : ObservableObject
     private static void DecodeVarints(
         ReadOnlySpan<byte> bytes,
         DataType dataType,
+        long? expectedElementCount,
         List<double> numericValues,
         List<string> formattedRaws)
     {
@@ -503,31 +521,99 @@ public sealed partial class TensorInspectorViewModel : ObservableObject
         {
             ulong val = 0;
             int shift = 0;
+            bool terminated = false;
             while (offset < bytes.Length)
             {
                 byte b = bytes[offset++];
                 val |= (ulong)(b & 0x7F) << shift;
                 if ((b & 0x80) == 0)
                 {
+                    terminated = true;
                     break;
                 }
                 shift += 7;
                 if (shift >= 64)
                 {
+                    terminated = true;
                     break;
                 }
             }
 
-            if (dataType == DataType.Int32 || dataType == DataType.Int64)
+            if (!terminated)
             {
-                long signed = (long)val;
-                numericValues.Add(signed);
-                formattedRaws.Add(signed.ToString(CultureInfo.InvariantCulture));
+                // Ignore a truncated trailing varint at the preview window boundary.
+                break;
             }
-            else
+
+            switch (dataType)
             {
-                numericValues.Add(val);
-                formattedRaws.Add(val.ToString(CultureInfo.InvariantCulture));
+                case DataType.Float8E4M3:
+                {
+                    float f = DecodeFloat8E4M3((byte)val);
+                    numericValues.Add(f);
+                    if (formattedRaws.Count < MaxPreviewElements)
+                    {
+                        formattedRaws.Add(f.ToString("G5", CultureInfo.InvariantCulture));
+                    }
+                    break;
+                }
+
+                case DataType.Float8E5M2:
+                {
+                    float f = DecodeFloat8E5M2((byte)val);
+                    numericValues.Add(f);
+                    if (formattedRaws.Count < MaxPreviewElements)
+                    {
+                        formattedRaws.Add(f.ToString("G5", CultureInfo.InvariantCulture));
+                    }
+                    break;
+                }
+
+                case DataType.Int4:
+                case DataType.UInt4:
+                {
+                    // ONNX int32_data stores INT4/UINT4 as one packed byte (two little-endian nibbles) per varint.
+                    byte packed = (byte)val;
+                    bool isSigned = dataType == DataType.Int4;
+                    for (int n = 0; n < 2; n++)
+                    {
+                        if (expectedElementCount is long knownCount && numericValues.Count >= knownCount)
+                        {
+                            return;
+                        }
+
+                        int nibble = n == 0 ? (packed & 0x0F) : ((packed >> 4) & 0x0F);
+                        int decoded = isSigned && (nibble & 0x08) != 0 ? nibble - 16 : nibble;
+                        numericValues.Add(decoded);
+                        if (formattedRaws.Count < MaxPreviewElements)
+                        {
+                            formattedRaws.Add(decoded.ToString(CultureInfo.InvariantCulture));
+                        }
+                    }
+                    break;
+                }
+
+                case DataType.Int32:
+                case DataType.Int64:
+                {
+                    long signed = (long)val;
+                    numericValues.Add(signed);
+                    if (formattedRaws.Count < MaxPreviewElements)
+                    {
+                        formattedRaws.Add(signed.ToString(CultureInfo.InvariantCulture));
+                    }
+                    break;
+                }
+
+                default:
+                {
+                    numericValues.Add(val);
+                    if (formattedRaws.Count < MaxPreviewElements)
+                    {
+                        formattedRaws.Add(val.ToString(CultureInfo.InvariantCulture));
+                    }
+                    break;
+                }
             }
         }
     }
