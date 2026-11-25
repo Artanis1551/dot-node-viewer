@@ -202,5 +202,200 @@ public sealed class TensorInspectorViewModelTests
         await Assert.That(vm.ExternalLength).IsEqualTo(8192);
         await Assert.That(stream.TotalBytesRead).IsEqualTo(0);
     }
+
+    [Test]
+    public async Task InspectAsync_DecodesFloat8E4M3_HandlesNormalsSubnormalsZerosMaxAndNaN()
+    {
+        // OCP FP8 E4M3FN test vectors:
+        // 0x00 (+0), 0x80 (-0), 0x01 (2^-9 = 0.001953125), 0x07 (7*2^-9 = 0.013671875),
+        // 0x08 (2^-6 = 0.015625), 0x38 (1.0), 0xB8 (-1.0), 0x3C (1.5),
+        // 0x40 (2.0), 0x7E (448.0), 0xFE (-448.0), 0x7F (+NaN), 0xFF (-NaN)
+        byte[] streamBytes = [0x00, 0x80, 0x01, 0x07, 0x08, 0x38, 0xB8, 0x3C, 0x40, 0x7E, 0xFE, 0x7F, 0xFF];
+        using MemoryStream stream = new(streamBytes);
+
+        TensorDataSlice slice = new(StreamOffset: 0, ByteLength: streamBytes.Length, DataType: DataType.Float8E4M3);
+        TensorDescriptor desc = new(DataType: DataType.Float8E4M3, Shape: new TensorShape([new TensorDimension.Fixed(streamBytes.Length)]));
+        TensorEdge tensor = new("fp8_e4m3_weights", desc, TensorKind.Initializer, Data: slice);
+
+        TensorInspectorViewModel vm = new();
+        await vm.InspectAsync(tensor, stream);
+
+        await Assert.That(vm.SampledElementCount).IsEqualTo(13);
+        await Assert.That(vm.PreviewValues.Count).IsEqualTo(13);
+        await Assert.That(vm.HasStatistics).IsTrue();
+        await Assert.That(vm.HasNaN).IsTrue();
+        await Assert.That(vm.HasInfinity).IsFalse();
+        await Assert.That(vm.MinValue).IsEqualTo(-448.0);
+        await Assert.That(vm.MaxValue).IsEqualTo(448.0);
+
+        double expectedMean = (0.0 + 0.0 + (1.0 / 512.0) + (7.0 / 512.0) + (1.0 / 64.0) + 1.0 - 1.0 + 1.5 + 2.0 + 448.0 - 448.0) / 11.0;
+        await Assert.That(vm.MeanValue!.Value).IsEqualTo(expectedMean).Within(1e-6);
+
+        await Assert.That(vm.PreviewValues[0].RawValue).IsEqualTo("0");
+        await Assert.That(vm.PreviewValues[1].RawValue).IsEqualTo("-0");
+        await Assert.That(vm.PreviewValues[2].RawValue).IsEqualTo("0.0019531");
+        await Assert.That(vm.PreviewValues[4].RawValue).IsEqualTo("0.015625");
+        await Assert.That(vm.PreviewValues[5].RawValue).IsEqualTo("1");
+        await Assert.That(vm.PreviewValues[6].RawValue).IsEqualTo("-1");
+        await Assert.That(vm.PreviewValues[7].RawValue).IsEqualTo("1.5");
+        await Assert.That(vm.PreviewValues[8].RawValue).IsEqualTo("2");
+        await Assert.That(vm.PreviewValues[9].RawValue).IsEqualTo("448");
+        await Assert.That(vm.PreviewValues[10].RawValue).IsEqualTo("-448");
+        await Assert.That(vm.PreviewValues[11].RawValue).IsEqualTo("NaN");
+        await Assert.That(vm.PreviewValues[12].RawValue).IsEqualTo("NaN");
+    }
+
+    [Test]
+    public async Task InspectAsync_DecodesFloat8E5M2_HandlesNormalsSubnormalsMaxInfAndNaN()
+    {
+        // OCP FP8 E5M2 test vectors:
+        // 0x00 (+0), 0x80 (-0), 0x01 (2^-16), 0x04 (2^-14), 0x3C (1.0), 0xBC (-1.0),
+        // 0x3E (1.5), 0x7B (57344.0), 0xFB (-57344.0), 0x7C (+Inf), 0xFC (-Inf), 0x7D (NaN), 0xFF (NaN)
+        byte[] streamBytes = [0x00, 0x80, 0x01, 0x04, 0x3C, 0xBC, 0x3E, 0x7B, 0xFB, 0x7C, 0xFC, 0x7D, 0xFF];
+        using MemoryStream stream = new(streamBytes);
+
+        TensorDataSlice slice = new(StreamOffset: 0, ByteLength: streamBytes.Length, DataType: DataType.Float8E5M2);
+        TensorDescriptor desc = new(DataType: DataType.Float8E5M2, Shape: new TensorShape([new TensorDimension.Fixed(streamBytes.Length)]));
+        TensorEdge tensor = new("fp8_e5m2_weights", desc, TensorKind.Initializer, Data: slice);
+
+        TensorInspectorViewModel vm = new();
+        await vm.InspectAsync(tensor, stream);
+
+        await Assert.That(vm.SampledElementCount).IsEqualTo(13);
+        await Assert.That(vm.PreviewValues.Count).IsEqualTo(13);
+        await Assert.That(vm.HasStatistics).IsTrue();
+        await Assert.That(vm.HasNaN).IsTrue();
+        await Assert.That(vm.HasInfinity).IsTrue();
+        await Assert.That(vm.MinValue).IsEqualTo(-57344.0);
+        await Assert.That(vm.MaxValue).IsEqualTo(57344.0);
+
+        double expectedMean = (0.0 + 0.0 + Math.Pow(2, -16) + Math.Pow(2, -14) + 1.0 - 1.0 + 1.5 + 57344.0 - 57344.0) / 9.0;
+        await Assert.That(vm.MeanValue!.Value).IsEqualTo(expectedMean).Within(1e-6);
+
+        await Assert.That(vm.PreviewValues[0].RawValue).IsEqualTo("0");
+        await Assert.That(vm.PreviewValues[1].RawValue).IsEqualTo("-0");
+        await Assert.That(vm.PreviewValues[4].RawValue).IsEqualTo("1");
+        await Assert.That(vm.PreviewValues[5].RawValue).IsEqualTo("-1");
+        await Assert.That(vm.PreviewValues[6].RawValue).IsEqualTo("1.5");
+        await Assert.That(vm.PreviewValues[7].RawValue).IsEqualTo("57344");
+        await Assert.That(vm.PreviewValues[8].RawValue).IsEqualTo("-57344");
+        await Assert.That(vm.PreviewValues[9].RawValue).IsEqualTo("Infinity");
+        await Assert.That(vm.PreviewValues[10].RawValue).IsEqualTo("-Infinity");
+        await Assert.That(vm.PreviewValues[11].RawValue).IsEqualTo("NaN");
+        await Assert.That(vm.PreviewValues[12].RawValue).IsEqualTo("NaN");
+    }
+
+    [Test]
+    public async Task InspectAsync_DecodesFloat8E4M3_AllNaNValues_ProducesNullFiniteStatistics()
+    {
+        byte[] streamBytes = [0x7F, 0xFF];
+        using MemoryStream stream = new(streamBytes);
+
+        TensorDataSlice slice = new(StreamOffset: 0, ByteLength: streamBytes.Length, DataType: DataType.Float8E4M3);
+        TensorDescriptor desc = new(DataType: DataType.Float8E4M3, Shape: new TensorShape([new TensorDimension.Fixed(2)]));
+        TensorEdge tensor = new("fp8_nan_only", desc, TensorKind.Initializer, Data: slice);
+
+        TensorInspectorViewModel vm = new();
+        await vm.InspectAsync(tensor, stream);
+
+        await Assert.That(vm.HasStatistics).IsTrue();
+        await Assert.That(vm.HasNaN).IsTrue();
+        await Assert.That(vm.HasInfinity).IsFalse();
+        await Assert.That(vm.MinValue).IsNull();
+        await Assert.That(vm.MaxValue).IsNull();
+        await Assert.That(vm.MeanValue).IsNull();
+        await Assert.That(vm.ZeroPercentage).IsEqualTo(0.0);
+    }
+
+    [Test]
+    public async Task InspectAsync_DecodesInt4_UnpacksLittleEndianNibblesWithSignExtensionAndDequantization()
+    {
+        // All 16 signed 4-bit values packed 2 per byte (low nibble first, high nibble second):
+        // [0, 1, 2, 3, 4, 5, 6, 7, -8, -7, -6, -5, -4, -3, -2, -1]
+        byte[] streamBytes = [0x10, 0x32, 0x54, 0x76, 0x98, 0xBA, 0xDC, 0xFE];
+        using MemoryStream stream = new(streamBytes);
+
+        AffineQuantization affine = new([0.25f], [0]);
+        TensorDataSlice slice = new(StreamOffset: 0, ByteLength: streamBytes.Length, DataType: DataType.Int4);
+        TensorDescriptor desc = new(
+            DataType: DataType.Int4,
+            Shape: new TensorShape([new TensorDimension.Fixed(16)]),
+            Quantization: affine);
+        TensorEdge tensor = new("int4_weights", desc, TensorKind.Initializer, Data: slice);
+
+        TensorInspectorViewModel vm = new();
+        await vm.InspectAsync(tensor, stream);
+
+        await Assert.That(vm.SampledElementCount).IsEqualTo(16);
+        await Assert.That(vm.PreviewValues.Count).IsEqualTo(16);
+        await Assert.That(vm.MinValue).IsEqualTo(-8.0);
+        await Assert.That(vm.MaxValue).IsEqualTo(7.0);
+        await Assert.That(vm.MeanValue).IsEqualTo(-0.5);
+
+        string[] expectedRaws = ["0", "1", "2", "3", "4", "5", "6", "7", "-8", "-7", "-6", "-5", "-4", "-3", "-2", "-1"];
+        for (int i = 0; i < expectedRaws.Length; i++)
+        {
+            await Assert.That(vm.PreviewValues[i].RawValue).IsEqualTo(expectedRaws[i]);
+        }
+
+        await Assert.That(vm.PreviewValues[8].DequantizedValue).IsEqualTo("-2");
+        await Assert.That(vm.PreviewValues[7].DequantizedValue).IsEqualTo("1.75");
+    }
+
+    [Test]
+    public async Task InspectAsync_DecodesUInt4_TrimsTrailingPaddingNibbleForOddElementCount()
+    {
+        // Shape [5] packed into 3 bytes:
+        // byte 0 = 0x10 -> [0, 1]
+        // byte 1 = 0xF8 -> [8, 15]
+        // byte 2 = 0xA7 -> [7] (high nibble 0xA is padding and must be ignored)
+        byte[] streamBytes = [0x10, 0xF8, 0xA7];
+        using MemoryStream stream = new(streamBytes);
+
+        TensorDataSlice slice = new(StreamOffset: 0, ByteLength: streamBytes.Length, DataType: DataType.UInt4);
+        TensorDescriptor desc = new(DataType: DataType.UInt4, Shape: new TensorShape([new TensorDimension.Fixed(5)]));
+        TensorEdge tensor = new("uint4_odd_weights", desc, TensorKind.Initializer, Data: slice);
+
+        TensorInspectorViewModel vm = new();
+        await vm.InspectAsync(tensor, stream);
+
+        await Assert.That(vm.SampledElementCount).IsEqualTo(5);
+        await Assert.That(vm.PreviewValues.Count).IsEqualTo(5);
+        await Assert.That(vm.MinValue).IsEqualTo(0.0);
+        await Assert.That(vm.MaxValue).IsEqualTo(15.0);
+        await Assert.That(vm.MeanValue!.Value).IsEqualTo(6.2).Within(1e-9);
+
+        string[] expectedRaws = ["0", "1", "8", "15", "7"];
+        for (int i = 0; i < expectedRaws.Length; i++)
+        {
+            await Assert.That(vm.PreviewValues[i].RawValue).IsEqualTo(expectedRaws[i]);
+        }
+    }
+
+    [Test]
+    public async Task InspectAsync_DecodesInt4_WithDynamicShape_UnpacksAllAvailableNibbles()
+    {
+        // 2 bytes = 4 nibbles: 0x87 -> [7, -8], 0xF0 -> [0, -1]
+        byte[] streamBytes = [0x87, 0xF0];
+        using MemoryStream stream = new(streamBytes);
+
+        TensorDataSlice slice = new(StreamOffset: 0, ByteLength: streamBytes.Length, DataType: DataType.Int4);
+        TensorDescriptor desc = new(
+            DataType: DataType.Int4,
+            Shape: new TensorShape([TensorDimension.Dynamic.Instance, new TensorDimension.Fixed(2)]));
+        TensorEdge tensor = new("int4_dynamic", desc, TensorKind.Initializer, Data: slice);
+
+        TensorInspectorViewModel vm = new();
+        await vm.InspectAsync(tensor, stream);
+
+        await Assert.That(vm.SampledElementCount).IsEqualTo(4);
+        await Assert.That(vm.PreviewValues[0].RawValue).IsEqualTo("7");
+        await Assert.That(vm.PreviewValues[1].RawValue).IsEqualTo("-8");
+        await Assert.That(vm.PreviewValues[2].RawValue).IsEqualTo("0");
+        await Assert.That(vm.PreviewValues[3].RawValue).IsEqualTo("-1");
+        await Assert.That(vm.MinValue).IsEqualTo(-8.0);
+        await Assert.That(vm.MaxValue).IsEqualTo(7.0);
+        await Assert.That(vm.MeanValue).IsEqualTo(-0.5);
+    }
 }
 
