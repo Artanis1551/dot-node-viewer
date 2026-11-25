@@ -87,6 +87,8 @@ public sealed class GraphCanvas : Control
 
     private readonly Dictionary<string, StreamGeometry> _edgeGeometryCache = new();
     private readonly Dictionary<string, FormattedText> _textCache = new();
+    private readonly List<VisualNode> _visibleNodesBuffer = new(64);
+    private readonly List<VisualEdge> _visibleEdgesBuffer = new(128);
     private bool _isPanning;
     private Point _panStartScreenPoint;
     private Vector _panStartOffset;
@@ -420,6 +422,8 @@ public sealed class GraphCanvas : Control
     {
         _edgeGeometryCache.Clear();
         _textCache.Clear();
+        _visibleNodesBuffer.Clear();
+        _visibleEdgesBuffer.Clear();
 
         if (layout is null)
         {
@@ -879,6 +883,13 @@ public sealed class GraphCanvas : Control
         double right = (width - PanOffset.X) / Zoom;
         double bottom = (height - PanOffset.Y) / Zoom;
         BoundingBox visibleWorldBounds = new(left, top, Math.Max(0, right - left), Math.Max(0, bottom - top));
+        BoundingBox edgeQueryBounds = new(
+            visibleWorldBounds.X - 20,
+            visibleWorldBounds.Y - 20,
+            visibleWorldBounds.Width + 40,
+            visibleWorldBounds.Height + 40);
+
+        Layout.GetVisibleElements(visibleWorldBounds, edgeQueryBounds, _visibleNodesBuffer, _visibleEdgesBuffer);
 
         // Fetch theme-aware brushes
         ThemeBrushes brushes = ResolveThemeBrushes();
@@ -891,30 +902,16 @@ public sealed class GraphCanvas : Control
         using (context.PushTransform(worldMatrix))
         {
             // 1. Render Edges (behind nodes)
-            RenderEdges(context, visibleWorldBounds, brushes);
+            RenderEdges(context, _visibleEdgesBuffer, brushes);
 
             // 2. Render Nodes
-            RenderNodes(context, visibleWorldBounds, brushes);
+            RenderNodes(context, _visibleNodesBuffer, brushes);
         }
     }
 
-    private void RenderEdges(DrawingContext context, BoundingBox visibleWorldBounds, in ThemeBrushes brushes)
+    private void RenderEdges(DrawingContext context, List<VisualEdge> visibleEdges, in ThemeBrushes brushes)
     {
-        if (Layout is null)
-        {
-            return;
-        }
-
-        string? selectedNodeId = SelectedNode?.Id;
         bool isLowLod = Zoom < LodThresholdLow;
-
-        // Query visible edges directly from Layout's spatial index (expanded by 20px for labels and arrowheads)
-        BoundingBox queryBounds = new(
-            visibleWorldBounds.X - 20,
-            visibleWorldBounds.Y - 20,
-            visibleWorldBounds.Width + 40,
-            visibleWorldBounds.Height + 40);
-        IReadOnlyList<VisualEdge> visibleEdges = Layout.FindEdgesInRegion(queryBounds);
 
         HashSet<string>? incomingEdgeIds = _selectedIncomingEdgeIds;
         HashSet<string>? outgoingEdgeIds = _selectedOutgoingEdgeIds;
@@ -1080,21 +1077,14 @@ public sealed class GraphCanvas : Control
         context.DrawText(ft, new Point(textLeft, top + 1.5));
     }
 
-    private void RenderNodes(DrawingContext context, BoundingBox visibleWorldBounds, in ThemeBrushes brushes)
+    private void RenderNodes(DrawingContext context, List<VisualNode> visibleNodes, in ThemeBrushes brushes)
     {
-        if (Layout is null)
-        {
-            return;
-        }
-
         HashSet<string>? neighborNodeIds = _selectedNeighborNodeIds;
         HashSet<string>? predecessorNodeIds = _selectedPredecessorNodeIds;
         HashSet<string>? successorNodeIds = _selectedSuccessorNodeIds;
 
         bool isLowLod = Zoom < LodThresholdLow;
         bool isMediumLod = Zoom < LodThresholdMedium;
-
-        IReadOnlyList<VisualNode> visibleNodes = Layout.FindNodesInRegion(visibleWorldBounds);
 
         for (int i = 0; i < visibleNodes.Count; i++)
         {
