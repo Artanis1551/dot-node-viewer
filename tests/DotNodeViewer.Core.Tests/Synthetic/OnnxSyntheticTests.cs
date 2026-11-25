@@ -209,10 +209,66 @@ public sealed class OnnxSyntheticTests
     }
 
     [Test]
+    [Arguments("CausalConvWithState", 0, "input")]
+    [Arguments("CausalConvWithState", 1, "weight")]
+    [Arguments("CausalConvWithState", 2, "bias")]
+    [Arguments("CausalConvWithState", 3, "past_state")]
+    [Arguments("CausalConvWithState", 4, "input_4")]
+    [Arguments("LinearAttention", 0, "query")]
+    [Arguments("LinearAttention", 1, "key")]
+    [Arguments("LinearAttention", 2, "value")]
+    [Arguments("LinearAttention", 3, "past_state")]
+    [Arguments("LinearAttention", 4, "decay")]
+    [Arguments("LinearAttention", 5, "beta")]
+    [Arguments("LinearAttention", 6, "input_6")]
+    [Arguments("GroupedMatMul", 0, "input")]
+    [Arguments("GroupedMatMul", 1, "weights")]
+    [Arguments("GroupedMatMul", 2, "group_indices")]
+    [Arguments("GroupedMatMul", 3, "bias")]
+    [Arguments("GeGLU", 0, "A")]
+    [Arguments("GeGLU", 1, "B")]
+    [Arguments("DequantizePacked", 0, "x")]
+    [Arguments("Pack", 0, "X")]
+    [Arguments("Unpack", 0, "X")]
+    [Arguments("Unpack", 1, "count")]
+    [Arguments("Expm1", 0, "input")]
+    [Arguments("Log1p", 0, "input")]
+    [Arguments("LogCumSumExp", 0, "X")]
+    public async Task GetInputPortName_Opset29Operators_ReturnsFormalPortName(
+        string opType,
+        int index,
+        string expectedPortName)
+    {
+        await Assert.That(OnnxOperatorCatalog.GetInputPortName(opType, index)).IsEqualTo(expectedPortName);
+    }
+
+    [Test]
+    [Arguments("CausalConvWithState", 0, "output")]
+    [Arguments("CausalConvWithState", 1, "present_state")]
+    [Arguments("CausalConvWithState", 2, "output_2")]
+    [Arguments("LinearAttention", 0, "output")]
+    [Arguments("LinearAttention", 1, "present_state")]
+    [Arguments("GroupedMatMul", 0, "output")]
+    [Arguments("GeGLU", 0, "Y")]
+    [Arguments("DequantizePacked", 0, "y")]
+    [Arguments("Pack", 0, "Y")]
+    [Arguments("Unpack", 0, "Y")]
+    [Arguments("Expm1", 0, "output")]
+    [Arguments("Log1p", 0, "output")]
+    [Arguments("LogCumSumExp", 0, "Y")]
+    public async Task GetOutputPortName_Opset29Operators_ReturnsFormalPortName(
+        string opType,
+        int index,
+        string expectedPortName)
+    {
+        await Assert.That(OnnxOperatorCatalog.GetOutputPortName(opType, index)).IsEqualTo(expectedPortName);
+    }
+
+    [Test]
     public async Task ReadAsync_Opset29AndMicrosoftLlmGraph_PreservesCategoriesDomainsVersionsAndAttributes()
     {
         byte[] attrActivation = BuildAttributeString("activation", "silu");
-        byte[] causalConvNode = BuildNodeProto("causal_conv_0", "CausalConvWithState", "", ["X", "W", "state_in"], ["conv_out", "state_out"], [attrActivation]);
+        byte[] causalConvNode = BuildNodeProto("causal_conv_0", "CausalConvWithState", "", ["X", "W", "", "state_in"], ["conv_out", "state_out"], [attrActivation]);
         byte[] normNode = BuildNodeProto("rms_rotary_0", "RMSNormRotary", "com.microsoft", ["conv_out"], ["norm_out"], []);
         byte[] mlaNode = BuildNodeProto("mla_0", "MultiHeadLatentAttention", "com.microsoft", ["norm_out"], ["mla_out"], []);
         byte[] swigluNode = BuildNodeProto("swiglu_0", "SwiGLU", "com.microsoft", ["mla_out"], ["act_out"], []);
@@ -265,6 +321,11 @@ public sealed class OnnxSyntheticTests
         await Assert.That(causalConv.Operator.Category).IsEqualTo(OperatorCategory.Layer);
         await Assert.That(causalConv.Operator.Domain).IsEqualTo("ai.onnx");
         await Assert.That(causalConv.Operator.Version).IsEqualTo(29);
+        await Assert.That(causalConv.Inputs.Select(p => p.Name).ToArray())
+            .IsEquivalentTo(["input", "weight", "bias", "past_state"]);
+        await Assert.That(causalConv.Inputs[2].Tensors.Count).IsEqualTo(0);
+        await Assert.That(causalConv.Outputs.Select(p => p.Name).ToArray())
+            .IsEquivalentTo(["output", "present_state"]);
         NodeAttribute? activationAttr = causalConv.Attributes.FirstOrDefault(a => a.Name == "activation");
         await Assert.That(activationAttr).IsNotNull();
         await Assert.That(activationAttr!.Value).IsEqualTo(new AttributeValue.String("silu"));
@@ -286,6 +347,8 @@ public sealed class OnnxSyntheticTests
         await Assert.That(dequant.Operator.Category).IsEqualTo(OperatorCategory.Quantization);
         await Assert.That(dequant.Operator.Domain).IsEqualTo("ai.onnx");
         await Assert.That(dequant.Operator.Version).IsEqualTo(29);
+        await Assert.That(dequant.Inputs[0].Name).IsEqualTo("x");
+        await Assert.That(dequant.Outputs[0].Name).IsEqualTo("y");
     }
 
     private static byte[] BuildSyntheticOnnxModel(
