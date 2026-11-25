@@ -162,6 +162,132 @@ public sealed class OnnxSyntheticTests
             .Throws<ModelParseException>();
     }
 
+    [Test]
+    [Arguments("CausalConvWithState", "ai.onnx", OperatorCategory.Layer)]
+    [Arguments("LinearAttention", "ai.onnx", OperatorCategory.Layer)]
+    [Arguments("GroupedMatMul", "ai.onnx", OperatorCategory.Layer)]
+    [Arguments("GeGLU", "ai.onnx", OperatorCategory.Activation)]
+    [Arguments("DequantizePacked", "ai.onnx", OperatorCategory.Quantization)]
+    [Arguments("Pack", "ai.onnx", OperatorCategory.Quantization)]
+    [Arguments("Unpack", "ai.onnx", OperatorCategory.Quantization)]
+    [Arguments("Expm1", "ai.onnx", OperatorCategory.Tensor)]
+    [Arguments("Log1p", "ai.onnx", OperatorCategory.Tensor)]
+    [Arguments("LogCumSumExp", "ai.onnx", OperatorCategory.Tensor)]
+    [Arguments("MultiHeadLatentAttention", "com.microsoft", OperatorCategory.Layer)]
+    [Arguments("Mamba2Verify", "com.microsoft", OperatorCategory.Layer)]
+    [Arguments("MatMulNBitsQLoRA", "com.microsoft", OperatorCategory.Layer)]
+    [Arguments("MatMulNBitsQLoRAMlp", "com.microsoft", OperatorCategory.Layer)]
+    [Arguments("MatMulNBitsQLoRAQkv", "com.microsoft", OperatorCategory.Layer)]
+    [Arguments("MatMulPacked", "com.microsoft", OperatorCategory.Layer)]
+    [Arguments("MoEGroupRouter", "com.microsoft", OperatorCategory.Layer)]
+    [Arguments("MoEPacked", "com.microsoft", OperatorCategory.Layer)]
+    [Arguments("RouterGateUpProj", "com.microsoft", OperatorCategory.Layer)]
+    [Arguments("HyperConnectionLowRankMix", "com.microsoft", OperatorCategory.Layer)]
+    [Arguments("GatherPacked", "com.microsoft", OperatorCategory.Layer)]
+    [Arguments("SpeculativePrefixCommit", "com.microsoft", OperatorCategory.Layer)]
+    [Arguments("RMSNormRotary", "com.microsoft", OperatorCategory.Normalization)]
+    [Arguments("SwiGLU", "com.microsoft", OperatorCategory.Activation)]
+    public async Task Categorize_Opset29AndMicrosoftLlmOperators_ReturnsExpectedCategory(
+        string opType,
+        string domain,
+        OperatorCategory expectedCategory)
+    {
+        OperatorCategory actualWithDomain = OnnxOperatorCatalog.Categorize(opType, domain);
+        OperatorCategory actualDefaultDomain = OnnxOperatorCatalog.Categorize(opType);
+
+        await Assert.That(actualWithDomain).IsEqualTo(expectedCategory);
+        await Assert.That(actualDefaultDomain).IsEqualTo(expectedCategory);
+    }
+
+    [Test]
+    public async Task Categorize_UnknownEmptyAndCustomDomainFallback_ReturnsExpectedCategory()
+    {
+        await Assert.That(OnnxOperatorCatalog.Categorize(string.Empty)).IsEqualTo(OperatorCategory.Unknown);
+        await Assert.That(OnnxOperatorCatalog.Categorize("NonExistentOp", "ai.onnx")).IsEqualTo(OperatorCategory.Unknown);
+        await Assert.That(OnnxOperatorCatalog.Categorize("NonExistentOp", "com.microsoft")).IsEqualTo(OperatorCategory.Custom);
+        await Assert.That(OnnxOperatorCatalog.Categorize("swiglu", "com.microsoft")).IsEqualTo(OperatorCategory.Custom);
+    }
+
+    [Test]
+    public async Task ReadAsync_Opset29AndMicrosoftLlmGraph_PreservesCategoriesDomainsVersionsAndAttributes()
+    {
+        byte[] attrActivation = BuildAttributeString("activation", "silu");
+        byte[] causalConvNode = BuildNodeProto("causal_conv_0", "CausalConvWithState", "", ["X", "W", "state_in"], ["conv_out", "state_out"], [attrActivation]);
+        byte[] normNode = BuildNodeProto("rms_rotary_0", "RMSNormRotary", "com.microsoft", ["conv_out"], ["norm_out"], []);
+        byte[] mlaNode = BuildNodeProto("mla_0", "MultiHeadLatentAttention", "com.microsoft", ["norm_out"], ["mla_out"], []);
+        byte[] swigluNode = BuildNodeProto("swiglu_0", "SwiGLU", "com.microsoft", ["mla_out"], ["act_out"], []);
+        byte[] dequantNode = BuildNodeProto("dequant_packed_0", "DequantizePacked", "", ["act_out"], ["Y"], []);
+
+        byte[] inputX = BuildValueInfo("X", elemType: 1, [BuildDimensionFixed(1), BuildDimensionFixed(16)]);
+        byte[] outputY = BuildValueInfo("Y", elemType: 1, [BuildDimensionFixed(1), BuildDimensionFixed(16)]);
+
+        using MemoryStream graphBody = new();
+        WriteLengthDelimited(graphBody, 1, causalConvNode);
+        WriteLengthDelimited(graphBody, 1, normNode);
+        WriteLengthDelimited(graphBody, 1, mlaNode);
+        WriteLengthDelimited(graphBody, 1, swigluNode);
+        WriteLengthDelimited(graphBody, 1, dequantNode);
+        WriteStringField(graphBody, 2, "opset29_ms_graph");
+        WriteLengthDelimited(graphBody, 11, inputX);
+        WriteLengthDelimited(graphBody, 12, outputY);
+        byte[] graphBytes = graphBody.ToArray();
+
+        using MemoryStream model = new();
+        WriteTag(model, 1, 0);
+        WriteVarint(model, 10); // ir_version = 10
+        WriteLengthDelimited(model, 7, graphBytes);
+
+        // opset_import: ("", 29) and ("com.microsoft", 1)
+        using (MemoryStream opsetOnnx = new())
+        {
+            WriteStringField(opsetOnnx, 1, "");
+            WriteTag(opsetOnnx, 2, 0);
+            WriteVarint(opsetOnnx, 29);
+            WriteLengthDelimited(model, 8, opsetOnnx.ToArray());
+        }
+
+        using (MemoryStream opsetMs = new())
+        {
+            WriteStringField(opsetMs, 1, "com.microsoft");
+            WriteTag(opsetMs, 2, 0);
+            WriteVarint(opsetMs, 1);
+            WriteLengthDelimited(model, 8, opsetMs.ToArray());
+        }
+
+        using MemoryStream stream = new(model.ToArray());
+        ModelGraph graph = await OnnxFormatReader.Instance.ReadAsync(stream);
+        Subgraph main = graph.PrimarySubgraph!;
+
+        await Assert.That(main.Nodes.Count).IsEqualTo(5);
+
+        GraphNode causalConv = main.Nodes[0];
+        await Assert.That(causalConv.Operator.Name).IsEqualTo("CausalConvWithState");
+        await Assert.That(causalConv.Operator.Category).IsEqualTo(OperatorCategory.Layer);
+        await Assert.That(causalConv.Operator.Domain).IsEqualTo("ai.onnx");
+        await Assert.That(causalConv.Operator.Version).IsEqualTo(29);
+        NodeAttribute? activationAttr = causalConv.Attributes.FirstOrDefault(a => a.Name == "activation");
+        await Assert.That(activationAttr).IsNotNull();
+        await Assert.That(activationAttr!.Value).IsEqualTo(new AttributeValue.String("silu"));
+
+        GraphNode rmsNorm = main.Nodes[1];
+        await Assert.That(rmsNorm.Operator.Category).IsEqualTo(OperatorCategory.Normalization);
+        await Assert.That(rmsNorm.Operator.Domain).IsEqualTo("com.microsoft");
+        await Assert.That(rmsNorm.Operator.Version).IsEqualTo(1);
+
+        GraphNode mla = main.Nodes[2];
+        await Assert.That(mla.Operator.Category).IsEqualTo(OperatorCategory.Layer);
+        await Assert.That(mla.Operator.Domain).IsEqualTo("com.microsoft");
+
+        GraphNode swiglu = main.Nodes[3];
+        await Assert.That(swiglu.Operator.Category).IsEqualTo(OperatorCategory.Activation);
+        await Assert.That(swiglu.Operator.Domain).IsEqualTo("com.microsoft");
+
+        GraphNode dequant = main.Nodes[4];
+        await Assert.That(dequant.Operator.Category).IsEqualTo(OperatorCategory.Quantization);
+        await Assert.That(dequant.Operator.Domain).IsEqualTo("ai.onnx");
+        await Assert.That(dequant.Operator.Version).IsEqualTo(29);
+    }
+
     private static byte[] BuildSyntheticOnnxModel(
         int rawWeightByteLength,
         bool includeInitializerInGraphInput) =>

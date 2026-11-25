@@ -3,7 +3,7 @@ using DotNodeViewer.Core.Ir;
 namespace DotNodeViewer.Core.Formats.Onnx;
 
 /// <summary>
-/// Maps standard ONNX (<c>ai.onnx</c>) operator types, formal port names, and <c>TensorProto.DataType</c> codes into the Unified Graph IR.
+/// Maps standard ONNX (<c>ai.onnx</c>, through opset 29) and Microsoft (<c>com.microsoft</c>) operator types, formal port names, and <c>TensorProto.DataType</c> codes into the Unified Graph IR.
 /// </summary>
 internal static class OnnxOperatorCatalog
 {
@@ -47,6 +47,23 @@ internal static class OnnxOperatorCatalog
             case "ScatterND":
             case "Compress":
             case "EmbedLayerNormalization":
+            // ONNX opset 29 compute layers
+            case "CausalConvWithState":
+            case "LinearAttention":
+            case "GroupedMatMul":
+            // com.microsoft LLM & MoE layers
+            case "MultiHeadLatentAttention":
+            case "Mamba2Verify":
+            case "MatMulNBitsQLoRA":
+            case "MatMulNBitsQLoRAMlp":
+            case "MatMulNBitsQLoRAQkv":
+            case "MatMulPacked":
+            case "MoEGroupRouter":
+            case "MoEPacked":
+            case "RouterGateUpProj":
+            case "HyperConnectionLowRankMix":
+            case "GatherPacked":
+            case "SpeculativePrefixCommit":
                 return OperatorCategory.Layer;
 
             // Non-linear activations
@@ -63,6 +80,8 @@ internal static class OnnxOperatorCatalog
             case "Gelu":
             case "FastGelu":
             case "BiasGelu":
+            case "GeGLU":
+            case "SwiGLU":
             case "Softmax":
             case "LogSoftmax":
             case "Hardmax":
@@ -87,6 +106,7 @@ internal static class OnnxOperatorCatalog
             case "GroupNormalization":
             case "LRN":
             case "MeanVarianceNormalization":
+            case "RMSNormRotary":
                 return OperatorCategory.Normalization;
 
             // Spatial & global pooling
@@ -106,6 +126,9 @@ internal static class OnnxOperatorCatalog
             case "QuantizeLinear":
             case "DequantizeLinear":
             case "DynamicQuantizeLinear":
+            case "DequantizePacked":
+            case "Pack":
+            case "Unpack":
                 return OperatorCategory.Quantization;
 
             // Shape, view & layout manipulation
@@ -161,7 +184,9 @@ internal static class OnnxOperatorCatalog
             case "Abs":
             case "Sqrt":
             case "Exp":
+            case "Expm1":
             case "Log":
+            case "Log1p":
             case "Sin":
             case "Cos":
             case "Tan":
@@ -214,6 +239,7 @@ internal static class OnnxOperatorCatalog
             case "ArgMin":
             case "TopK":
             case "CumSum":
+            case "LogCumSumExp":
             case "NonZero":
             case "OneHot":
             case "Range":
