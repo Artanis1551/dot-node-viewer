@@ -159,6 +159,7 @@ public sealed partial class TensorInspectorViewModel : ObservableObject
         ShapeText = tensor.Descriptor.Shape?.ToDisplayString() ?? "[]";
         PreviewValues.Clear();
         ErrorMessage = null;
+        SampledElementCount = 0;
         HasStatistics = false;
         HasDequantization = false;
         QuantizationDescription = null;
@@ -261,22 +262,27 @@ public sealed partial class TensorInspectorViewModel : ObservableObject
         double affineScale = affine is not null && affine.Scale.Count > 0 ? affine.Scale[0] : 1.0;
         long affineZp = affine is not null && affine.ZeroPoint.Count > 0 ? affine.ZeroPoint[0] : 0;
 
+        long? expectedElementCount = TryGetKnownElementCount(tensor.Descriptor.Shape);
+
         if (slice.Encoding == TensorDataEncoding.EthosUCompressedWeights)
         {
             for (int i = 0; i < bytes.Length; i++)
             {
                 byte b = bytes[i];
                 rawValues.Add(b);
-                formattedRaws.Add($"0x{b:X2}");
+                if (formattedRaws.Count < MaxPreviewElements)
+                {
+                    formattedRaws.Add($"0x{b:X2}");
+                }
             }
         }
         else if (slice.Encoding == TensorDataEncoding.VarintPacked)
         {
-            DecodeVarints(bytes, slice.DataType, rawValues, formattedRaws);
+            DecodeVarints(bytes, slice.DataType, expectedElementCount, rawValues, formattedRaws);
         }
         else
         {
-            DecodeRawBytes(bytes, slice.DataType, rawValues, formattedRaws);
+            DecodeRawBytes(bytes, slice.DataType, expectedElementCount, rawValues, formattedRaws);
         }
 
         SampledElementCount = rawValues.Count;
@@ -306,6 +312,7 @@ public sealed partial class TensorInspectorViewModel : ObservableObject
     private static void DecodeRawBytes(
         ReadOnlySpan<byte> bytes,
         DataType dataType,
+        long? expectedElementCount,
         List<double> numericValues,
         List<string> formattedRaws)
     {
@@ -348,6 +355,63 @@ public sealed partial class TensorInspectorViewModel : ObservableObject
                     formattedRaws.Add(f.ToString("G5", CultureInfo.InvariantCulture));
                 }
                 break;
+
+            case DataType.Float8E4M3:
+                for (int i = 0; i < bytes.Length; i++)
+                {
+                    float f = DecodeFloat8E4M3(bytes[i]);
+                    numericValues.Add(f);
+                    if (formattedRaws.Count < MaxPreviewElements)
+                    {
+                        formattedRaws.Add(f.ToString("G5", CultureInfo.InvariantCulture));
+                    }
+                }
+                break;
+
+            case DataType.Float8E5M2:
+                for (int i = 0; i < bytes.Length; i++)
+                {
+                    float f = DecodeFloat8E5M2(bytes[i]);
+                    numericValues.Add(f);
+                    if (formattedRaws.Count < MaxPreviewElements)
+                    {
+                        formattedRaws.Add(f.ToString("G5", CultureInfo.InvariantCulture));
+                    }
+                }
+                break;
+
+            case DataType.Int4:
+            {
+                int elementCount = ResolvePacked4BitElementCount(bytes.Length, expectedElementCount);
+                for (int i = 0; i < elementCount; i++)
+                {
+                    byte packed = bytes[i >> 1];
+                    int nibble = (i & 1) == 0 ? (packed & 0x0F) : ((packed >> 4) & 0x0F);
+                    int signed = (nibble & 0x08) != 0 ? nibble - 16 : nibble;
+                    numericValues.Add(signed);
+                    if (formattedRaws.Count < MaxPreviewElements)
+                    {
+                        formattedRaws.Add(signed.ToString(CultureInfo.InvariantCulture));
+                    }
+                }
+                break;
+            }
+
+            case DataType.UInt4:
+            {
+                int elementCount = ResolvePacked4BitElementCount(bytes.Length, expectedElementCount);
+                for (int i = 0; i < elementCount; i++)
+                {
+                    byte packed = bytes[i >> 1];
+                    int unsigned = (i & 1) == 0 ? (packed & 0x0F) : ((packed >> 4) & 0x0F);
+                    numericValues.Add(unsigned);
+                    if (formattedRaws.Count < MaxPreviewElements)
+                    {
+                        formattedRaws.Add(unsigned.ToString(CultureInfo.InvariantCulture));
+                    }
+                }
+                break;
+            }
 
             case DataType.Int8:
             case DataType.QuantizedInt8:
@@ -448,6 +512,7 @@ public sealed partial class TensorInspectorViewModel : ObservableObject
     private static void DecodeVarints(
         ReadOnlySpan<byte> bytes,
         DataType dataType,
+        long? expectedElementCount,
         List<double> numericValues,
         List<string> formattedRaws)
     {
@@ -456,33 +521,179 @@ public sealed partial class TensorInspectorViewModel : ObservableObject
         {
             ulong val = 0;
             int shift = 0;
+            bool terminated = false;
             while (offset < bytes.Length)
             {
                 byte b = bytes[offset++];
                 val |= (ulong)(b & 0x7F) << shift;
                 if ((b & 0x80) == 0)
                 {
+                    terminated = true;
                     break;
                 }
                 shift += 7;
                 if (shift >= 64)
                 {
+                    terminated = true;
                     break;
                 }
             }
 
-            if (dataType == DataType.Int32 || dataType == DataType.Int64)
+            if (!terminated)
             {
-                long signed = (long)val;
-                numericValues.Add(signed);
-                formattedRaws.Add(signed.ToString(CultureInfo.InvariantCulture));
+                // Ignore a truncated trailing varint at the preview window boundary.
+                break;
             }
-            else
+
+            switch (dataType)
             {
-                numericValues.Add(val);
-                formattedRaws.Add(val.ToString(CultureInfo.InvariantCulture));
+                case DataType.Float8E4M3:
+                {
+                    float f = DecodeFloat8E4M3((byte)val);
+                    numericValues.Add(f);
+                    if (formattedRaws.Count < MaxPreviewElements)
+                    {
+                        formattedRaws.Add(f.ToString("G5", CultureInfo.InvariantCulture));
+                    }
+                    break;
+                }
+
+                case DataType.Float8E5M2:
+                {
+                    float f = DecodeFloat8E5M2((byte)val);
+                    numericValues.Add(f);
+                    if (formattedRaws.Count < MaxPreviewElements)
+                    {
+                        formattedRaws.Add(f.ToString("G5", CultureInfo.InvariantCulture));
+                    }
+                    break;
+                }
+
+                case DataType.Int4:
+                case DataType.UInt4:
+                {
+                    // ONNX int32_data stores INT4/UINT4 as one packed byte (two little-endian nibbles) per varint.
+                    byte packed = (byte)val;
+                    bool isSigned = dataType == DataType.Int4;
+                    for (int n = 0; n < 2; n++)
+                    {
+                        if (expectedElementCount is long knownCount && numericValues.Count >= knownCount)
+                        {
+                            return;
+                        }
+
+                        int nibble = n == 0 ? (packed & 0x0F) : ((packed >> 4) & 0x0F);
+                        int decoded = isSigned && (nibble & 0x08) != 0 ? nibble - 16 : nibble;
+                        numericValues.Add(decoded);
+                        if (formattedRaws.Count < MaxPreviewElements)
+                        {
+                            formattedRaws.Add(decoded.ToString(CultureInfo.InvariantCulture));
+                        }
+                    }
+                    break;
+                }
+
+                case DataType.Int32:
+                case DataType.Int64:
+                {
+                    long signed = (long)val;
+                    numericValues.Add(signed);
+                    if (formattedRaws.Count < MaxPreviewElements)
+                    {
+                        formattedRaws.Add(signed.ToString(CultureInfo.InvariantCulture));
+                    }
+                    break;
+                }
+
+                default:
+                {
+                    numericValues.Add(val);
+                    if (formattedRaws.Count < MaxPreviewElements)
+                    {
+                        formattedRaws.Add(val.ToString(CultureInfo.InvariantCulture));
+                    }
+                    break;
+                }
             }
         }
+    }
+
+    private static float DecodeFloat8E4M3(byte raw)
+    {
+        int sign = (raw >> 7) & 0x1;
+        int exponent = (raw >> 3) & 0xF;
+        int mantissa = raw & 0x7;
+
+        if (exponent == 0)
+        {
+            if (mantissa == 0)
+            {
+                return sign != 0 ? -0.0f : 0.0f;
+            }
+
+            // OCP FP8 E4M3FN subnormal: (-1)^s * 2^(-6) * (m / 8) = (-1)^s * m * 2^(-9)
+            float subnormal = mantissa * (1.0f / 512.0f);
+            return sign != 0 ? -subnormal : subnormal;
+        }
+
+        // OCP FP8 E4M3FN has no Infinity; only exponent=15, mantissa=7 (0x7F / 0xFF) is NaN.
+        if (exponent == 0xF && mantissa == 0x7)
+        {
+            return float.NaN;
+        }
+
+        uint f32Bits = ((uint)sign << 31)
+            | ((uint)(exponent - 7 + 127) << 23)
+            | ((uint)mantissa << 20);
+        return BitConverter.UInt32BitsToSingle(f32Bits);
+    }
+
+    private static float DecodeFloat8E5M2(byte raw) =>
+        // OCP FP8 E5M2 shares sign (1), exponent (5, bias 15), and special-value semantics with IEEE binary16.
+        (float)BitConverter.UInt16BitsToHalf((ushort)(raw << 8));
+
+    private static int ResolvePacked4BitElementCount(int byteLength, long? expectedElementCount)
+    {
+        int capacity = byteLength * 2;
+        if (expectedElementCount is long knownCount && knownCount >= 0 && knownCount < capacity)
+        {
+            return (int)knownCount;
+        }
+
+        return capacity;
+    }
+
+    private static long? TryGetKnownElementCount(TensorShape? shape)
+    {
+        if (shape is null)
+        {
+            return null;
+        }
+
+        if (shape.IsScalar)
+        {
+            return 1;
+        }
+
+        long total = 1;
+        for (int i = 0; i < shape.Dimensions.Count; i++)
+        {
+            if (shape.Dimensions[i] is not TensorDimension.Fixed fixedDim || fixedDim.Value < 0)
+            {
+                return null;
+            }
+
+            try
+            {
+                total = checked(total * fixedDim.Value);
+            }
+            catch (OverflowException)
+            {
+                return null;
+            }
+        }
+
+        return total;
     }
 
     private void ComputeStatistics(List<double> values)
@@ -490,6 +701,7 @@ public sealed partial class TensorInspectorViewModel : ObservableObject
         double min = double.PositiveInfinity;
         double max = double.NegativeInfinity;
         double sum = 0.0;
+        int finiteCount = 0;
         int zeroCount = 0;
         bool hasNaN = false;
         bool hasInf = false;
@@ -508,6 +720,8 @@ public sealed partial class TensorInspectorViewModel : ObservableObject
                 hasInf = true;
                 continue;
             }
+
+            finiteCount++;
 
             if (v < min)
             {
@@ -530,7 +744,7 @@ public sealed partial class TensorInspectorViewModel : ObservableObject
         HasNaN = hasNaN;
         HasInfinity = hasInf;
 
-        if (double.IsPositiveInfinity(min) || double.IsNegativeInfinity(max))
+        if (finiteCount == 0)
         {
             MinValue = null;
             MaxValue = null;
@@ -540,7 +754,7 @@ public sealed partial class TensorInspectorViewModel : ObservableObject
         {
             MinValue = min;
             MaxValue = max;
-            MeanValue = sum / values.Count;
+            MeanValue = sum / finiteCount;
         }
 
         ZeroPercentage = values.Count > 0 ? (zeroCount * 100.0) / values.Count : 0.0;
