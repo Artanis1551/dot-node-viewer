@@ -1,0 +1,40 @@
+{
+  "modelId": "mlir-tiny_stablehlo_bytecode",
+  "format": "MLIR Bytecode v6",
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "main",
+    "nodeCount": 4,
+    "operatorHistogram": {
+      "stablehlo.constant": 2,
+      "stablehlo.dot_general": 1,
+      "stablehlo.add": 1
+    },
+    "inputs": [
+      {
+        "name": "%arg0",
+        "dataType": "Float32",
+        "shape": [
+          "2",
+          "4"
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "%4",
+        "dataType": "Float32",
+        "shape": [
+          "2",
+          "4"
+        ]
+      }
+    ],
+    "sampleWeightSlice": {
+      "tensorName": "%1",
+      "dataType": "Float32",
+      "streamOffset": 233,
+      "byteLength": 32
+    }
+  }
+}

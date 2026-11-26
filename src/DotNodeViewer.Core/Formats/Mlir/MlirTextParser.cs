@@ -1046,7 +1046,6 @@ internal sealed partial class MlirTextParser
                 : (singleSharedType ?? (outputTypes.Count == 1 ? outputTypes[0] : new TensorDescriptor(DataType.Unknown, null)));
 
             // Apply single-'?' dynamic dimension inference when dense_resource payload size is known
-            TensorDataSource? dataSource = null;
             if (denseResourceKey is not null && _resources.TryGetValue(denseResourceKey, out ResourceEntryInfo resInfo))
             {
                 if (outDesc.Shape is not null)
@@ -1058,11 +1057,11 @@ internal sealed partial class MlirTextParser
                     }
                 }
 
-                dataSource = new TensorDataSlice(0, resInfo.ByteLength, outDesc.DataType);
+                attributes.Add(new NodeAttribute("resource_byte_length", new AttributeValue.Int64(resInfo.ByteLength)));
             }
 
             TensorKind kind = isConstant ? TensorKind.Constant : TensorKind.Activation;
-            TensorEdge outEdge = new(resName, outDesc, kind, dataSource);
+            TensorEdge outEdge = new(resName, outDesc, kind);
             state.Tensors[resName] = outEdge;
             outputPorts.Add(new NodePort(resultNames.Count == 1 ? "out" : $"out_{i}", [outEdge]));
         }

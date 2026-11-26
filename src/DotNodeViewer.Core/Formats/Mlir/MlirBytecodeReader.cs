@@ -611,6 +611,7 @@ internal static class MlirBytecodeReader
                 irSec.End,
                 scopeName: "module",
                 depth: 0,
+                isFunctionBody: false,
                 ssaValues,
                 topTensors,
                 topNodes,
@@ -629,6 +630,7 @@ internal static class MlirBytecodeReader
             long limit,
             string scopeName,
             int depth,
+            bool isFunctionBody,
             List<TensorEdge> parentValues,
             Dictionary<string, TensorEdge> tensors,
             List<GraphNode> nodes,
@@ -682,7 +684,7 @@ internal static class MlirBytecodeReader
                             argName = $"%bb{b}_arg{a}";
                         }
 
-                        TensorKind kind = b == 0 && depth <= 1 ? TensorKind.GraphInput : TensorKind.Activation;
+                        TensorKind kind = b == 0 && isFunctionBody ? TensorKind.GraphInput : TensorKind.Activation;
                         TensorEdge edge = new(argName, desc, kind);
                         regionValues.Add(edge);
                         tensors[argName] = edge;
@@ -861,6 +863,7 @@ internal static class MlirBytecodeReader
                     List<GraphPort> childInputs = [];
                     List<GraphPort> childOutputs = [];
                     string childName = ExtractFunctionSymbolName(attributes) ?? $"{opName}_region_{regIdx}";
+                    bool childIsFunctionBody = opName is "func.func" or "tt.func" or "llvm.func" or "util.func";
 
                     // Isolated regions may be wrapped in a nested kIR section header
                     if (isIsolated && cursor < limit && (source.ReadByte(cursor) & 0x7F) == SectionIr)
@@ -871,6 +874,7 @@ internal static class MlirBytecodeReader
                             nestedIr.Span.End,
                             childName,
                             depth + 1,
+                            childIsFunctionBody,
                             childBaseValues,
                             childTensors,
                             childNodes,
@@ -886,6 +890,7 @@ internal static class MlirBytecodeReader
                             limit,
                             childName,
                             depth + 1,
+                            childIsFunctionBody,
                             childBaseValues,
                             childTensors,
                             childNodes,

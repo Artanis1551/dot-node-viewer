@@ -1,0 +1,37 @@
+{
+  "modelId": "mlir-tiny_triton_kernel",
+  "format": "MLIR Textual",
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "fused_gemm_kernel",
+    "nodeCount": 11,
+    "operatorHistogram": {
+      "tt.get_program_id": 1,
+      "tt.make_range": 1,
+      "tt.addptr": 2,
+      "tt.load": 2,
+      "arith.constant": 2,
+      "tt.dot": 1,
+      "arith.addf": 1,
+      "tt.store": 1
+    },
+    "inputs": [
+      {
+        "name": "%a_ptr",
+        "dataType": "Float16",
+        "shape": []
+      },
+      {
+        "name": "%b_ptr",
+        "dataType": "Float16",
+        "shape": []
+      },
+      {
+        "name": "%c_ptr",
+        "dataType": "Float32",
+        "shape": []
+      }
+    ],
+    "outputs": []
+  }
+}
