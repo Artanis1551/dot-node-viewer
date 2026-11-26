@@ -237,10 +237,12 @@ jobs:
           name: nuget-packages-${{ needs.verify-and-pack.outputs.version }}
           path: ./artifacts/packages
 
+      # This job intentionally has no checkout (it only handles built artifacts), so
+      # global.json is not available here; pin the SDK band explicitly instead.
       - name: Setup .NET 8 SDK
         uses: actions/setup-dotnet@v4
         with:
-          global-json-file: global.json
+          dotnet-version: 8.0.x
 
       - name: Verify NuGet Trusted Publishing Username Secret
         shell: bash
