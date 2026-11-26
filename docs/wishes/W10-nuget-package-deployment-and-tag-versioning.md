@@ -5,7 +5,7 @@
 **Implemented branch:** `infra/nuget-package-deployment`  
 
 > [!NOTE]
-> **Implementation Notes:** Resolved repository metadata URLs to `https://github.com/Artanis1551/dot-node-viewer` and included `DotNodeViewer.Cli` (`PackAsTool` conditioned on `PublishAot != true`) alongside `DotNodeViewer.Core` and `DotNodeViewer.Layout` in both `Directory.Build.props` and `.github/workflows/publish-nuget.yml`. Live NuGet.org publication awaits configuring `NUGET_API_KEY` and pushing the first `v*` tag after merging to `main`.
+> **Implementation Notes:** Resolved repository metadata URLs to `https://github.com/Artanis1551/dot-node-viewer` and included `DotNodeViewer.Cli` (`PackAsTool` conditioned on `PublishAot != true`) alongside `DotNodeViewer.Core` and `DotNodeViewer.Layout` in both `Directory.Build.props` and `.github/workflows/publish-nuget.yml`. NuGet.org publishing uses keyless OIDC Trusted Publishing (`NuGet/login@v1`) in the `nuget-publish` GitHub Actions environment with `${{ secrets.NUGET_USER }}`; live publication awaits creating the `nuget-publish` environment + `NUGET_USER` secret and pushing the first `v*` tag after merging to `main`.
 
 ---
 
