@@ -17,14 +17,11 @@
     "macs": 128,
     "shramKb": 24,
     "commandWords": 262,
-    "totalNpuOperations": 53,
+    "totalNpuOperations": 23,
     "operatorHistogram": {
-      "NPU_CONV": 2,
-      "NPU_DEPTHWISE": 1,
-      "NPU_MAXPOOL": 5,
-      "NPU_MUL": 1,
-      "NPU_DMA": 23,
-      "NPU_AVGPOOL": 21
+      "NPU_AVGPOOL": 21,
+      "NPU_DMA": 1,
+      "NPU_CONV": 1
     }
   }
 }

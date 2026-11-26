@@ -72,31 +72,33 @@ flowchart TD
 
 ## Framing & Container Protocols
 
-Ethos-U payloads are encapsulated in two primary container framing formats:
+Ethos-U payloads are encapsulated in two container framing formats, both wrapping a `COP1` driver action payload (`0x31504F43` little-endian):
 
-### 1. Vela Binary Stream (`COP1`) in TensorFlow Lite
-Vela encapsulates command streams in custom binary options under `CUSTOM(ethos-u)`:
-- **Magic:** `COP1` (`0x31504F43` little-endian) at byte `0..4`.
-- **Header:** 32-byte header specifying command stream offset and length, weight stream offset and length, and scratch buffer size.
-- **Payload:** Raw 16-bit and 48-bit Ethos-U instructions.
+### 1. TensorFlow Lite `CUSTOM(ethos-u)`
+Vela lowers supported subgraphs into a `CUSTOM(ethos-u)` operator whose input tensors supply:
+- **`ethos_u_command_stream` (input 0):** `COP1` driver action header (`DACommands.Config`, `DACommands.CmdStream`) followed by raw 32-bit/64-bit NPU command words.
+- **`read_only` (input 1):** Flash buffer containing packed compressed weights, bias/scale tables, and read-only constant operands (`region 0`).
+- **`scratch` / `scratch_fast` (inputs 2–3):** Runtime SRAM/fast-SRAM arena buffers, paired with `OfflineMemoryAllocation` model metadata mapping runtime input/output tensor arena offsets.
 
-### 2. Ethos-U Driver Payload (`ETHU`) in ExecuTorch
-ExecuTorch packages the NPU payload in `Delegate (EthosUBackend)`:
-- **Magic:** `ETHU` (`0x55485445` little-endian) at byte `0..4`.
-- **Header:** Specifies hardware version, MACs per cycle (`macs_per_cc`), command stream length, and weight segment descriptors.
+### 2. ExecuTorch `vela_bin_stream` (`Delegate (EthosUBackend)`)
+ExecuTorch packages the compiled NPU payload in `BackendDelegate.processed` as a 16-byte-aligned `vela_bin_stream` container of 32-byte block headers:
+- **`cmd_data`:** `COP1` driver action payload and NPU command stream.
+- **`weight_data`:** Flash buffer (`region 0`) containing packed weights, scales, and constants.
+- **`scratch_size`:** Required SRAM scratch arena size in bytes.
+- **`inputs` / `outputs`:** 36-byte tensor descriptors carrying 6D shapes, element sizes, arena offsets, and memory region indices.
 
 ---
 
 ## Hardware Command Stream & Zero-Allocation Decoding
 
-The command stream consists of 16-bit register writes (`CMD0`) and 48-bit register writes (`CMD1`):
+The command stream consists of 32-bit `cmd0` instructions (1 word) and 64-bit `cmd1` instructions (2 words), sharing the lower 10-bit opcode space and disambiguated by the 2-bit mode field (`0xC000`):
 
 | Command Class | Size | Encoding | Purpose |
 |---|---|---|---|
-| **`CMD0`** | 2 bytes | `[15:10] Opcode (6b) \| [9:0] Value (10b)` | Immediate register configuration (e.g. IFM region, rounding mode, activation function) |
-| **`CMD1`** | 6 bytes | `[15:10] Opcode (6b) \| [9:0] Offset (10b)` + `[31:0] Payload (32b)` | 32-bit register payloads (base memory addresses, tensor strides, kernel shapes) |
+| **`cmd0`** | 4 bytes (1 word) | `[31:16] Param (16b) \| [15:14] Mode=0 \| [9:0] Opcode (10b)` | Immediate register configuration and executable NPU operations (`NPU_OP_CONV`, `NPU_OP_POOL`, `NPU_OP_DMA_START`, etc.) |
+| **`cmd1`** | 8 bytes (2 words) | `[31:16] Param (16b) \| [15:14] Mode=1 \| [9:0] Opcode (10b)` + `[31:0] Payload (32b)` | 32-bit register payloads (base memory addresses, tensor strides, weight/scale lengths, DMA sizes) |
 
-`EthosUCommandStreamDecoder` parses the payload via `ReadOnlySpan<byte>` without allocating managed objects per command, achieving **0 bytes allocated per command**.
+`EthosUCommandStreamDecoder` parses the payload via `ReadOnlySpan<byte>` without allocating managed objects per command, achieving **0 bytes allocated per command**. Only `cmd0` instructions are evaluated as executable operations so colliding `cmd1` register writes never emit phantom nodes.
 
 ---
 
@@ -104,39 +106,44 @@ The command stream consists of 16-bit register writes (`CMD0`) and 48-bit regist
 
 As commands execute, `EthosURegisterState` models the internal registers of the Ethos-U hardware:
 
-1. **Input Feature Map (`IFM`):** Base address pointers (`BASE0..BASE2`), region IDs (`0..6`), height, width, channels, memory strides, data type (`INT8` / `INT16`), and quantization zero point.
-2. **Output Feature Map (`OFM`):** Base address pointers, shape, strides, data type, and zero point.
-3. **Weight / Scale Feature Maps:** Weight stream pointers, bias pointers, and scaling tables.
-4. **Convolution & Kernel Config:** Kernel width, height, strides, dilation, padding, and block configuration (`block_config`).
-5. **Operation Trigger:** When an `NPU_OP_*` opcode is encountered (e.g. `NPU_OP_CONV`, `NPU_OP_DEPTHWISE`, `NPU_OP_POOLING`, `NPU_OP_DMA_START`), the current register state is snapshotted into an operation instance with preceding commands captured for disassembly.
+1. **Input Feature Map (`IFM` / `IFM2`):** Base address pointers (`BASE0..BASE3`), region IDs (`0`: flash, `1`: SRAM, `2`: SRAM fast), height, width, channels, memory strides, layout (`NHWC` / `NHCWB16`), data type (`INT8` / `UINT8` / `INT16` / `INT32`), and quantization zero point (plus scalar/broadcast flags for `IFM2`).
+2. **Output Feature Map (`OFM`):** Base address pointers, shape, strides, layout, data type, and zero point.
+3. **Weight / Scale Feature Maps:** Weight and bias/scale region, base address, and byte length (consumed by `NPU_CONV` / `NPU_DEPTHWISE`, either directly from flash or from `NPU_DMA`-staged SRAM).
+4. **Convolution & Kernel Config:** Kernel width, height, strides, dilations, padding, and block configuration (`block_config`).
+5. **Operation Trigger:** When a `cmd0` `NPU_OP_*` opcode is encountered (`NPU_OP_CONV`, `NPU_OP_DEPTHWISE`, `NPU_OP_POOL`, `NPU_OP_ELEMENTWISE`, `NPU_OP_DMA_START`), the current register state is snapshotted into an operation node (`op_0`, `op_1`, ...) with preceding commands captured for disassembly.
 
 ---
 
-## Last-Writer-Wins Address Dataflow Inference
+## Stride-Aware Multi-Writer Dataflow Inference
 
-Because Ethos-U microcode operates on physical memory addresses across memory regions (SRAM, Flash, DRAM) rather than named tensor variables, dataflow connections between operators are reconstructed using a **last-writer-wins address interval lookup**:
+Because Ethos-U microcode operates on physical memory addresses across hardware memory regions rather than named tensor variables, dataflow connections between operators are reconstructed using **stride-aware multi-writer last-writer-wins interval matching**:
 
 ```mermaid
 flowchart TD
-    Op1["NPU_OP_CONV (Produces OFM at Base 0x1000..0x2000)"] --> Reg["Address Range Table: [0x1000..0x2000] -> Port 0 of Op1"]
-    Reg --> Op2["NPU_OP_MAXPOOL (Consumes IFM at Base 0x1000..0x2000)"]
-    Op2 --> Edge["Inferred TensorEdge: 'mem_0x00001000' (Shape: [1, 8, 8, 16], Int8)"]
+    Op1["NPU_CONV (Writes sram@0x0#op0)"] --> Reg["Written Byte Intervals per Region"]
+    Dma["NPU_DMA (Stages flash -> sram / shram_lut)"] --> Reg
+    Reg --> Op2["NPU_MAXPOOL / NPU_CONV (Reads IFM / weights / lut)"]
+    Op2 --> Edge["Connected TensorEdge(s) covering all read byte intervals"]
 ```
 
-When an operation reads an `IFM` buffer whose memory address range intersects with an earlier operation's `OFM` buffer, a synthesized `TensorEdge` is established. Operations whose inputs correspond to external input regions become graph inputs, and unconsumed output buffers become graph outputs.
+- **Exact Strided Intervals:** `NHWC` tensor strides (`IFM_STRIDE_X/Y/C`, `OFM_STRIDE_X/Y/C`) and `NHCWB16` brick layouts are projected into sorted byte intervals so tiled/transposed slices connect cleanly to downstream readers without leaving dead-end slice nodes.
+- **Region Isolation & Flash Constants:** Reads from `flash` (`region 0`) resolve to collapsed `TensorKind.Constant` / `TensorKind.Initializer` parameter slots with lazy `TensorDataSlice` ranges rather than fake graph inputs, while `sram` (`r1`), `sram_fast` (`r2`), and `shram_lut` (`0x103`) are tracked independently.
+- **DMA & LUT Dependencies:** `NPU_DMA` nodes staging weights/scales into SRAM connect directly to consuming convolutions, and `NPU_DMA` nodes loading Softmax/activation lookup tables into SHRAM (`0x103`) connect to downstream `LUT[n]` operations.
+- **Boundary I/O Matching:** Outer delegate runtime inputs and outputs are matched by `(region, offset, byteLength)` against `OfflineMemoryAllocation` (TFLite) or `VelaIoTensor` descriptors (ExecuTorch), excluding Vela scaffolding buffers (`ethos_u_command_stream`, `read_only`, `scratch`, `scratch_fast`).
 
 ---
 
 ## Decoded Operator Attributes
 
-Unwrapped NPU nodes contain complete hardware attributes in `NodeAttribute`:
+Unwrapped NPU nodes carry hardware attributes in `NodeAttribute`:
 
-- `hardware`: Ethos-U architecture (e.g. `"Ethos-U55-128"`, `"Ethos-U65-256"`).
-- `ifm_shape`: `[batch, height, width, channels]`.
-- `ofm_shape`: `[batch, height, width, channels]`.
-- `kernel_size`: `[kernel_h, kernel_w]`.
-- `strides`: `[stride_h, stride_w]`.
-- `padding`: `[top, left, bottom, right]`.
+- `ifm_shape`, `ofm_shape`: `[batch, height, width, channels]`.
+- `ifm_dtype`, `ofm_dtype`: Decoded `DataType` (`Int8`, `UInt8`, `Int16`, `Int32`, etc.).
+- `ifm_layout`, `ofm_layout`: `"NHWC"` or `"NHCWB16"`.
+- `ifm_zero_point`, `ofm_zero_point`: Quantization zero points.
+- `kernel`, `strides`, `dilations`, `padding`: Convolution/pooling geometry (omitted on elementwise ops).
 - `block_config`: `[block_h, block_w, block_c]`.
-- `quantization`: Input and output zero points and precisions (`INT8` / `INT16`).
+- `activation`, `clamp_min`, `clamp_max`: Human-readable fused activation (`"TANH"`, `"SIGMOID"`, `"LUT[0]"`, `"CLIP"`) when active.
+- `ifm2_broadcast`, `ifm2_scalar`: Broadcast axis flags and scalar operand on elementwise ops.
+- `dma_purpose`, `src_region`, `src_addr`, `dst_region`, `dst_addr`, `length`: DMA transfer descriptors.
 - `commands`: Monospace disassembly trace with hex offsets and mnemonic descriptions.
