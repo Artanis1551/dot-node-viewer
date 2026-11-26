@@ -129,6 +129,15 @@ git push origin main
 git push origin v0.12.0
 ```
 
+### NuGet Trusted Publishing (OIDC)
+
+The `publish` job in `.github/workflows/publish-nuget.yml` authenticates to NuGet.org using **Trusted Publishing** (`NuGet/login@v1`) with GitHub OIDC (`id-token: write`)—no long-lived `NUGET_API_KEY` secret is stored in GitHub.
+
+One-time repository & NuGet.org setup:
+1. Configure a NuGet.org Trusted Publishing policy scoped to `DotNodeViewer.*` for repository `Artanis1551/dot-node-viewer`, workflow `publish-nuget.yml`, and environment `nuget-publish`.
+2. In GitHub **Settings → Environments**, create the `nuget-publish` environment.
+3. Add the `NUGET_USER` secret (your NuGet.org username / profile name, not email address) to the `nuget-publish` environment (or repository Actions secrets).
+
 ### Dry-Run Verification via GitHub Actions
 
 Before pushing a live release tag, maintainers can manually trigger **Publish NuGet Packages** (`workflow_dispatch`) from the GitHub Actions UI with `dry_run: true`. The workflow will:

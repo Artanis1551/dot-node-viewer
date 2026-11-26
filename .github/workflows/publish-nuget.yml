@@ -224,6 +224,7 @@ jobs:
     needs: [verify-and-pack]
     if: ${{ needs.verify-and-pack.outputs.should_publish == 'true' }}
     runs-on: ubuntu-latest
+    environment: nuget-publish
     permissions:
       contents: write
       packages: write
@@ -241,14 +242,14 @@ jobs:
         with:
           global-json-file: global.json
 
-      - name: Verify NuGet API Key Secret
+      - name: Verify NuGet Trusted Publishing Username Secret
         shell: bash
         env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+          NUGET_USER: ${{ secrets.NUGET_USER }}
         run: |
-          if [[ -z "${NUGET_API_KEY}" ]]; then
-            echo "Error: NUGET_API_KEY repository secret is not configured." >&2
-            echo "Add a scoped API key (glob pattern: DotNodeViewer.*) under Settings -> Secrets and variables -> Actions." >&2
+          if [[ -z "${NUGET_USER}" ]]; then
+            echo "Error: NUGET_USER secret is not configured." >&2
+            echo "Add your NuGet.org username (profile name, not email) as NUGET_USER under the 'nuget-publish' environment or repository Actions secrets." >&2
             exit 1
           fi
 
@@ -257,10 +258,16 @@ jobs:
         with:
           subject-path: './artifacts/packages/*.nupkg'
 
+      - name: NuGet Login (OIDC Trusted Publishing)
+        id: nuget_login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
       - name: Publish to NuGet.org
         run: |
           dotnet nuget push "./artifacts/packages/*.nupkg" \
-            --api-key "${{ secrets.NUGET_API_KEY }}" \
+            --api-key "${{ steps.nuget_login.outputs.NUGET_API_KEY }}" \
             --source "https://api.nuget.org/v3/index.json" \
             --skip-duplicate
 
