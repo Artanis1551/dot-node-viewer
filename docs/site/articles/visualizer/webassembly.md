@@ -1,6 +1,6 @@
 # Running DotNodeViewer in the Browser (WebAssembly)
 
-DotNodeViewer provides a first-class WebAssembly target (`DotNodeViewer.Browser`) powered by Avalonia 11 for WebAssembly (`Avalonia.Browser`) and `.NET 10`. This head runs entirely client-side in the user's browser without requiring server-side compute or transferring neural network model weights over the network.
+DotNodeViewer provides a first-class WebAssembly target (`DotNodeViewer.Browser`) powered by Avalonia 11 for WebAssembly (`Avalonia.Browser`) and `.NET 8`. This head runs entirely client-side in the user's browser without requiring server-side compute or transferring neural network model weights over the network.
 
 > [!TIP]
 > **Try the Live Online Demo:**  
@@ -61,14 +61,14 @@ dotnet publish src/DotNodeViewer.Browser -c Release -r browser-wasm
 ```
 
 This compiles .NET assemblies and native Skia/HarfBuzz libraries into static WebAssembly assets at:
-`src/DotNodeViewer.Browser/bin/Release/net10.0/browser-wasm/AppBundle/`
+`src/DotNodeViewer.Browser/bin/Release/net8.0/browser-wasm/AppBundle/`
 
 ### 2. Serve Locally
 
 Serve the generated static bundle with any local HTTP server (such as Python's built-in static server):
 
 ```bash
-python3 -m http.server 8080 --directory src/DotNodeViewer.Browser/bin/Release/net10.0/browser-wasm/AppBundle
+python3 -m http.server 8080 --directory src/DotNodeViewer.Browser/bin/Release/net8.0/browser-wasm/AppBundle
 ```
 
 Navigate to `http://localhost:8080` in your web browser (Chrome, Firefox, Safari, Edge). Use the **Open Model** button (`Ctrl+O` / `Cmd+O`) or drag-and-drop to open any supported neural network model (`.onnx`, `.tflite`, `.pte`, `.pt`, `.pt2`, `.keras`, `.h5`).

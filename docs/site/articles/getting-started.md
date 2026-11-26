@@ -1,10 +1,10 @@
 # Tutorial: Getting Started with `dot-node-viewer`
 
-This tutorial walks you through setting up your development environment, building the `.NET 10` solution, running the `TUnit` test suite, and building the documentation site locally.
+This tutorial walks you through setting up your development environment, building the `.NET 8` solution, running the `TUnit` test suite, and building the documentation site locally.
 
 > [!TIP]
 > **Installing via NuGet (For Library & CLI Consumers):**  
-> If you only want to consume `DotNodeViewer.Core` / `DotNodeViewer.Layout` in your `.NET 10` project (`dotnet add package DotNodeViewer.Core`) or install the CLI globally (`dotnet tool install -g DotNodeViewer.Cli`), see [**Installing NuGet Packages & Publishing Releases**](library/nuget-packages-and-releases.md).
+> If you only want to consume `DotNodeViewer.Core` / `DotNodeViewer.Layout` in your `.NET 8+` project (`dotnet add package DotNodeViewer.Core`) or install the CLI globally (`dotnet tool install -g DotNodeViewer.Cli`), see [**Installing NuGet Packages & Publishing Releases**](library/nuget-packages-and-releases.md).
 
 ---
 
@@ -12,8 +12,8 @@ This tutorial walks you through setting up your development environment, buildin
 
 By completing this tutorial, you will:
 1. Understand the high-level architecture of `dot-node-viewer`.
-2. Verify your `.NET 10` SDK and local tool manifest (`docfx`).
-3. Build `dot-node-viewer.slnx` in `Release` configuration with zero warnings.
+2. Verify your `.NET 8` SDK and local tool manifest (`docfx`).
+3. Build `dot-node-viewer.sln` in `Release` configuration with zero warnings.
 4. Run the automated `TUnit` tests across `DotNodeViewer.Core.Tests`, `DotNodeViewer.Layout.Tests`, and `DotNodeViewer.App.Tests`.
 5. Generate the static documentation website and C# API reference using DocFX.
 
@@ -59,15 +59,15 @@ flowchart TD
 
 ---
 
-## Step 1: Verify the .NET 10 SDK
+## Step 1: Verify the .NET 8 SDK
 
-Ensure the `.NET 10.0` SDK (`10.0.100` or newer feature band) is installed and available on your `PATH`:
+Ensure the `.NET 8.0` SDK (`8.0.100` or newer feature band) is installed and available on your `PATH`:
 
 ```bash
 dotnet --list-sdks
 ```
 
-You should see at least one `10.0.x` SDK listed. The repository's `global.json` pins `10.0.100` with `rollForward: latestFeature` and configures `Microsoft.Testing.Platform` as the test runner.
+You should see at least one `8.0.x` SDK listed. The repository's `global.json` pins `8.0.100` with `rollForward: latestFeature`, and `Directory.Build.props` enables `Microsoft.Testing.Platform` integration (`TestingPlatformDotnetTestSupport=true`).
 
 ---
 
@@ -86,7 +86,7 @@ dotnet tool restore
 Build the entire solution in `Release` mode. All projects enforce `TreatWarningsAsErrors=true`, and `DotNodeViewer.Core` / `DotNodeViewer.Layout` enforce NativeAOT and trimming analyzers (`IsAotCompatible=true`, `IsTrimmable=true`):
 
 ```bash
-dotnet build dot-node-viewer.slnx -c Release
+dotnet build dot-node-viewer.sln -c Release
 ```
 
 ---
@@ -96,7 +96,7 @@ dotnet build dot-node-viewer.slnx -c Release
 Execute all `TUnit` tests across the solution:
 
 ```bash
-dotnet test dot-node-viewer.slnx -c Release
+dotnet test dot-node-viewer.sln -c Release
 ```
 
 ---

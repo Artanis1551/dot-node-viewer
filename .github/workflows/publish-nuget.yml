@@ -108,7 +108,7 @@ jobs:
           echo "should_publish=${SHOULD_PUBLISH}" >> "$GITHUB_OUTPUT"
           echo "Validated release version: ${VERSION} (tag=${TAG_NAME}, prerelease=${IS_PRERELEASE}, publish=${SHOULD_PUBLISH})"
 
-      - name: Setup .NET 10 SDK
+      - name: Setup .NET 8 SDK
         uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
@@ -125,13 +125,13 @@ jobs:
             model-cache-
 
       - name: Build solution (Release, zero warnings)
-        run: dotnet build dot-node-viewer.slnx -c Release -p:Version=${{ steps.parse_version.outputs.version }}
+        run: dotnet build dot-node-viewer.sln -c Release -p:Version=${{ steps.parse_version.outputs.version }}
 
       - name: Run Core, Layout & App Tests (Release)
         run: |
-          dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed
-          dotnet test --project tests/DotNodeViewer.Layout.Tests -c Release --no-build --output Detailed
-          dotnet test --project tests/DotNodeViewer.App.Tests -c Release --no-build --output Detailed
+          dotnet test tests/DotNodeViewer.Core.Tests -c Release --no-build -- --output Detailed
+          dotnet test tests/DotNodeViewer.Layout.Tests -c Release --no-build -- --output Detailed
+          dotnet test tests/DotNodeViewer.App.Tests -c Release --no-build -- --output Detailed
 
       - name: Ensure NativeAOT build prerequisites
         run: |
@@ -237,7 +237,7 @@ jobs:
           name: nuget-packages-${{ needs.verify-and-pack.outputs.version }}
           path: ./artifacts/packages
 
-      - name: Setup .NET 10 SDK
+      - name: Setup .NET 8 SDK
         uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json

@@ -142,10 +142,10 @@ See `references/manifest-and-snapshot-schema.md` for complete schema specificati
 1. **Run Format Manifest & Integration Tests:**
    ```bash
    # Run format manifest snapshot test
-   dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-restore -- --treenode-filter "/*/*/ModelManifestTests/ParseRegistered<Format>Model*"
+   dotnet test tests/DotNodeViewer.Core.Tests -c Release --no-restore -- --treenode-filter "/*/*/ModelManifestTests/ParseRegistered<Format>Model*"
 
    # Run format integration tests
-   dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-restore -- --treenode-filter "/*/*/<Format>ModelTests/*"
+   dotnet test tests/DotNodeViewer.Core.Tests -c Release --no-restore -- --treenode-filter "/*/*/<Format>ModelTests/*"
    ```
 
 2. **Run All Format Model Tests Locally (Parity with CI):**

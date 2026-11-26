@@ -15,46 +15,46 @@ cd "$REPO_ROOT"
 case "$FORMAT" in
   onnx)
     echo "=== Running ONNX format integration tests ==="
-    dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/OnnxModelTests/*"
+    dotnet test tests/DotNodeViewer.Core.Tests -c Release --no-build -- --output Detailed --treenode-filter "/*/*/OnnxModelTests/*"
     echo "=== Running ONNX manifest golden snapshot tests ==="
-    dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredOnnxModel*"
+    dotnet test tests/DotNodeViewer.Core.Tests -c Release --no-build -- --output Detailed --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredOnnxModel*"
     ;;
   tflite)
     echo "=== Running TensorFlow Lite format integration tests ==="
-    dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/TfliteModelTests/*"
+    dotnet test tests/DotNodeViewer.Core.Tests -c Release --no-build -- --output Detailed --treenode-filter "/*/*/TfliteModelTests/*"
     echo "=== Running TensorFlow Lite manifest golden snapshot tests ==="
-    dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredTfliteModel*"
+    dotnet test tests/DotNodeViewer.Core.Tests -c Release --no-build -- --output Detailed --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredTfliteModel*"
     ;;
   executorch)
     echo "=== Running ExecuTorch format integration tests ==="
-    dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/ExecuTorchModelTests/*"
+    dotnet test tests/DotNodeViewer.Core.Tests -c Release --no-build -- --output Detailed --treenode-filter "/*/*/ExecuTorchModelTests/*"
     echo "=== Running ExecuTorch manifest golden snapshot tests ==="
-    dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredExecuTorchModel*"
+    dotnet test tests/DotNodeViewer.Core.Tests -c Release --no-build -- --output Detailed --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredExecuTorchModel*"
     ;;
   pytorch)
     echo "=== Running PyTorch format integration tests ==="
-    dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/PyTorchModelTests/*"
+    dotnet test tests/DotNodeViewer.Core.Tests -c Release --no-build -- --output Detailed --treenode-filter "/*/*/PyTorchModelTests/*"
     echo "=== Running PyTorch manifest golden snapshot tests ==="
-    dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredPyTorchModel*"
+    dotnet test tests/DotNodeViewer.Core.Tests -c Release --no-build -- --output Detailed --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredPyTorchModel*"
     ;;
   pytorch-pt2|pytorch_pt2|pt2)
     FORMAT="pytorch-pt2"
     echo "=== Running PyTorch .pt2 format integration tests ==="
-    dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/PyTorchPt2ModelTests/*"
+    dotnet test tests/DotNodeViewer.Core.Tests -c Release --no-build -- --output Detailed --treenode-filter "/*/*/PyTorchPt2ModelTests/*"
     echo "=== Running PyTorch .pt2 manifest golden snapshot tests ==="
-    dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredPyTorchPt2Model*"
+    dotnet test tests/DotNodeViewer.Core.Tests -c Release --no-build -- --output Detailed --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredPyTorchPt2Model*"
     ;;
   keras)
     echo "=== Running Keras format integration tests ==="
-    dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/KerasModelTests/*"
+    dotnet test tests/DotNodeViewer.Core.Tests -c Release --no-build -- --output Detailed --treenode-filter "/*/*/KerasModelTests/*"
     echo "=== Running Keras manifest golden snapshot tests ==="
-    dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredKerasModel*"
+    dotnet test tests/DotNodeViewer.Core.Tests -c Release --no-build -- --output Detailed --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredKerasModel*"
     ;;
   mlir)
     echo "=== Running MLIR format integration tests ==="
-    dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/MlirModelTests/*"
+    dotnet test tests/DotNodeViewer.Core.Tests -c Release --no-build -- --output Detailed --treenode-filter "/*/*/MlirModelTests/*"
     echo "=== Running MLIR manifest golden snapshot tests ==="
-    dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredMlirModel*"
+    dotnet test tests/DotNodeViewer.Core.Tests -c Release --no-build -- --output Detailed --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredMlirModel*"
     ;;
   *)
     echo "Error: Unknown format '$FORMAT'. Expected one of: onnx, tflite, executorch, pytorch, pytorch-pt2 (or pytorch_pt2), keras, mlir." >&2

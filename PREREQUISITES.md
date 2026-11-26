@@ -6,7 +6,7 @@ This document specifies all required SDKs, system libraries, Python toolchains, 
 
 ## 1. .NET SDK & Workloads (Required from Stage S0)
 
-- **.NET SDK:** `10.0.x` installed and available on `PATH` as `dotnet` (pinned via `global.json`, e.g., `10.0.100` or latest `10.0` feature band).
+- **.NET SDK:** `8.0.x` installed and available on `PATH` as `dotnet` (pinned via `global.json`, e.g., `8.0.100` or latest `8.0` feature band).
   - Verify with:
     ```bash
     dotnet --list-sdks

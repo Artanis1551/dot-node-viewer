@@ -1,6 +1,6 @@
 # `dot-node-viewer` Documentation
 
-Welcome to the documentation for **`dot-node-viewer`**, a high-performance, NativeAOT- and WebAssembly-compatible .NET 10 neural network model parser, layered layout engine, and cross-platform Avalonia visualizer inspired by Netron.
+Welcome to the documentation for **`dot-node-viewer`**, a high-performance, NativeAOT- and WebAssembly-compatible .NET 8 neural network model parser, layered layout engine, and cross-platform Avalonia visualizer inspired by Netron.
 
 This documentation site is continuously published to GitHub Pages at [https://artanis1551.github.io/dot-node-viewer/](https://artanis1551.github.io/dot-node-viewer/) on every push to `main` via automated GitHub Actions. The repository source code and issue tracker are available on GitHub at [Artanis1551/dot-node-viewer](https://github.com/Artanis1551/dot-node-viewer).
 
@@ -15,7 +15,7 @@ This documentation site is continuously published to GitHub Pages at [https://ar
 Our documentation is organized around the four quadrants of the **Diátaxis** framework so you can jump directly to what you need:
 
 ### 1. Tutorials *(Learning-oriented)*
-- [**Getting Started with `dot-node-viewer`**](articles/getting-started.md) — Verify your .NET 10 environment, build the solution, run the TUnit test suite, and build the documentation site.
+- [**Getting Started with `dot-node-viewer`**](articles/getting-started.md) — Verify your .NET 8 environment, build the solution, run the TUnit test suite, and build the documentation site.
 
 ### 2. How-To Guides *(Task-oriented)*
 - [**Installing NuGet Packages & Publishing Releases**](articles/library/nuget-packages-and-releases.md) — Consume `DotNodeViewer.Core`, `DotNodeViewer.Layout`, and `DotNodeViewer.Cli` via NuGet.org or GitHub Packages, verify SLSA provenance, and cut SemVer release tags.

@@ -1,6 +1,6 @@
 # AGENTS.md — Workspace Rules for `dot-node-viewer`
 
-This repository contains **dot-node-viewer**, a high-performance .NET 10 rewrite of Netron split into a pure C# core model-parsing library (`DotNodeViewer.Core`), a pure C# layered layout engine (`DotNodeViewer.Layout`), and a cross-platform Avalonia visualizer (`DotNodeViewer.App`, `DotNodeViewer.Desktop`, `DotNodeViewer.Browser`).
+This repository contains **dot-node-viewer**, a high-performance .NET 8 rewrite of Netron split into a pure C# core model-parsing library (`DotNodeViewer.Core`), a pure C# layered layout engine (`DotNodeViewer.Layout`), and a cross-platform Avalonia visualizer (`DotNodeViewer.App`, `DotNodeViewer.Desktop`, `DotNodeViewer.Browser`).
 
 Development is organized into sequential stages (`S00` through `S13`). Every agent working in this repository MUST follow these rules.
 
@@ -23,8 +23,8 @@ Development is organized into sequential stages (`S00` through `S13`). Every age
    - Once Stage `S01` is complete, do not break the public Unified Graph IR (`DotNodeViewer.Core.Ir`), public parser abstractions (`DotNodeViewer.Core.Abstractions`), `models.manifest.json` / `.expected.json` schemas, or established CI pipeline guardrails without recording a new ADR in `docs/adr/` (following the authoring guide in `docs/adr/README.md`, updating the index table, and recording the decision in `docs/roadmap/PROGRESS.md`).
 5. **Stay in Scope:** Implement only your assigned stage. Log any out-of-scope follow-ups under the **Deferred** section of `docs/roadmap/PROGRESS.md`.
 6. **Definition of Done (Every Stage):**
-   - `dotnet build dot-node-viewer.slnx -c Release` succeeds with **zero warnings** (`TreatWarningsAsErrors=true`).
-   - `dotnet test dot-node-viewer.slnx -c Release` is **100% green**.
+   - `dotnet build dot-node-viewer.sln -c Release` succeeds with **zero warnings** (`TreatWarningsAsErrors=true`).
+   - `dotnet test dot-node-viewer.sln -c Release` is **100% green**.
    - All public types and members have XML documentation comments (`/// <summary>`).
    - Golden topology snapshots (`*.expected.json`) are cross-checked against an independent ground truth (`*.truth.json` from Python model generators or format inspection)—**never blindly regenerated**.
    - **UI Changes:** Whenever any UI change is made, you MUST follow the **Mandatory Live UI Verification & Screenshot Rule** (Section 4).
@@ -39,13 +39,13 @@ Development is organized into sequential stages (`S00` through `S13`). Every age
 ## 2. Project Map & Dependency Direction
 
 ```
-dot-node-viewer.slnx
+dot-node-viewer.sln
 ├── src/
 │   ├── DotNodeViewer.Core/       # Pure C# Unified Graph IR + format detectors & streaming readers
 │   ├── DotNodeViewer.Layout/     # Pure C# Sugiyama/dagre layered graph layout (depends ONLY on Core)
 │   ├── DotNodeViewer.App/        # Shared Avalonia UI, ViewModels, GraphCanvas, Themes (depends on Core + Layout)
 │   ├── DotNodeViewer.Desktop/    # Cross-platform desktop executable (Win / macOS / Linux)
-│   └── DotNodeViewer.Browser/    # WebAssembly (net10.0-browser) head
+│   └── DotNodeViewer.Browser/    # WebAssembly (net8.0, browser-wasm) head
 ├── tools/
 │   ├── DotNodeViewer.Cli/        # CLI tool: `snapshot`, `inspect`, `detect`
 │   └── model-gen/                # Deterministic Python scripts + pinned requirements (`onnx/`, `tf/`, `torch/`)
@@ -135,13 +135,13 @@ Whenever you make **any UI changes** (in Stages `S05`, `S06`, `S11`, `S12`, `S13
 
 ```bash
 # Build entire solution (Release, zero warnings allowed)
-dotnet build dot-node-viewer.slnx -c Release
+dotnet build dot-node-viewer.sln -c Release
 
 # Run all TUnit tests
-dotnet test dot-node-viewer.slnx -c Release
+dotnet test dot-node-viewer.sln -c Release
 
 # Run a filtered TUnit test class or method (Microsoft.Testing.Platform filter syntax)
-dotnet test --project tests/DotNodeViewer.Core.Tests -c Release -- --treenode-filter "/*/*/ModelManifestTests/*"
+dotnet test tests/DotNodeViewer.Core.Tests -c Release -- --treenode-filter "/*/*/ModelManifestTests/*"
 
 # Generate or inspect a model snapshot via the CLI harness
 dotnet run --project tools/DotNodeViewer.Cli -c Release -- snapshot <path-to-model> --id <model-id>
