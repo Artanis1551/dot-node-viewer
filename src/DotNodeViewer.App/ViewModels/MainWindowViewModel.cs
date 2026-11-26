@@ -332,7 +332,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ".pt",
         ".pt2",
         ".keras",
-        ".h5"
+        ".h5",
+        ".gguf"
     ];
 
     /// <summary>
@@ -409,7 +410,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         IsDropTargetValid = isValid;
         DropTargetFeedbackMessage = feedbackMessage ?? (isValid
             ? "Release file to inspect neural network architecture"
-            : "Unsupported format. Supported: .onnx, .tflite, .pte, .pt, .pt2, .keras, .h5");
+            : "Unsupported format. Supported: .onnx, .tflite, .pte, .pt, .pt2, .keras, .h5, .gguf");
     }
 
     /// <summary>
@@ -530,7 +531,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (primary is null)
         {
             HasError = true;
-            ErrorMessage = "Unsupported file format. Supported: .onnx, .tflite, .pte, .pt, .pt2, .keras, .h5";
+            ErrorMessage = "Unsupported file format. Supported: .onnx, .tflite, .pte, .pt, .pt2, .keras, .h5, .gguf";
             StatusText = ErrorMessage;
             SetDropTargetState(isActive: true, isValid: false, feedbackMessage: ErrorMessage);
             ScheduleInvalidDropDismissal(cancellationToken);
@@ -629,7 +630,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (primary is null)
         {
             HasError = true;
-            ErrorMessage = "Unsupported file format. Supported: .onnx, .tflite, .pte, .pt, .pt2, .keras, .h5";
+            ErrorMessage = "Unsupported file format. Supported: .onnx, .tflite, .pte, .pt, .pt2, .keras, .h5, .gguf";
             StatusText = ErrorMessage;
             SetDropTargetState(isActive: true, isValid: false, feedbackMessage: ErrorMessage);
             ScheduleInvalidDropDismissal(cancellationToken);
@@ -1446,6 +1447,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         long totalParams = 0;
         long totalWeightBytes = 0;
         int quantizedCount = 0;
+        int blockQuantizedCount = 0;
         int totalTensors = 0;
         string? delegateText = null;
 
@@ -1454,7 +1456,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
             foreach (TensorEdge t in sg.Tensors)
             {
                 totalTensors++;
-                if (t.Descriptor.Quantization is not null || IsQuantizedDataType(t.Descriptor.DataType))
+                if (t.Descriptor.Quantization is BlockQuantization)
+                {
+                    blockQuantizedCount++;
+                    quantizedCount++;
+                }
+                else if (t.Descriptor.Quantization is not null || IsQuantizedDataType(t.Descriptor.DataType))
                 {
                     quantizedCount++;
                 }
@@ -1495,6 +1502,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
         {
             PrecisionMixText = "FP32 Precision";
             PrecisionBadgeBrushKey = "QuantFp32BackgroundBrush";
+        }
+        else if (blockQuantizedCount > 0)
+        {
+            int pct = (quantizedCount * 100) / Math.Max(1, totalTensors);
+            PrecisionMixText = totalTensors > 0 && quantizedCount == totalTensors
+                ? "Block Quantized (100%)"
+                : $"Block Quantized ({pct}%)";
+            PrecisionBadgeBrushKey = "QuantInt4BackgroundBrush";
         }
         else if (quantizedCount == totalTensors || (totalTensors > 0 && quantizedCount >= totalTensors / 2))
         {
@@ -1593,10 +1608,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
         else if (tensor.Descriptor.Quantization is BlockQuantization block)
         {
-            badge = $"INT{block.Bits}";
+            badge = string.IsNullOrWhiteSpace(block.Scheme) ? $"INT{block.Bits}" : block.Scheme;
             bgKey = block.Bits <= 4 ? "QuantInt4BackgroundBrush" : "QuantInt8BackgroundBrush";
             fgKey = block.Bits <= 4 ? "QuantInt4ForegroundBrush" : "QuantInt8ForegroundBrush";
-            details = $"Block size: {block.BlockSize}, Bits: {block.Bits}";
+            details = $"{block.Scheme} · Block size: {block.BlockSize}, {block.Bits}-bit";
         }
         else if (tensor.Descriptor.DataType is DataType.Int4 or DataType.UInt4)
         {
@@ -1654,6 +1669,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             "executorch" => "ExecuTorch",
             "pytorch" => "PyTorch",
             "keras" => "Keras",
+            "gguf" => "GGUF",
             _ => info.Id.Value.ToUpperInvariant()
         };
         string version = string.IsNullOrWhiteSpace(info.Version) ? string.Empty : $" ({info.Version})";

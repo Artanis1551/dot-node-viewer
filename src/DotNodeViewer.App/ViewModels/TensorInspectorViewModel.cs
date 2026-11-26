@@ -177,6 +177,11 @@ public sealed partial class TensorInspectorViewModel : ObservableObject
             long zp = affine.ZeroPoint.Count > 0 ? affine.ZeroPoint[0] : 0;
             QuantizationDescription = string.Create(CultureInfo.InvariantCulture, $"Scale: {scale:G6}, Zero-Point: {zp}");
         }
+        else if (tensor.Descriptor.Quantization is BlockQuantization block)
+        {
+            DataTypeText = $"{block.Scheme} ({tensor.Descriptor.DataType})";
+            QuantizationDescription = string.Create(CultureInfo.InvariantCulture, $"{block.Scheme} (Block Size: {block.BlockSize}, {block.Bits}-bit)");
+        }
 
         if (tensor.Data is null)
         {
@@ -264,7 +269,7 @@ public sealed partial class TensorInspectorViewModel : ObservableObject
 
         long? expectedElementCount = TryGetKnownElementCount(tensor.Descriptor.Shape);
 
-        if (slice.Encoding == TensorDataEncoding.EthosUCompressedWeights)
+        if (slice.Encoding is TensorDataEncoding.EthosUCompressedWeights or TensorDataEncoding.GgmlQuantizedBlock)
         {
             for (int i = 0; i < bytes.Length; i++)
             {
