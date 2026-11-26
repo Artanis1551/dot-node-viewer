@@ -182,7 +182,11 @@ public static class Program
                                 }
                             }
 
-                            await stdout.WriteLineAsync($"    DMA Operations:      {dmaCount}").ConfigureAwait(false);
+                            if (string.Equals(expander.BackendId, "ethos-u", StringComparison.OrdinalIgnoreCase))
+                            {
+                                await stdout.WriteLineAsync($"    DMA Operations:      {dmaCount}").ConfigureAwait(false);
+                            }
+
                             await stdout.WriteLineAsync("    Operator Distribution:").ConfigureAwait(false);
                             foreach (KeyValuePair<string, int> kvp in histogram.OrderByDescending(k => k.Value).ThenBy(k => k.Key, StringComparer.Ordinal))
                             {

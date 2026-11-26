@@ -1,4 +1,5 @@
 using DotNodeViewer.Core.Delegates.EthosU;
+using DotNodeViewer.Core.Delegates.Xnnpack;
 using DotNodeViewer.Core.Ir;
 
 namespace DotNodeViewer.Core.Abstractions;
@@ -24,6 +25,7 @@ public sealed class DelegateSubgraphExpanderRegistry
     {
         var registry = new DelegateSubgraphExpanderRegistry();
         registry.Register(new EthosUDelegateExpander());
+        registry.Register(XnnpackDelegateSubgraphExpander.Instance);
         return registry;
     }
 

@@ -290,6 +290,32 @@ internal readonly struct FlatBufferTable
     }
 
     /// <summary>
+    /// Reads a vector of 32-bit unsigned integers at <paramref name="fieldIndex"/>, or returns <see langword="null"/> if the field is absent.
+    /// </summary>
+    public uint[]? ReadUInt32Vector(int fieldIndex)
+    {
+        if (!TryDereferenceUOffset(fieldIndex, out long vectorPos))
+        {
+            return null;
+        }
+
+        int count = ReadVectorElementCount(vectorPos, elementByteSize: 4);
+        if (count == 0)
+        {
+            return [];
+        }
+
+        uint[] result = new uint[count];
+        long dataPos = vectorPos + 4;
+        for (int i = 0; i < count; i++)
+        {
+            result[i] = _source.ReadUInt32LittleEndian(dataPos + ((long)i * 4));
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// Reads a vector of 64-bit signed integers at <paramref name="fieldIndex"/>, or returns <see langword="null"/> if the field is absent.
     /// </summary>
     public long[]? ReadInt64Vector(int fieldIndex)
