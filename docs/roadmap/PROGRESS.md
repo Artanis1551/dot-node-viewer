@@ -882,5 +882,52 @@ Every stage agent MUST read this file before starting work and append a completi
   - `python3 tools/desktop_harness.py capture docs/screenshots/W02/01-graphcanvas-spatial-culling.png`
   - `python3 tools/desktop_harness.py click-ratio 0.34 0.44 && python3 tools/desktop_harness.py capture docs/screenshots/W02/02-graphcanvas-node-selection-adjacency.png`
 
+---
+
+### Wish W11 — ExecuTorch `XnnpackBackend` Delegate Unwrapping
+- **Branch:** `feature/xnnpack-delegate-unwrapping`
+- **Commits:**
+  - `W11: implement XNNPACK delegate header reader, FlatBuffer decoder, and expander`
+  - `W11: add deterministic XNNPACK float and INT8 ExecuTorch fixtures and ground truth`
+  - `W11: add synthetic, end-to-end model, and headless UI tests for XNNPACK delegate unwrapping`
+  - `W11: update ExecuTorch documentation, README, wish status, and PROGRESS.md`
+- **What Was Built:**
+  - **ExecuTorch Delegate Tagging & FlatBuffer Helper (`src/DotNodeViewer.Core/`):**
+    - Tagged `XnnpackBackend` delegate nodes in `ExecuTorchFormatReader.BuildDelegateNode` with `delegate.backend = "xnnpack"` and `delegate.expandable = true` while preserving $O(1)$ lazy parsing during `ReadAsync`.
+    - Added `FlatBufferTable.ReadUInt32Vector` for decoding unsigned 32-bit shape, permutation, offset, size, and value ID vectors.
+  - **Internal XNNPACK FlatBuffer Decoder & Expander (`src/DotNodeViewer.Core/Delegates/Xnnpack/`, all `internal`):**
+    - `XnnpackHeader` / `XnnpackHeaderReader`: stack-allocated bounds-checked parser for the 30-byte `XH00` header (magic at offset 4) and direct `XN01`/`XN00` FlatBuffer fallback.
+    - `BoundedReadOnlyStream`: seekable read-only stream window restricting `RandomAccessSource` strictly to the FlatBuffer slice without buffering trailing constant weight segments.
+    - `XnnpackOperatorCatalog`: maps `fb_xnnpack.XNodeUnion` discriminants `1..47` (verified against pinned `executorch==1.5.1+cpu` `backends/xnnpack/serialization/schema.fbs`) plus forward-compatible `49: XNNDepthToSpace2d` and `50: _XNNStaticReduce`, and maps `XNNDatatype` codes (`fp32`, `fp16`, `bf16`, `qint8`, `quint8`, `qint32`, `qcint8`, `qcint32`, `qcint4`, `qdint8`, `qbint4`, `qpint8`, `int32`, `pfp32`). Unknown union discriminants safely map to `OperatorCategory.Unknown` with a `DNV_XNNPACK_UNKNOWN_OP` warning diagnostic.
+    - `XnnpackGraphDecoder`: decodes `XNNGraph` (`xnodes`, `xvalues`, `input_ids`, `output_ids`, `constant_data`, legacy `constant_buffer`, `output_min_max` fused activations), maps `PerTensorQuant` / `PerChannelQuant` / `PerTokenDynamicQuant` / `PerChannelGroupQuant` into `AffineQuantization` and `BlockQuantization`, and resolves constant weight tensors lazily to `TensorDataSlice` across `Program.named_data`, trailing `XH00` constant segments, and legacy inline `Buffer.storage` (or `ExternalTensorDataReference` + `DNV_XNNPACK_EXTERNAL_NAMED_DATA` when external `.ptd`).
+    - `XnnpackDelegateSubgraphExpander`: implements `IDelegateSubgraphExpander` (`BackendId = "xnnpack"`, `DisassembleAsync` returns `null`) and is registered in `DelegateSubgraphExpanderRegistry.Default`.
+  - **CLI Polish (`tools/DotNodeViewer.Cli/Program.cs`):**
+    - Scoped the `DMA Operations:` line in `inspect --expand-delegates` to `ethos-u` delegates so XNNPACK expansion output lists synthesized nodes, tensors, and operator distributions cleanly.
+  - **Deterministic Model Generation & Committed Fixtures (`tools/model-gen/torch/gen_executorch.py`):**
+    - Extended `gen_executorch.py` (`--only-w11`) to lower `tiny_xnnpack_ops.pte` (6,032 bytes: `XNNConv2d`, `XNNDepthwiseConv2d`, `XNNHardswish`, `XNNAdd`, `XNNGlobalAvgPooling2d`, `XNNStaticTranspose`, `XNNStaticReshape`, `XNNFullyConnected`, `XNNSoftmax`) and `tiny_cnn_xnnpack_int8.pte` (5,768 bytes: PT2E quantized `XNNConvert`, `XNNConv2d`, `XNNGlobalAvgPooling2d`, `XNNStaticReshape`, `XNNFullyConnected`) via `XnnpackPartitioner`, extracting independent `schema.fbs` ground truth into `*.truth.json` (and enriching `tiny_cnn_xnnpack.truth.json`), generating golden `*.expected.json` snapshots, and registering both in `models.manifest.json`.
+  - **Tests (`Core.Tests` & `App.Tests`):**
+    - `Synthetic/XnnpackDelegateSyntheticTests.cs`: covers standard ops + fused RELU, `49: XNNDepthToSpace2d`, `50: _XNNStaticReduce`, all 4 quantization schemas, unknown union discriminant diagnostics, external `.ptd` named keys, direct `XN00` + legacy `constant_buffer`, malformed/out-of-bounds payloads, and 4 MB lazy weight slicing verified via `AllocationProbe`.
+    - `Formats/XnnpackDelegateModelTests.cs`: verifies end-to-end expansion, operator histograms, input/output shapes, lazy `TensorDataSlice` reads, and per-tensor/per-channel `AffineQuantization` on all 3 committed `.pte` fixtures against `*.truth.json`.
+    - `App.Tests/MainWindowViewModelTests.cs`: verifies headless UI drill-down into `Delegate (XnnpackBackend)`, lazy weight inspection on internal XNNPACK weights, and breadcrumb back-navigation.
+- **`README.md` & `docs/site/` Updates:**
+  - Updated [`docs/site/articles/formats/executorch.md`](../site/articles/formats/executorch.md) with XNNPACK decode Mermaid flowchart, pinned upstream schema revision (`executorch==1.5.1+cpu`), `XNodeUnion` coverage table, constant data / quantization mapping, and CLI `--expand-delegates` output.
+  - Updated [`README.md`](../../README.md), [`docs/site/articles/formats/overview.md`](../site/articles/formats/overview.md), [`docs/site/articles/cli/reference.md`](../site/articles/cli/reference.md), [`docs/wishes/W11-executorch-xnnpack-delegate-unwrapping.md`](../wishes/W11-executorch-xnnpack-delegate-unwrapping.md), and [`docs/wishes/README.md`](../wishes/README.md).
+  - Verified `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors` passes with 0 warnings.
+- **New ADRs Recorded:** None (reuses frozen W01 `IDelegateSubgraphExpander` and IR v1 contracts from ADR 0006 and ADR 0008).
+- **Deviations & Known Limitations:**
+  - No UI XAML changes were required; existing W01 delegate badge and breadcrumb drill-down UI worked without modification.
+  - External `.ptd` weight shards referenced by `named_key` outside `Program.named_data` emit `ExternalTensorDataReference` and a `DNV_XNNPACK_EXTERNAL_NAMED_DATA` diagnostic pending W09 (`IExternalFileResolver`).
+- **Test Count:** 304 passed (`DotNodeViewer.Core.Tests`: 201, `DotNodeViewer.Layout.Tests`: 29, `DotNodeViewer.App.Tests`: 74), 0 failed, 0 skipped.
+- **Verification Commands Run:**
+  - `dotnet build dot-node-viewer.slnx -c Release --no-restore`
+  - `dotnet test --solution dot-node-viewer.slnx -c Release --no-build`
+  - `dotnet publish tools/DotNodeViewer.Cli -c Release -p:PublishAot=true`
+  - `dotnet run --project tools/DotNodeViewer.Cli -c Release --no-build -- inspect tests/DotNodeViewer.Core.Tests/Fixtures/executorch/tiny_cnn_xnnpack.pte --expand-delegates`
+  - `dotnet run --project tools/DotNodeViewer.Cli -c Release --no-build -- inspect tests/DotNodeViewer.Core.Tests/Fixtures/executorch/tiny_xnnpack_ops.pte --expand-delegates`
+  - `dotnet run --project tools/DotNodeViewer.Cli -c Release --no-build -- inspect tests/DotNodeViewer.Core.Tests/Fixtures/executorch/tiny_cnn_xnnpack_int8.pte --expand-delegates`
+  - `bash tools/ci/run-model-tests.sh executorch`
+  - `python3 tools/ci/report-tested-models.py executorch`
+  - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
+
 
 

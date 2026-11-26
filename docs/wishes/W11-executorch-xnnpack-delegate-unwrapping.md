@@ -1,6 +1,6 @@
 # Wish W11 — ExecuTorch `XnnpackBackend` Delegate Unwrapping
 
-**Status:** Proposed
+**Status:** Done
 **Depends on:** Stage **S07** (ExecuTorch Parser), Wish **W01** (`IDelegateSubgraphExpander` & `DelegateSubgraphExpanderRegistry`, [ADR 0008](../adr/0008-delegate-subgraph-expansion-and-ethos-u.md)), Stage **S11** (Subgraph Breadcrumb Drill-Down & Weight Inspector)
 **Suggested branch when promoted:** `feature/xnnpack-delegate-unwrapping`
 
