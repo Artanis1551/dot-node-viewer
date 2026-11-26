@@ -9,7 +9,7 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <Deterministic>true</Deterministic>
     <!-- Centralized Versioning (SemVer 2.0.0) -->
-    <VersionPrefix>0.12.0</VersionPrefix>
+    <VersionPrefix>0.1.1</VersionPrefix>
     <VersionSuffix Condition="'$(VersionSuffix)' != ''">$(VersionSuffix)</VersionSuffix>
     <!-- Do not fail builds when offline due to NuGet vulnerability audit network checks -->
     <NoWarn>$(NoWarn);NU1900;NU1901;NU1902;NU1903;NU1904</NoWarn>
