@@ -83,13 +83,13 @@ public sealed class ModelGraphLayoutAdapterTests
     private static string ResolveFixturePath(string formatFolder, string fileName)
     {
         DirectoryInfo? dir = new(AppContext.BaseDirectory);
-        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "dot-node-viewer.slnx")))
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "dot-node-viewer.sln")))
         {
             dir = dir.Parent;
         }
 
         string repoRoot = dir?.FullName
-            ?? throw new DirectoryNotFoundException("Could not locate repository root containing 'dot-node-viewer.slnx'.");
+            ?? throw new DirectoryNotFoundException("Could not locate repository root containing 'dot-node-viewer.sln'.");
 
         return Path.Combine(
             repoRoot,

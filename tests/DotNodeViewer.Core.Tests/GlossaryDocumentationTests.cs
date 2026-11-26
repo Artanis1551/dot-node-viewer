@@ -55,7 +55,7 @@ public sealed class GlossaryDocumentationTests
         DirectoryInfo? current = new(AppContext.BaseDirectory);
         while (current is not null)
         {
-            if (File.Exists(Path.Combine(current.FullName, "dot-node-viewer.slnx")) ||
+            if (File.Exists(Path.Combine(current.FullName, "dot-node-viewer.sln")) ||
                 File.Exists(Path.Combine(current.FullName, "GLOSSARY.md")))
             {
                 return current.FullName;

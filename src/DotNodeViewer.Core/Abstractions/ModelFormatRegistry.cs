@@ -15,7 +15,7 @@ namespace DotNodeViewer.Core.Abstractions;
 public sealed class ModelFormatRegistry
 {
     private readonly List<RegistrationEntry> _entries = [];
-    private readonly Lock _syncRoot = new();
+    private readonly object _syncRoot = new();
 
     /// <summary>
     /// Gets the default shared <see cref="ModelFormatRegistry"/> containing all built-in model format parsers.

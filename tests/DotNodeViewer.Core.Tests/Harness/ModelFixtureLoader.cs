@@ -171,7 +171,7 @@ public static class ModelFixtureLoader
     {
         stream.Position = 0;
         byte[] hash = await SHA256.HashDataAsync(stream, cancellationToken).ConfigureAwait(false);
-        return Convert.ToHexStringLower(hash);
+        return Convert.ToHexString(hash).ToLowerInvariant();
     }
 
     private static string NormalizeRelativePath(string relativePath) =>

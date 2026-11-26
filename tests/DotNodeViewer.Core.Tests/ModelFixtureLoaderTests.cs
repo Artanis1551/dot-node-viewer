@@ -19,7 +19,7 @@ public sealed class ModelFixtureLoaderTests
         try
         {
             byte[] modelBytes = Encoding.UTF8.GetBytes("SYNTH_HEADER____WEIGHT_PAYLOAD_12345678");
-            string sha256 = Convert.ToHexStringLower(SHA256.HashData(modelBytes));
+            string sha256 = Convert.ToHexString(SHA256.HashData(modelBytes)).ToLowerInvariant();
 
             string fixturesDir = Path.Combine(tempDir, "Fixtures", "synth");
             Directory.CreateDirectory(fixturesDir);

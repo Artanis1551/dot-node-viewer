@@ -37,14 +37,14 @@ Both `DotNodeViewer.Cli` and `DotNodeViewer.Desktop` support zero-warning Native
 ```bash
 dotnet publish tools/DotNodeViewer.Cli -c Release -p:PublishAot=true
 ```
-* **Output Binary:** `tools/DotNodeViewer.Cli/bin/Release/net10.0/linux-x64/publish/DotNodeViewer.Cli`
+* **Output Binary:** `tools/DotNodeViewer.Cli/bin/Release/net8.0/linux-x64/publish/DotNodeViewer.Cli`
 * **Binary Size:** ~3.8 MB self-contained ELF binary.
 
 #### Desktop Application
 ```bash
 dotnet publish src/DotNodeViewer.Desktop -c Release -p:PublishAot=true
 ```
-* **Output Binary:** `src/DotNodeViewer.Desktop/bin/Release/net10.0/linux-x64/publish/DotNodeViewer.Desktop`
+* **Output Binary:** `src/DotNodeViewer.Desktop/bin/Release/net8.0/linux-x64/publish/DotNodeViewer.Desktop`
 * **Binary Size:** ~19 MB self-contained ELF binary (including Skia rendering engine, HarfBuzz font shaping, and X11 windowing stack).
 
 ---
@@ -63,7 +63,7 @@ The core libraries and CLI tool are packaged as lightweight, deterministic NuGet
 
 * **`DotNodeViewer.Core`**: Pure C# Unified Graph IR, format detectors, streaming readers, and lazy tensor data loader (`IsAotCompatible=true`, `IsTrimmable=true`, `.snupkg` symbols).
 * **`DotNodeViewer.Layout`**: High-performance Sugiyama-style layered graph layout engine (`IsAotCompatible=true`, `IsTrimmable=true`, `.snupkg` symbols).
-* **`DotNodeViewer.Cli`**: Cross-platform `.NET 10` Global Tool (`dot-node-viewer`, `PackAsTool=true` when not publishing NativeAOT).
+* **`DotNodeViewer.Cli`**: Cross-platform `.NET 8` Global Tool (`dot-node-viewer`, `PackAsTool=true` when not publishing NativeAOT).
 
 ```bash
 dotnet pack src/DotNodeViewer.Core -c Release -o ./artifacts/packages

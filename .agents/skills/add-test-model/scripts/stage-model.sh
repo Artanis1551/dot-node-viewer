@@ -150,7 +150,7 @@ echo "1. Add the JSON snippet below to '${TEST_DIR}/Fixtures/models.manifest.jso
 echo "2. Generate golden topology snapshot:" >&2
 echo "   dotnet run --project tools/DotNodeViewer.Cli -c Release --no-build -- snapshot \"${DEST_ABS}\" --id \"${MODEL_ID}\" > \"${SNAPSHOT_ABS}\"" >&2
 echo "3. Verify via TUnit manifest test:" >&2
-echo "   dotnet test --project ${TEST_DIR} -c Release --no-restore -- --treenode-filter \"/*/*/ModelManifestTests/ParseRegistered${TEST_METHOD_FORMAT}Model*\"" >&2
+echo "   dotnet test ${TEST_DIR} -c Release --no-restore -- --treenode-filter \"/*/*/ModelManifestTests/ParseRegistered${TEST_METHOD_FORMAT}Model*\"" >&2
 echo "4. Verify CI pipeline inspection:" >&2
 echo "   python3 tools/ci/report-tested-models.py ${CANONICAL_FORMAT}" >&2
 echo >&2

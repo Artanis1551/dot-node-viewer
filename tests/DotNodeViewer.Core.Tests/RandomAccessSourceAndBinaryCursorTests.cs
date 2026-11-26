@@ -57,32 +57,7 @@ public sealed class RandomAccessSourceAndBinaryCursorTests
         "ONNX"u8.CopyTo(buffer.AsSpan(6, 4));
         BinaryPrimitives.WriteSingleLittleEndian(buffer.AsSpan(10, 4), 2.5f);
 
-        long initialOffset;
-        ushort u16;
-        int i32;
-        string str;
-        float f32;
-        int remaining;
-        ModelParseException? caught = null;
-
-        {
-            BinaryCursor cursor = new(buffer, baseFileOffset: 0x100);
-            initialOffset = cursor.FileOffset;
-            u16 = cursor.ReadUInt16LittleEndian();
-            i32 = cursor.ReadInt32BigEndian();
-            str = cursor.ReadUtf8String(4);
-            f32 = cursor.ReadSingleLittleEndian();
-            remaining = cursor.Remaining;
-
-            try
-            {
-                _ = cursor.ReadInt32LittleEndian();
-            }
-            catch (ModelParseException ex)
-            {
-                caught = ex;
-            }
-        }
+        (long initialOffset, ushort u16, int i32, string str, float f32, int remaining, ModelParseException? caught) = ReadCursorValues(buffer);
 
         await Assert.That(initialOffset).IsEqualTo(0x100);
         await Assert.That(u16).IsEqualTo((ushort)0xABCD);
@@ -92,5 +67,28 @@ public sealed class RandomAccessSourceAndBinaryCursorTests
         await Assert.That(remaining).IsEqualTo(2);
         await Assert.That(caught).IsNotNull();
         await Assert.That(caught!.FileOffset).IsEqualTo(0x10E);
+
+        static (long InitialOffset, ushort U16, int I32, string Str, float F32, int Remaining, ModelParseException? Caught) ReadCursorValues(byte[] data)
+        {
+            BinaryCursor cursor = new(data, baseFileOffset: 0x100);
+            long initial = cursor.FileOffset;
+            ushort valU16 = cursor.ReadUInt16LittleEndian();
+            int valI32 = cursor.ReadInt32BigEndian();
+            string valStr = cursor.ReadUtf8String(4);
+            float valF32 = cursor.ReadSingleLittleEndian();
+            int rem = cursor.Remaining;
+            ModelParseException? exCaught = null;
+
+            try
+            {
+                _ = cursor.ReadInt32LittleEndian();
+            }
+            catch (ModelParseException ex)
+            {
+                exCaught = ex;
+            }
+
+            return (initial, valU16, valI32, valStr, valF32, rem, exCaught);
+        }
     }
 }

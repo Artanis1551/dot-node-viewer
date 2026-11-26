@@ -117,8 +117,8 @@ public sealed class GraphCanvasTests
             await Assert.That(vm.HasSelectedNode).IsTrue();
             await Assert.That(vm.SelectedNodeTitle).IsEqualTo(targetNode.Title);
             await Assert.That(vm.SelectedNodeCategoryName).IsEqualTo(targetNode.Category.ToString());
-            await Assert.That(vm.SelectedNodeInputs).IsNotEmpty();
-            await Assert.That(vm.SelectedNodeOutputs).IsNotEmpty();
+            await Assert.That(vm.SelectedNodeInputs.Count).IsGreaterThan(0);
+            await Assert.That(vm.SelectedNodeOutputs.Count).IsGreaterThan(0);
 
             // Deselect node
             vm.DeselectNodeCommand.Execute(null);
@@ -348,7 +348,7 @@ public sealed class GraphCanvasTests
     private static string ResolveFixturePath(string relative)
     {
         string? dir = AppContext.BaseDirectory;
-        while (!string.IsNullOrEmpty(dir) && !File.Exists(Path.Combine(dir, "dot-node-viewer.slnx")))
+        while (!string.IsNullOrEmpty(dir) && !File.Exists(Path.Combine(dir, "dot-node-viewer.sln")))
         {
             dir = Path.GetDirectoryName(dir);
         }

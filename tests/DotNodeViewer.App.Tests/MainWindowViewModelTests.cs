@@ -22,9 +22,9 @@ public sealed class MainWindowViewModelTests
         await Assert.That(vm.StatusText).IsEqualTo("Ready");
         await Assert.That(vm.Title).IsEqualTo("dot-node-viewer");
         await Assert.That(vm.IsDarkTheme).IsTrue();
-        await Assert.That(vm.Inputs).IsEmpty();
-        await Assert.That(vm.Outputs).IsEmpty();
-        await Assert.That(vm.OperatorCategories).IsEmpty();
+        await Assert.That(vm.Inputs.Count).IsEqualTo(0);
+        await Assert.That(vm.Outputs.Count).IsEqualTo(0);
+        await Assert.That(vm.OperatorCategories.Count).IsEqualTo(0);
     }
 
     [Test]
@@ -42,9 +42,9 @@ public sealed class MainWindowViewModelTests
         await Assert.That(vm.TotalNodeCount).IsGreaterThan(0);
         await Assert.That(vm.TotalEdgeCount).IsGreaterThan(0);
         await Assert.That(vm.CurrentLayout).IsNotNull();
-        await Assert.That(vm.Inputs).IsNotEmpty();
-        await Assert.That(vm.Outputs).IsNotEmpty();
-        await Assert.That(vm.OperatorCategories).IsNotEmpty();
+        await Assert.That(vm.Inputs.Count).IsGreaterThan(0);
+        await Assert.That(vm.Outputs.Count).IsGreaterThan(0);
+        await Assert.That(vm.OperatorCategories.Count).IsGreaterThan(0);
         await Assert.That(vm.RecentFiles).Contains(Path.GetFullPath(path));
     }
 
@@ -279,7 +279,7 @@ public sealed class MainWindowViewModelTests
     private static string ResolveFixturePath(string relative)
     {
         string? dir = AppContext.BaseDirectory;
-        while (!string.IsNullOrEmpty(dir) && !File.Exists(Path.Combine(dir, "dot-node-viewer.slnx")))
+        while (!string.IsNullOrEmpty(dir) && !File.Exists(Path.Combine(dir, "dot-node-viewer.sln")))
         {
             dir = Path.GetDirectoryName(dir);
         }

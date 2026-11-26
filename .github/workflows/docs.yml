@@ -40,7 +40,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup .NET 10 SDK
+      - name: Setup .NET 8 SDK
         uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
@@ -52,7 +52,7 @@ jobs:
         run: sudo $(which dotnet) workload install wasm-tools
 
       - name: Build solution (Release, zero warnings)
-        run: dotnet build dot-node-viewer.slnx -c Release
+        run: dotnet build dot-node-viewer.sln -c Release
 
       - name: Extract DocFX C# API metadata
         run: dotnet tool run docfx metadata docs/site/docfx.json --warningsAsErrors
@@ -64,7 +64,7 @@ jobs:
         run: |
           dotnet publish src/DotNodeViewer.Browser -c Release -r browser-wasm
           mkdir -p docs/site/_site/demo
-          cp -r src/DotNodeViewer.Browser/bin/Release/net10.0/browser-wasm/AppBundle/* docs/site/_site/demo/
+          cp -r src/DotNodeViewer.Browser/bin/Release/net8.0/browser-wasm/AppBundle/* docs/site/_site/demo/
 
       - name: Ensure .nojekyll exists
         run: touch docs/site/_site/.nojekyll

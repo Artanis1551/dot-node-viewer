@@ -135,25 +135,29 @@ internal sealed class EthosUDelegateExpander : IDelegateSubgraphExpander
             modelStream.Position = cmdSlice.StreamOffset;
             await modelStream.ReadExactlyAsync(cmdBuf.AsMemory(0, (int)cmdSlice.ByteLength), cancellationToken).ConfigureAwait(false);
 
-            ReadOnlySpan<byte> span = cmdBuf.AsSpan(0, (int)cmdSlice.ByteLength);
-            EthosUDriverPayload driverPayload = EthosUDriverPayloadReader.Read(span, cmdSlice.StreamOffset);
-            ReadOnlySpan<byte> wordsSpan = span.Slice(driverPayload.CommandStreamByteOffset, driverPayload.CommandStreamByteLength);
-
-            var lines = new List<string>(driverPayload.CommandWordCount);
-            EthosUCommandStreamDecoder.Decode(wordsSpan, (in EthosUCommand cmd) =>
-            {
-                string line = cmd.IsCmd1
-                    ? string.Create(CultureInfo.InvariantCulture, $"0x{cmd.ByteOffset:X6}: {cmd.Payload:X8} {cmd.Param:X4} {cmd.Opcode:X4} - {cmd.Name}")
-                    : string.Create(CultureInfo.InvariantCulture, $"0x{cmd.ByteOffset:X6}:          {cmd.Param:X4} {cmd.Opcode:X4} - {cmd.Name}");
-                lines.Add(line);
-            });
-
-            return lines;
+            return DisassembleCommandStream(cmdBuf.AsSpan(0, (int)cmdSlice.ByteLength), cmdSlice.StreamOffset);
         }
         finally
         {
             ArrayPool<byte>.Shared.Return(cmdBuf);
         }
+    }
+
+    private static List<string> DisassembleCommandStream(ReadOnlySpan<byte> span, long streamOffset)
+    {
+        EthosUDriverPayload driverPayload = EthosUDriverPayloadReader.Read(span, streamOffset);
+        ReadOnlySpan<byte> wordsSpan = span.Slice(driverPayload.CommandStreamByteOffset, driverPayload.CommandStreamByteLength);
+
+        var lines = new List<string>(driverPayload.CommandWordCount);
+        EthosUCommandStreamDecoder.Decode(wordsSpan, (in EthosUCommand cmd) =>
+        {
+            string line = cmd.IsCmd1
+                ? string.Create(CultureInfo.InvariantCulture, $"0x{cmd.ByteOffset:X6}: {cmd.Payload:X8} {cmd.Param:X4} {cmd.Opcode:X4} - {cmd.Name}")
+                : string.Create(CultureInfo.InvariantCulture, $"0x{cmd.ByteOffset:X6}:          {cmd.Param:X4} {cmd.Opcode:X4} - {cmd.Name}");
+            lines.Add(line);
+        });
+
+        return lines;
     }
 
     private static async ValueTask<Subgraph?> ExpandTfliteDelegateAsync(
@@ -208,24 +212,9 @@ internal sealed class EthosUDelegateExpander : IDelegateSubgraphExpander
             modelStream.Position = cmdSlice.StreamOffset;
             await modelStream.ReadExactlyAsync(buffer.AsMemory(0, (int)cmdSlice.ByteLength), cancellationToken).ConfigureAwait(false);
 
-            ReadOnlySpan<byte> cmdSpan = buffer.AsSpan(0, (int)cmdSlice.ByteLength);
-            EthosUDriverPayload driverPayload = EthosUDriverPayloadReader.Read(cmdSpan, cmdSlice.StreamOffset);
-
-            ReadOnlySpan<byte> wordsSpan = cmdSpan.Slice(
-                driverPayload.CommandStreamByteOffset,
-                driverPayload.CommandStreamByteLength);
-
-            var state = new EthosURegisterState();
-            var snapshots = new List<EthosURegisterSnapshot>();
-
-            EthosUCommandStreamDecoder.Decode(wordsSpan, (in EthosUCommand cmd) =>
-            {
-                state.Apply(in cmd);
-                if (EthosUOpcodeCatalog.IsExecutableOperation(in cmd))
-                {
-                    snapshots.Add(state.CreateSnapshot(cmd.Opcode, cmd.Param));
-                }
-            });
+            (EthosUDriverPayload driverPayload, List<EthosURegisterSnapshot> snapshots) = DecodeDriverPayloadAndSnapshots(
+                buffer.AsSpan(0, (int)cmdSlice.ByteLength),
+                cmdSlice.StreamOffset);
 
             var outerInputs = runtimeInputTensors.Select(t => new GraphPort(t.Name, new[] { t })).ToList();
             var outerOutputs = runtimeOutputTensors.Select(t => new GraphPort(t.Name, new[] { t })).ToList();
@@ -261,33 +250,14 @@ internal sealed class EthosUDelegateExpander : IDelegateSubgraphExpander
             modelStream.Position = processedSlice.StreamOffset;
             await modelStream.ReadExactlyAsync(buffer.AsMemory(0, (int)processedSlice.ByteLength), cancellationToken).ConfigureAwait(false);
 
-            ReadOnlySpan<byte> processedSpan = buffer.AsSpan(0, (int)processedSlice.ByteLength);
-            VelaBinStream velaStream = VelaBinStreamReader.Read(processedSpan, processedSlice.StreamOffset);
+            (VelaBinStream velaStream, EthosUDriverPayload? driverPayload, List<EthosURegisterSnapshot>? snapshots) = DecodeExecuTorchVelaStream(
+                buffer.AsSpan(0, (int)processedSlice.ByteLength),
+                processedSlice.StreamOffset);
 
-            if (velaStream.CmdData is null)
+            if (driverPayload is null || snapshots is null)
             {
                 return null;
             }
-
-            int cmdLocalOffset = (int)(velaStream.CmdData.Offset - processedSlice.StreamOffset);
-            ReadOnlySpan<byte> cmdSpan = processedSpan.Slice(cmdLocalOffset, velaStream.CmdData.Length);
-            EthosUDriverPayload driverPayload = EthosUDriverPayloadReader.Read(cmdSpan, velaStream.CmdData.Offset);
-
-            ReadOnlySpan<byte> wordsSpan = cmdSpan.Slice(
-                driverPayload.CommandStreamByteOffset,
-                driverPayload.CommandStreamByteLength);
-
-            var state = new EthosURegisterState();
-            var snapshots = new List<EthosURegisterSnapshot>();
-
-            EthosUCommandStreamDecoder.Decode(wordsSpan, (in EthosUCommand cmd) =>
-            {
-                state.Apply(in cmd);
-                if (EthosUOpcodeCatalog.IsExecutableOperation(in cmd))
-                {
-                    snapshots.Add(state.CreateSnapshot(cmd.Opcode, cmd.Param));
-                }
-            });
 
             List<TensorEdge> runtimeInputTensors = node.Inputs
                 .Where(p => p.Tensors.Count > 0)
@@ -499,25 +469,7 @@ internal sealed class EthosUDelegateExpander : IDelegateSubgraphExpander
                 modelStream.Position = metaOffset;
                 await modelStream.ReadExactlyAsync(metaBuf.AsMemory(0, metaLength), cancellationToken).ConfigureAwait(false);
 
-                ReadOnlySpan<byte> span = metaBuf.AsSpan(0, metaLength);
-                _ = BinaryPrimitives.ReadInt32LittleEndian(span[..4]); // version
-                _ = BinaryPrimitives.ReadInt32LittleEndian(span.Slice(4, 4)); // subgraphIdx
-                int nbrTensors = BinaryPrimitives.ReadInt32LittleEndian(span.Slice(8, 4));
-
-                if (nbrTensors > 0 && 12 + nbrTensors * 4 <= metaLength)
-                {
-                    IReadOnlyList<TensorEdge> tensors = owningSubgraph.Tensors;
-                    int pos = 12;
-                    for (int i = 0; i < nbrTensors && i < tensors.Count; i++)
-                    {
-                        int arenaOffset = BinaryPrimitives.ReadInt32LittleEndian(span.Slice(pos, 4));
-                        if (arenaOffset >= 0)
-                        {
-                            offsetsByName[tensors[i].Name] = (uint)arenaOffset;
-                        }
-                        pos += 4;
-                    }
-                }
+                PopulateArenaOffsets(metaBuf.AsSpan(0, metaLength), owningSubgraph.Tensors, offsetsByName);
             }
             finally
             {
@@ -526,6 +478,73 @@ internal sealed class EthosUDelegateExpander : IDelegateSubgraphExpander
         }
 
         return offsetsByName;
+    }
+
+    private static (EthosUDriverPayload DriverPayload, List<EthosURegisterSnapshot> Snapshots) DecodeDriverPayloadAndSnapshots(
+        ReadOnlySpan<byte> cmdSpan,
+        long streamOffset)
+    {
+        EthosUDriverPayload driverPayload = EthosUDriverPayloadReader.Read(cmdSpan, streamOffset);
+        ReadOnlySpan<byte> wordsSpan = cmdSpan.Slice(
+            driverPayload.CommandStreamByteOffset,
+            driverPayload.CommandStreamByteLength);
+
+        var state = new EthosURegisterState();
+        var snapshots = new List<EthosURegisterSnapshot>();
+
+        EthosUCommandStreamDecoder.Decode(wordsSpan, (in EthosUCommand cmd) =>
+        {
+            state.Apply(in cmd);
+            if (EthosUOpcodeCatalog.IsExecutableOperation(in cmd))
+            {
+                snapshots.Add(state.CreateSnapshot(cmd.Opcode, cmd.Param));
+            }
+        });
+
+        return (driverPayload, snapshots);
+    }
+
+    private static (VelaBinStream VelaStream, EthosUDriverPayload? DriverPayload, List<EthosURegisterSnapshot>? Snapshots) DecodeExecuTorchVelaStream(
+        ReadOnlySpan<byte> processedSpan,
+        long processedStreamOffset)
+    {
+        VelaBinStream velaStream = VelaBinStreamReader.Read(processedSpan, processedStreamOffset);
+        if (velaStream.CmdData is null)
+        {
+            return (velaStream, null, null);
+        }
+
+        int cmdLocalOffset = (int)(velaStream.CmdData.Offset - processedStreamOffset);
+        ReadOnlySpan<byte> cmdSpan = processedSpan.Slice(cmdLocalOffset, velaStream.CmdData.Length);
+        (EthosUDriverPayload driverPayload, List<EthosURegisterSnapshot> snapshots) = DecodeDriverPayloadAndSnapshots(
+            cmdSpan,
+            velaStream.CmdData.Offset);
+
+        return (velaStream, driverPayload, snapshots);
+    }
+
+    private static void PopulateArenaOffsets(
+        ReadOnlySpan<byte> span,
+        IReadOnlyList<TensorEdge> tensors,
+        Dictionary<string, uint> offsetsByName)
+    {
+        _ = BinaryPrimitives.ReadInt32LittleEndian(span[..4]); // version
+        _ = BinaryPrimitives.ReadInt32LittleEndian(span.Slice(4, 4)); // subgraphIdx
+        int nbrTensors = BinaryPrimitives.ReadInt32LittleEndian(span.Slice(8, 4));
+
+        if (nbrTensors > 0 && 12 + nbrTensors * 4 <= span.Length)
+        {
+            int pos = 12;
+            for (int i = 0; i < nbrTensors && i < tensors.Count; i++)
+            {
+                int arenaOffset = BinaryPrimitives.ReadInt32LittleEndian(span.Slice(pos, 4));
+                if (arenaOffset >= 0)
+                {
+                    offsetsByName[tensors[i].Name] = (uint)arenaOffset;
+                }
+                pos += 4;
+            }
+        }
     }
 
     private static Subgraph? FindOwningSubgraph(ModelGraph graph, GraphNode node)

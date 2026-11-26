@@ -12,8 +12,7 @@ namespace DotNodeViewer.Core.Tests;
 /// </summary>
 public sealed class FlatBufferTableTests
 {
-    [Test]
-    public async Task ReadRootAndFields_ValidFlatBuffer_DecodesScalarsStringsVectorsAndCapturesByteSlice()
+    private static byte[] BuildValidFlatBuffer()
     {
         // Construct a minimal FlatBuffer in memory:
         // [0..4]: root uoffset = 20
@@ -60,6 +59,14 @@ public sealed class FlatBufferTableTests
         {
             span[72 + i] = (byte)(i + 1);
         }
+
+        return buffer;
+    }
+
+    [Test]
+    public async Task ReadRootAndFields_ValidFlatBuffer_DecodesScalarsStringsVectorsAndCapturesByteSlice()
+    {
+        byte[] buffer = BuildValidFlatBuffer();
 
         using MemoryStream stream = new(buffer);
         using RandomAccessSource source = new(stream);

@@ -111,8 +111,8 @@ print(m.group(1).strip())
 }
 
 echo "Running release quality gates for ${TAG}..."
-dotnet build dot-node-viewer.slnx -c Release
-dotnet test --solution dot-node-viewer.slnx -c Release --no-build
+dotnet build dot-node-viewer.sln -c Release
+dotnet test dot-node-viewer.sln -c Release --no-build
 
 if [[ "${DRY_RUN}" == "true" ]]; then
   echo ""

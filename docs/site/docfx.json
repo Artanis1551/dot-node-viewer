@@ -45,7 +45,7 @@
     "globalMetadata": {
       "_appTitle": "dot-node-viewer",
       "_appName": "dot-node-viewer",
-      "_appFooter": "dot-node-viewer — .NET 10 Neural Network Graph Parser, Layout Engine & Avalonia Visualizer",
+      "_appFooter": "dot-node-viewer — .NET 8 Neural Network Graph Parser, Layout Engine & Avalonia Visualizer",
       "_enableSearch": true,
       "pdf": false
     },

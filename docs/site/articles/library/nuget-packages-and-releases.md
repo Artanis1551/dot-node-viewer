@@ -1,12 +1,12 @@
 # How-To: Installing NuGet Packages & Publishing Releases
 
-This guide covers how downstream `.NET 10` developers install and verify **`DotNodeViewer.Core`**, **`DotNodeViewer.Layout`**, and **`DotNodeViewer.Cli`**, as well as how repository maintainers cut SemVer-tagged releases via GitHub Actions.
+This guide covers how downstream `.NET 8+` developers install and verify **`DotNodeViewer.Core`**, **`DotNodeViewer.Layout`**, and **`DotNodeViewer.Cli`**, as well as how repository maintainers cut SemVer-tagged releases via GitHub Actions.
 
 ---
 
 ## 1. Installing the Libraries (`DotNodeViewer.Core` & `DotNodeViewer.Layout`)
 
-Both core libraries target `net10.0`, compile cleanly with `<IsAotCompatible>true</IsAotCompatible>` and `<IsTrimmable>true</IsTrimmable>`, and carry zero UI or SkiaSharp dependencies.
+Both core libraries target `net8.0` (compatible with `.NET 8`, `.NET 9`, and `.NET 10`), compile cleanly with `<IsAotCompatible>true</IsAotCompatible>` and `<IsTrimmable>true</IsTrimmable>`, and carry zero UI or SkiaSharp dependencies.
 
 ### From NuGet.org
 
@@ -116,7 +116,7 @@ Release tags MUST follow `v<MAJOR>.<MINOR>.<PATCH>` (for example `v0.12.0`) or `
 ./tools/tag-release.sh --dry-run 0.12.0
 ```
 
-3. Run the release script to validate SemVer syntax, run `dotnet build -c Release` and `dotnet test --solution dot-node-viewer.slnx -c Release --no-build`, bump `<VersionPrefix>` in `Directory.Build.props` if needed, commit `chore: release v0.12.0`, and create an annotated Git tag:
+3. Run the release script to validate SemVer syntax, run `dotnet build dot-node-viewer.sln -c Release` and `dotnet test dot-node-viewer.sln -c Release --no-build`, bump `<VersionPrefix>` in `Directory.Build.props` if needed, commit `chore: release v0.12.0`, and create an annotated Git tag:
 
 ```bash
 ./tools/tag-release.sh 0.12.0

@@ -6,7 +6,7 @@
 [![NuGet DotNodeViewer.Layout](https://img.shields.io/nuget/v/DotNodeViewer.Layout.svg?label=NuGet%20Layout)](https://www.nuget.org/packages/DotNodeViewer.Layout/)
 [![NuGet DotNodeViewer.Cli](https://img.shields.io/nuget/v/DotNodeViewer.Cli.svg?label=NuGet%20Cli)](https://www.nuget.org/packages/DotNodeViewer.Cli/)
 
-**`dot-node-viewer`** is a high-performance, NativeAOT- and WebAssembly-compatible `.NET 10` rewrite of [Netron](https://github.com/lutzroeder/netron), split into reusable pure-C# libraries for neural network graph extraction (`DotNodeViewer.Core`) and layered graph layout (`DotNodeViewer.Layout`), paired with a cross-platform Avalonia visualizer (`DotNodeViewer.App`, `DotNodeViewer.Desktop`, `DotNodeViewer.Browser`) and CLI tool (`DotNodeViewer.Cli`).
+**`dot-node-viewer`** is a high-performance, NativeAOT- and WebAssembly-compatible `.NET 8` rewrite of [Netron](https://github.com/lutzroeder/netron), split into reusable pure-C# libraries for neural network graph extraction (`DotNodeViewer.Core`) and layered graph layout (`DotNodeViewer.Layout`), paired with a cross-platform Avalonia visualizer (`DotNodeViewer.App`, `DotNodeViewer.Desktop`, `DotNodeViewer.Browser`) and CLI tool (`DotNodeViewer.Cli`).
 
 📖 **Live Documentation & API Reference:** [https://artanis1551.github.io/dot-node-viewer/](https://artanis1551.github.io/dot-node-viewer/)  
 🚀 **Live WebAssembly Demo App:** [https://artanis1551.github.io/dot-node-viewer/demo/](https://artanis1551.github.io/dot-node-viewer/demo/)
@@ -31,13 +31,13 @@
 ## Solution Structure
 
 ```text
-dot-node-viewer.slnx
+dot-node-viewer.sln
 ├── src/
 │   ├── DotNodeViewer.Core/       # Pure C# Unified Graph IR + format detectors & streaming readers
 │   ├── DotNodeViewer.Layout/     # Pure C# Sugiyama/dagre layered graph layout (depends ONLY on Core)
 │   ├── DotNodeViewer.App/        # Shared Avalonia UI, ViewModels, GraphCanvas, Themes (depends on Core + Layout)
 │   ├── DotNodeViewer.Desktop/    # Cross-platform desktop executable (Linux / macOS / Windows)
-│   └── DotNodeViewer.Browser/    # WebAssembly (net10.0-browser) head
+│   └── DotNodeViewer.Browser/    # WebAssembly (net8.0, browser-wasm) head
 ├── tools/
 │   ├── DotNodeViewer.Cli/        # CLI tool: detect, inspect, snapshot
 │   └── model-gen/                # Deterministic Python scripts + pinned requirements (onnx/, tf/, torch/)
@@ -70,7 +70,7 @@ dot-node-viewer.slnx
 
 ## Core Library (`DotNodeViewer.Core`) Overview
 
-`DotNodeViewer.Core` can be embedded directly in any .NET 10 application, CLI tool, or WebAssembly app to inspect neural network topologies:
+`DotNodeViewer.Core` can be embedded directly in any .NET 8+ application, CLI tool, or WebAssembly app to inspect neural network topologies:
 
 ```csharp
 using DotNodeViewer.Core.Abstractions;
@@ -167,7 +167,7 @@ dotnet run --project src/DotNodeViewer.Desktop -c Release -- tests/DotNodeViewer
 
 ## WebAssembly Visualizer (`DotNodeViewer.Browser`)
 
-`DotNodeViewer.Browser` is the browser WebAssembly (`net10.0-browser`) head running completely client-side in the browser via Avalonia 11 for WebAssembly. It requires no backend server, preserving complete model privacy by parsing topologies and inspecting tensor slices locally in the browser sandbox.
+`DotNodeViewer.Browser` is the browser WebAssembly (`net8.0`, `browser-wasm`) head running completely client-side in the browser via Avalonia 11 for WebAssembly. It requires no backend server, preserving complete model privacy by parsing topologies and inspecting tensor slices locally in the browser sandbox.
 
 - **Shared UI & Logic:** Hosts the shared `MainView` with 100% feature parity with the desktop application (pan/zoom canvas, categorized search, weight inspector, subgraph drilldown, and minimap).
 - **Safe Browser Streaming (`BrowserStreamAdapter`):** Implements a chunked streaming adapter using `ArrayPool<byte>.Shared` and a configurable 512 MB memory guard to prevent browser tab out-of-memory crashes on oversized models.
@@ -177,7 +177,7 @@ dotnet run --project src/DotNodeViewer.Desktop -c Release -- tests/DotNodeViewer
 dotnet publish src/DotNodeViewer.Browser -c Release -r browser-wasm
 
 # Serve locally at http://localhost:8080
-python3 -m http.server 8080 --directory src/DotNodeViewer.Browser/bin/Release/net10.0/browser-wasm/AppBundle
+python3 -m http.server 8080 --directory src/DotNodeViewer.Browser/bin/Release/net8.0/browser-wasm/AppBundle
 ```
 
 ---
@@ -219,10 +219,10 @@ The core model parsing, layout engines, and CLI tool are packaged as independent
 
 * **`DotNodeViewer.Core`**: Pure C# Unified Graph IR, format detectors, streaming readers for ONNX, TFLite, ExecuTorch, PyTorch, Keras and MLIR, plus lazy tensor data loaders.
 * **`DotNodeViewer.Layout`**: Pure C# Sugiyama-style layered graph layout engine and spatial grid index for neural network topologies.
-* **`DotNodeViewer.Cli`**: Cross-platform `.NET 10` Global Tool (`dot-node-viewer`) for format detection, graph inspection, golden snapshots, and NPU command stream disassembly.
+* **`DotNodeViewer.Cli`**: Cross-platform `.NET 8` Global Tool (`dot-node-viewer`) for format detection, graph inspection, golden snapshots, and NPU command stream disassembly.
 
 ```bash
-# Install libraries in your .NET 10 project (from NuGet.org)
+# Install libraries in your .NET 8+ project (from NuGet.org)
 dotnet add package DotNodeViewer.Core
 dotnet add package DotNodeViewer.Layout
 
@@ -281,10 +281,10 @@ See [`PREREQUISITES.md`](PREREQUISITES.md) for full development machine setup in
 dotnet tool restore
 
 # Build entire solution in Release mode (zero warnings allowed)
-dotnet build dot-node-viewer.slnx -c Release
+dotnet build dot-node-viewer.sln -c Release
 
 # Run all TUnit tests on Microsoft.Testing.Platform
-dotnet test --solution dot-node-viewer.slnx -c Release
+dotnet test dot-node-viewer.sln -c Release
 
 # Publish NativeAOT CLI binary to verify AOT & trimming compliance
 dotnet publish tools/DotNodeViewer.Cli -c Release -p:PublishAot=true

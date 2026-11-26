@@ -23,7 +23,7 @@ public sealed class ProtoReaderTests
 
         // Field 3: float 1.5f (tag 0x1D = (3 << 3) | 5, 4 bytes LE)
         stream.WriteByte(0x1D);
-        Span<byte> f32 = stackalloc byte[4];
+        byte[] f32 = new byte[4];
         BinaryPrimitives.WriteSingleLittleEndian(f32, 1.5f);
         stream.Write(f32);
 

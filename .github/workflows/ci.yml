@@ -22,7 +22,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup .NET 10 SDK
+      - name: Setup .NET 8 SDK
         uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
@@ -31,16 +31,16 @@ jobs:
         run: dotnet tool restore
 
       - name: Build solution (Release, zero warnings)
-        run: dotnet build dot-node-viewer.slnx -c Release
+        run: dotnet build dot-node-viewer.sln -c Release
 
       - name: Run Layout tests (Release)
-        run: dotnet test --project tests/DotNodeViewer.Layout.Tests -c Release --no-build --output Detailed
+        run: dotnet test tests/DotNodeViewer.Layout.Tests -c Release --no-build -- --output Detailed
 
       - name: Run App tests (Release)
-        run: dotnet test --project tests/DotNodeViewer.App.Tests -c Release --no-build --output Detailed
+        run: dotnet test tests/DotNodeViewer.App.Tests -c Release --no-build -- --output Detailed
 
       - name: Run Core unit & synthetic tests (Release)
-        run: dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/(CoreSmokeTests|PublicApiEncapsulationTests|UnifiedGraphIrTests|RandomAccessSourceAndBinaryCursorTests|ProtoReaderTests|FlatBufferTableTests|ModelProbeAndRegistryTests|ModelFixtureLoaderTests|ZipDirectoryTests|PickleMachineTests|OnnxSyntheticTests|TfliteSyntheticTests|ExecuTorchSyntheticTests|PyTorchSyntheticTests|PyTorchPt2SyntheticTests|KerasSyntheticTests|MlirSyntheticTests)/*"
+        run: dotnet test tests/DotNodeViewer.Core.Tests -c Release --no-build -- --output Detailed --treenode-filter "/*/*/(CoreSmokeTests|PublicApiEncapsulationTests|UnifiedGraphIrTests|RandomAccessSourceAndBinaryCursorTests|ProtoReaderTests|FlatBufferTableTests|ModelProbeAndRegistryTests|ModelFixtureLoaderTests|ZipDirectoryTests|PickleMachineTests|OnnxSyntheticTests|TfliteSyntheticTests|ExecuTorchSyntheticTests|PyTorchSyntheticTests|PyTorchPt2SyntheticTests|KerasSyntheticTests|MlirSyntheticTests)/*"
 
       - name: Generate DocFX C# API metadata (warnings as errors)
         run: dotnet tool run docfx metadata docs/site/docfx.json --warningsAsErrors
@@ -56,7 +56,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup .NET 10 SDK
+      - name: Setup .NET 8 SDK
         uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
@@ -73,10 +73,10 @@ jobs:
         run: dotnet build tests/DotNodeViewer.Core.Tests -c Release
 
       - name: Run ONNX format tests (Release)
-        run: dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/OnnxModelTests/*"
+        run: dotnet test tests/DotNodeViewer.Core.Tests -c Release --no-build -- --output Detailed --treenode-filter "/*/*/OnnxModelTests/*"
 
       - name: Run ONNX manifest golden snapshot tests (Release)
-        run: dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredOnnxModel*"
+        run: dotnet test tests/DotNodeViewer.Core.Tests -c Release --no-build -- --output Detailed --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredOnnxModel*"
 
       - name: Pipeline inspection - List & verify tested ONNX models
         run: python3 tools/ci/report-tested-models.py onnx
@@ -89,7 +89,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup .NET 10 SDK
+      - name: Setup .NET 8 SDK
         uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
@@ -106,10 +106,10 @@ jobs:
         run: dotnet build tests/DotNodeViewer.Core.Tests -c Release
 
       - name: Run TensorFlow Lite format tests (Release)
-        run: dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/TfliteModelTests/*"
+        run: dotnet test tests/DotNodeViewer.Core.Tests -c Release --no-build -- --output Detailed --treenode-filter "/*/*/TfliteModelTests/*"
 
       - name: Run TensorFlow Lite manifest golden snapshot tests (Release)
-        run: dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredTfliteModel*"
+        run: dotnet test tests/DotNodeViewer.Core.Tests -c Release --no-build -- --output Detailed --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredTfliteModel*"
 
       - name: Pipeline inspection - List & verify tested TensorFlow Lite models
         run: python3 tools/ci/report-tested-models.py tflite
@@ -122,7 +122,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup .NET 10 SDK
+      - name: Setup .NET 8 SDK
         uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
@@ -139,10 +139,10 @@ jobs:
         run: dotnet build tests/DotNodeViewer.Core.Tests -c Release
 
       - name: Run ExecuTorch format tests (Release)
-        run: dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/ExecuTorchModelTests/*"
+        run: dotnet test tests/DotNodeViewer.Core.Tests -c Release --no-build -- --output Detailed --treenode-filter "/*/*/ExecuTorchModelTests/*"
 
       - name: Run ExecuTorch manifest golden snapshot tests (Release)
-        run: dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredExecuTorchModel*"
+        run: dotnet test tests/DotNodeViewer.Core.Tests -c Release --no-build -- --output Detailed --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredExecuTorchModel*"
 
       - name: Pipeline inspection - List & verify tested ExecuTorch models
         run: python3 tools/ci/report-tested-models.py executorch
@@ -155,7 +155,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup .NET 10 SDK
+      - name: Setup .NET 8 SDK
         uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
@@ -172,10 +172,10 @@ jobs:
         run: dotnet build tests/DotNodeViewer.Core.Tests -c Release
 
       - name: Run PyTorch format tests (Release)
-        run: dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/PyTorchModelTests/*"
+        run: dotnet test tests/DotNodeViewer.Core.Tests -c Release --no-build -- --output Detailed --treenode-filter "/*/*/PyTorchModelTests/*"
 
       - name: Run PyTorch manifest golden snapshot tests (Release)
-        run: dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredPyTorchModel*"
+        run: dotnet test tests/DotNodeViewer.Core.Tests -c Release --no-build -- --output Detailed --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredPyTorchModel*"
 
       - name: Pipeline inspection - List & verify tested PyTorch models
         run: python3 tools/ci/report-tested-models.py pytorch
@@ -188,7 +188,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup .NET 10 SDK
+      - name: Setup .NET 8 SDK
         uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
@@ -205,10 +205,10 @@ jobs:
         run: dotnet build tests/DotNodeViewer.Core.Tests -c Release
 
       - name: Run PyTorch .pt2 format tests (Release)
-        run: dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/PyTorchPt2ModelTests/*"
+        run: dotnet test tests/DotNodeViewer.Core.Tests -c Release --no-build -- --output Detailed --treenode-filter "/*/*/PyTorchPt2ModelTests/*"
 
       - name: Run PyTorch .pt2 manifest golden snapshot tests (Release)
-        run: dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredPyTorchPt2Model*"
+        run: dotnet test tests/DotNodeViewer.Core.Tests -c Release --no-build -- --output Detailed --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredPyTorchPt2Model*"
 
       - name: Pipeline inspection - List & verify tested PyTorch .pt2 models
         run: python3 tools/ci/report-tested-models.py pytorch-pt2
@@ -221,7 +221,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup .NET 10 SDK
+      - name: Setup .NET 8 SDK
         uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
@@ -238,10 +238,10 @@ jobs:
         run: dotnet build tests/DotNodeViewer.Core.Tests -c Release
 
       - name: Run Keras format tests (Release)
-        run: dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/KerasModelTests/*"
+        run: dotnet test tests/DotNodeViewer.Core.Tests -c Release --no-build -- --output Detailed --treenode-filter "/*/*/KerasModelTests/*"
 
       - name: Run Keras manifest golden snapshot tests (Release)
-        run: dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredKerasModel*"
+        run: dotnet test tests/DotNodeViewer.Core.Tests -c Release --no-build -- --output Detailed --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredKerasModel*"
 
       - name: Pipeline inspection - List & verify tested Keras models
         run: python3 tools/ci/report-tested-models.py keras
@@ -254,7 +254,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup .NET 10 SDK
+      - name: Setup .NET 8 SDK
         uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
@@ -271,10 +271,10 @@ jobs:
         run: dotnet build tests/DotNodeViewer.Core.Tests -c Release
 
       - name: Run MLIR format tests (Release)
-        run: dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/MlirModelTests/*"
+        run: dotnet test tests/DotNodeViewer.Core.Tests -c Release --no-build -- --output Detailed --treenode-filter "/*/*/MlirModelTests/*"
 
       - name: Run MLIR manifest golden snapshot tests (Release)
-        run: dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredMlirModel*"
+        run: dotnet test tests/DotNodeViewer.Core.Tests -c Release --no-build -- --output Detailed --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredMlirModel*"
 
       - name: Pipeline inspection - List & verify tested MLIR models
         run: python3 tools/ci/report-tested-models.py mlir

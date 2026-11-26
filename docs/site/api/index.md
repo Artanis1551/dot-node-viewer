@@ -1,6 +1,6 @@
 # API Reference (`dot-node-viewer`)
 
-Welcome to the technical API reference for `dot-node-viewer`. The repository provides reusable, high-performance, NativeAOT- and WebAssembly-ready .NET 10 libraries for extracting, analyzing, and laying out computational neural network graphs.
+Welcome to the technical API reference for `dot-node-viewer`. The repository provides reusable, high-performance, NativeAOT- and WebAssembly-ready .NET 8 libraries for extracting, analyzing, and laying out computational neural network graphs.
 
 The library ecosystem is strictly decoupled into pure C# components with no dependencies on Avalonia, SkiaSharp, or platform windowing systems:
 
