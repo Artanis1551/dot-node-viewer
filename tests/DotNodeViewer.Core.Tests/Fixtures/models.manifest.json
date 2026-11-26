@@ -156,6 +156,28 @@
       "expectedSnapshot": "Fixtures/executorch/tiny_cnn_ethosu55.expected.json"
     },
     {
+      "id": "executorch-tiny_xnnpack_ops",
+      "format": "executorch",
+      "fileName": "tiny_xnnpack_ops.pte",
+      "tier": "committed",
+      "relativePath": "Fixtures/executorch/tiny_xnnpack_ops.pte",
+      "sourceUrl": null,
+      "sha256": "bec03c76523465fc0440f43c4f49e726ac2391479d5d1334a706918aad81ddd8",
+      "byteLength": 6032,
+      "expectedSnapshot": "Fixtures/executorch/tiny_xnnpack_ops.expected.json"
+    },
+    {
+      "id": "executorch-tiny_cnn_xnnpack_int8",
+      "format": "executorch",
+      "fileName": "tiny_cnn_xnnpack_int8.pte",
+      "tier": "committed",
+      "relativePath": "Fixtures/executorch/tiny_cnn_xnnpack_int8.pte",
+      "sourceUrl": null,
+      "sha256": "2f4c2b15f781756133d2c30c44c38056852ffe2f22dd75fc4b5de26d7af0ba5e",
+      "byteLength": 5768,
+      "expectedSnapshot": "Fixtures/executorch/tiny_cnn_xnnpack_int8.expected.json"
+    },
+    {
       "id": "pytorch-tiny_cnn_traced",
       "format": "pytorch",
       "fileName": "tiny_cnn_traced.pt",

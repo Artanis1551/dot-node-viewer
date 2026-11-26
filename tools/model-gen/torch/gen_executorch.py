@@ -6,14 +6,26 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
+import tempfile
 from pathlib import Path
 from typing import Any
 
 import torch
 import torch.nn as nn
-from executorch.exir import to_edge, EdgeCompileConfig
+from executorch.exir import to_edge, to_edge_transform_and_lower, EdgeCompileConfig
 from executorch.backends.xnnpack.partition.xnnpack_partitioner import XnnpackPartitioner
+from executorch.backends.xnnpack.quantizer.xnnpack_quantizer import (
+    XNNPACKQuantizer,
+    get_symmetric_quantization_config,
+)
+from executorch.backends.xnnpack.serialization.xnnpack_graph_serialize import (
+    XNNHeader,
+    _get_schema_bytes,
+)
+from executorch.exir._serialize._flatbuffer import _flatc_decompile
 from executorch.exir._serialize._program import deserialize_pte_binary
+from torchao.quantization.pt2e.quantize_pt2e import convert_pt2e, prepare_pt2e
 
 SCALAR_TYPE_TO_IR: dict[int, str] = {
     0: "UInt8",
@@ -82,6 +94,139 @@ def build_tiny_cnn_xnnpack() -> bytes:
     edge_lowered = edge.to_backend(XnnpackPartitioner())
     et_prog = edge_lowered.to_executorch()
     return et_prog.buffer
+
+
+def build_tiny_xnnpack_ops() -> bytes:
+    torch.manual_seed(42)
+
+    class RichXnnModel(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.conv = nn.Conv2d(3, 8, 3, padding=1)
+            self.dw = nn.Conv2d(8, 8, 3, padding=1, groups=8)
+            self.fc = nn.Linear(8, 4)
+
+        def forward(self, x):
+            h1 = torch.relu(self.conv(x))
+            h2 = torch.nn.functional.hardswish(self.dw(h1))
+            h = h1 + h2
+            h = h.mean(dim=(2, 3), keepdim=True)
+            h = h.reshape(1, 8)
+            return torch.softmax(self.fc(h), dim=-1)
+
+    model = RichXnnModel().eval()
+    example_inputs = (torch.randn(1, 3, 8, 8),)
+    ep = torch.export.export(model, example_inputs)
+    et_prog = to_edge_transform_and_lower(ep, partitioner=[XnnpackPartitioner()]).to_executorch()
+    return et_prog.buffer
+
+
+def build_tiny_cnn_xnnpack_int8() -> bytes:
+    torch.manual_seed(42)
+
+    class TinyQuantCnn(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.conv = nn.Conv2d(3, 4, 3, padding=1)
+            self.relu = nn.ReLU()
+            self.fc = nn.Linear(4, 2)
+
+        def forward(self, x):
+            h = self.relu(self.conv(x))
+            h = h.mean(dim=(2, 3), keepdim=True).reshape(1, 4)
+            return self.fc(h)
+
+    model = TinyQuantCnn().eval()
+    example_inputs = (torch.randn(1, 3, 8, 8),)
+    ep = torch.export.export(model, example_inputs)
+    quantizer = XNNPACKQuantizer()
+    quantizer.set_global(get_symmetric_quantization_config(is_per_channel=True))
+    prepared = prepare_pt2e(ep.module(), quantizer)
+    prepared(*example_inputs)
+    converted = convert_pt2e(prepared)
+    ep_quant = torch.export.export(converted, example_inputs)
+    et_prog = to_edge_transform_and_lower(ep_quant, partitioner=[XnnpackPartitioner()]).to_executorch()
+    return et_prog.buffer
+
+
+XNN_DATATYPE_TO_IR: dict[str, str] = {
+    "xnn_datatype_fp32": "Float32",
+    "xnn_datatype_fp16": "Float16",
+    "xnn_datatype_qint8": "Int8",
+    "xnn_datatype_quint8": "UInt8",
+    "xnn_datatype_qint32": "Int32",
+    "xnn_datatype_qcint8": "Int8",
+    "xnn_datatype_qcint32": "Int32",
+    "xnn_datatype_qcint4": "Int4",
+    "xnn_datatype_qdint8": "Int8",
+    "xnn_datatype_qbint4": "Int4",
+    "xnn_datatype_qpint8": "Int8",
+    "xnn_datatype_int32": "Int32",
+    "xnn_datatype_pfp32": "Float32",
+    "xnn_datatype_bf16": "BFloat16",
+}
+
+
+def extract_xnnpack_delegate_truth(pte_bytes: bytes) -> dict[str, Any] | None:
+    pte = deserialize_pte_binary(pte_bytes)
+    plan = pte.program.execution_plan[0]
+    for delegate in plan.delegates:
+        if delegate.id != "XnnpackBackend":
+            continue
+        if delegate.processed.location == 0:
+            blob = pte.program.backend_delegate_data[delegate.processed.index].data
+        else:
+            blob = pte.segments[delegate.processed.index]
+
+        if blob[4:8] == b"XH00":
+            hdr = XNNHeader.from_bytes(blob[:30])
+            fb_bytes = blob[hdr.flatbuffer_offset : hdr.flatbuffer_offset + hdr.flatbuffer_size]
+        else:
+            fb_bytes = blob
+
+        with tempfile.TemporaryDirectory() as tmp:
+            schema_path = os.path.join(tmp, "schema.fbs")
+            bin_path = os.path.join(tmp, "xnn.bin")
+            Path(schema_path).write_bytes(_get_schema_bytes())
+            Path(bin_path).write_bytes(fb_bytes)
+            _flatc_decompile(tmp, schema_path, bin_path)
+            raw_json = Path(os.path.join(tmp, "xnn.json")).read_text(encoding="utf-8")
+            normalized = re.sub(r":\s*([-+]?)inf\b", r": \1Infinity", raw_json)
+            xnn_graph = json.loads(normalized)
+
+        xnodes = xnn_graph.get("xnodes", [])
+        xvalues = xnn_graph.get("xvalues", [])
+        op_hist: dict[str, int] = {}
+        for xnode in xnodes:
+            op_name = xnode["xnode_union_type"]
+            op_hist[op_name] = op_hist.get(op_name, 0) + 1
+
+        def get_tv(xv: dict[str, Any]) -> dict[str, Any]:
+            if xv["xvalue_union_type"] == "XNNQuantizedTensorValue":
+                return xv["xvalue_union"]["tensor_value"]
+            return xv["xvalue_union"]
+
+        qval_count = sum(1 for xv in xvalues if xv["xvalue_union_type"] == "XNNQuantizedTensorValue")
+        const_count = sum(1 for xv in xvalues if get_tv(xv).get("constant_buffer_idx", 0) > 0)
+
+        def fmt_xval(idx: int) -> dict[str, Any]:
+            tv = get_tv(xvalues[idx])
+            return {
+                "dataType": XNN_DATATYPE_TO_IR.get(tv.get("datatype", ""), "Unknown"),
+                "shape": [int(d) for d in tv.get("dims", [])],
+            }
+
+        return {
+            "backend": "xnnpack",
+            "nodeCount": len(xnodes),
+            "valueCount": len(xvalues),
+            "constantCount": const_count,
+            "quantizedValueCount": qval_count,
+            "operatorHistogram": op_hist,
+            "inputs": [fmt_xval(i) for i in xnn_graph.get("input_ids", [])],
+            "outputs": [fmt_xval(i) for i in xnn_graph.get("output_ids", [])],
+        }
+    return None
 
 
 def extract_truth(pte_bytes: bytes, model_id: str) -> dict[str, Any]:
@@ -160,7 +305,7 @@ def extract_truth(pte_bytes: bytes, model_id: str) -> dict[str, Any]:
     version = getattr(prog, "version", 0)
     fmt = f"ExecuTorch v{version}" if version > 0 else "ExecuTorch"
 
-    return {
+    truth: dict[str, Any] = {
         "modelId": model_id,
         "format": fmt,
         "subgraphCount": len(prog.execution_plan),
@@ -173,6 +318,10 @@ def extract_truth(pte_bytes: bytes, model_id: str) -> dict[str, Any]:
             "initializers": initializers,
         },
     }
+    xnn_truth = extract_xnnpack_delegate_truth(pte_bytes)
+    if xnn_truth is not None:
+        truth["delegate"] = xnn_truth
+    return truth
 
 
 def main() -> None:
@@ -183,14 +332,35 @@ def main() -> None:
         default=Path("tests/DotNodeViewer.Core.Tests/Fixtures/executorch"),
         help="Output directory for generated .pte and .truth.json files.",
     )
+    parser.add_argument(
+        "--only-w11",
+        action="store_true",
+        help="Generate only the W11 XNNPACK fixtures and enrich tiny_cnn_xnnpack.truth.json without modifying existing .pte binaries.",
+    )
     args = parser.parse_args()
     out_dir: Path = args.out_dir
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    specs = [
-        ("tiny_mlp_portable", "executorch-tiny_mlp_portable", build_tiny_mlp()),
-        ("tiny_cnn_xnnpack", "executorch-tiny_cnn_xnnpack", build_tiny_cnn_xnnpack()),
-    ]
+    if args.only_w11:
+        specs = [
+            ("tiny_xnnpack_ops", "executorch-tiny_xnnpack_ops", build_tiny_xnnpack_ops()),
+            ("tiny_cnn_xnnpack_int8", "executorch-tiny_cnn_xnnpack_int8", build_tiny_cnn_xnnpack_int8()),
+        ]
+        existing_xnn_pte = out_dir / "tiny_cnn_xnnpack.pte"
+        if existing_xnn_pte.exists():
+            existing_truth = extract_truth(existing_xnn_pte.read_bytes(), "executorch-tiny_cnn_xnnpack")
+            (out_dir / "tiny_cnn_xnnpack.truth.json").write_text(
+                json.dumps(existing_truth, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            print(f"Updated {out_dir / 'tiny_cnn_xnnpack.truth.json'} with XNNPACK delegate ground truth")
+    else:
+        specs = [
+            ("tiny_mlp_portable", "executorch-tiny_mlp_portable", build_tiny_mlp()),
+            ("tiny_cnn_xnnpack", "executorch-tiny_cnn_xnnpack", build_tiny_cnn_xnnpack()),
+            ("tiny_xnnpack_ops", "executorch-tiny_xnnpack_ops", build_tiny_xnnpack_ops()),
+            ("tiny_cnn_xnnpack_int8", "executorch-tiny_cnn_xnnpack_int8", build_tiny_cnn_xnnpack_int8()),
+        ]
 
     for stem, model_id, pte_bytes in specs:
         pte_path = out_dir / f"{stem}.pte"

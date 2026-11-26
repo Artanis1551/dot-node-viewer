@@ -1,0 +1,34 @@
+{
+  "modelId": "executorch-tiny_xnnpack_ops",
+  "format": "ExecuTorch",
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "forward",
+    "nodeCount": 1,
+    "operatorHistogram": {
+      "Delegate (XnnpackBackend)": 1
+    },
+    "inputs": [
+      {
+        "name": "v0",
+        "dataType": "Float32",
+        "shape": [
+          "1",
+          "3",
+          "8",
+          "8"
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "v1",
+        "dataType": "Float32",
+        "shape": [
+          "1",
+          "4"
+        ]
+      }
+    ]
+  }
+}

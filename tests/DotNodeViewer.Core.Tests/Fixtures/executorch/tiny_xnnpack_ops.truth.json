@@ -1,0 +1,73 @@
+{
+  "modelId": "executorch-tiny_xnnpack_ops",
+  "format": "ExecuTorch",
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "forward",
+    "nodeCount": 1,
+    "operatorHistogram": {
+      "Delegate (XnnpackBackend)": 1
+    },
+    "inputs": [
+      {
+        "name": "v0",
+        "dataType": "Float32",
+        "shape": [
+          1,
+          3,
+          8,
+          8
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "v1",
+        "dataType": "Float32",
+        "shape": [
+          1,
+          4
+        ]
+      }
+    ],
+    "initializers": []
+  },
+  "delegate": {
+    "backend": "xnnpack",
+    "nodeCount": 10,
+    "valueCount": 17,
+    "constantCount": 6,
+    "quantizedValueCount": 0,
+    "operatorHistogram": {
+      "XNNStaticTranspose": 2,
+      "XNNConv2d": 1,
+      "XNNDepthwiseConv2d": 1,
+      "XNNHardswish": 1,
+      "XNNAdd": 1,
+      "XNNGlobalAvgPooling2d": 1,
+      "XNNStaticReshape": 1,
+      "XNNFullyConnected": 1,
+      "XNNSoftmax": 1
+    },
+    "inputs": [
+      {
+        "dataType": "Float32",
+        "shape": [
+          1,
+          3,
+          8,
+          8
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "dataType": "Float32",
+        "shape": [
+          1,
+          4
+        ]
+      }
+    ]
+  }
+}
