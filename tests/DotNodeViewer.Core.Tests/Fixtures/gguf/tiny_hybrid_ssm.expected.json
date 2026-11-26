@@ -1,0 +1,43 @@
+{
+  "modelId": "gguf-tiny_hybrid_ssm",
+  "format": "GGUF v3",
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "tiny-lfm3-hybrid",
+    "nodeCount": 5,
+    "operatorHistogram": {
+      "TokenEmbedding": 1,
+      "SSMBlock": 1,
+      "TransformerBlock": 1,
+      "OutputNorm": 1,
+      "LMHead": 1
+    },
+    "inputs": [
+      {
+        "name": "input_ids",
+        "dataType": "Int32",
+        "shape": [
+          "batch",
+          "seq_len"
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "logits",
+        "dataType": "Float32",
+        "shape": [
+          "batch",
+          "seq_len",
+          "64"
+        ]
+      }
+    ],
+    "sampleWeightSlice": {
+      "tensorName": "token_embd.weight",
+      "dataType": "Float16",
+      "streamOffset": 1024,
+      "byteLength": 32768
+    }
+  }
+}

@@ -1,0 +1,119 @@
+{
+  "modelId": "gguf-tiny_audio_kokoro",
+  "format": "GGUF v3",
+  "alignment": 32,
+  "dataBaseOffset": 736,
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "tiny-kokoro-tts",
+    "nodeCount": 5,
+    "operatorHistogram": {
+      "AlbertEncoder": 1,
+      "BertProjection": 1,
+      "TextEncoder": 1,
+      "ProsodyPredictor": 1,
+      "AudioDecoder": 1
+    },
+    "inputs": [
+      {
+        "name": "input_ids",
+        "dataType": "Int32",
+        "shape": [
+          "batch",
+          "seq_len"
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "audio",
+        "dataType": "Float32",
+        "shape": [
+          "batch",
+          "samples"
+        ]
+      }
+    ],
+    "initializers": [
+      {
+        "name": "bert.embeddings.word_embeddings.weight",
+        "ggmlType": "F16",
+        "dataType": "Float16",
+        "quantizationScheme": null,
+        "blockSize": null,
+        "shape": [
+          "64",
+          "64"
+        ],
+        "streamOffset": 736,
+        "byteLength": 8192
+      },
+      {
+        "name": "bert.encoder.layer.0.attention.self.query.weight",
+        "ggmlType": "Q8_0",
+        "dataType": "UInt8",
+        "quantizationScheme": "Q8_0",
+        "blockSize": 32,
+        "shape": [
+          "64",
+          "64"
+        ],
+        "streamOffset": 8928,
+        "byteLength": 4352
+      },
+      {
+        "name": "bert_encoder.weight",
+        "ggmlType": "F16",
+        "dataType": "Float16",
+        "quantizationScheme": null,
+        "blockSize": null,
+        "shape": [
+          "64",
+          "64"
+        ],
+        "streamOffset": 13280,
+        "byteLength": 8192
+      },
+      {
+        "name": "text_encoder.lstm.weight_ih_l0",
+        "ggmlType": "Q8_0",
+        "dataType": "UInt8",
+        "quantizationScheme": "Q8_0",
+        "blockSize": 32,
+        "shape": [
+          "64",
+          "64"
+        ],
+        "streamOffset": 21472,
+        "byteLength": 4352
+      },
+      {
+        "name": "predictor.duration_proj.weight",
+        "ggmlType": "F16",
+        "dataType": "Float16",
+        "quantizationScheme": null,
+        "blockSize": null,
+        "shape": [
+          "16",
+          "64"
+        ],
+        "streamOffset": 25824,
+        "byteLength": 2048
+      },
+      {
+        "name": "decoder.generator.conv_post.weight",
+        "ggmlType": "F32",
+        "dataType": "Float32",
+        "quantizationScheme": null,
+        "blockSize": null,
+        "shape": [
+          "3",
+          "32",
+          "32"
+        ],
+        "streamOffset": 27872,
+        "byteLength": 12288
+      }
+    ]
+  }
+}

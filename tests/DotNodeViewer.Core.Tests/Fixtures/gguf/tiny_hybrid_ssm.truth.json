@@ -1,0 +1,193 @@
+{
+  "modelId": "gguf-tiny_hybrid_ssm",
+  "format": "GGUF v3",
+  "alignment": 32,
+  "dataBaseOffset": 1024,
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "tiny-lfm3-hybrid",
+    "nodeCount": 5,
+    "operatorHistogram": {
+      "TokenEmbedding": 1,
+      "SSMBlock": 1,
+      "TransformerBlock": 1,
+      "OutputNorm": 1,
+      "LMHead": 1
+    },
+    "inputs": [
+      {
+        "name": "input_ids",
+        "dataType": "Int32",
+        "shape": [
+          "batch",
+          "seq_len"
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "logits",
+        "dataType": "Float32",
+        "shape": [
+          "batch",
+          "seq_len",
+          "64"
+        ]
+      }
+    ],
+    "initializers": [
+      {
+        "name": "token_embd.weight",
+        "ggmlType": "F16",
+        "dataType": "Float16",
+        "quantizationScheme": null,
+        "blockSize": null,
+        "shape": [
+          "64",
+          "256"
+        ],
+        "streamOffset": 1024,
+        "byteLength": 32768
+      },
+      {
+        "name": "blk.0.attn_norm.weight",
+        "ggmlType": "F32",
+        "dataType": "Float32",
+        "quantizationScheme": null,
+        "blockSize": null,
+        "shape": [
+          "256"
+        ],
+        "streamOffset": 33792,
+        "byteLength": 1024
+      },
+      {
+        "name": "blk.0.ssm_in.weight",
+        "ggmlType": "Q4_K",
+        "dataType": "UInt8",
+        "quantizationScheme": "Q4_K",
+        "blockSize": 256,
+        "shape": [
+          "32",
+          "256"
+        ],
+        "streamOffset": 34816,
+        "byteLength": 4608
+      },
+      {
+        "name": "blk.0.ssm_conv1d.weight",
+        "ggmlType": "F32",
+        "dataType": "Float32",
+        "quantizationScheme": null,
+        "blockSize": null,
+        "shape": [
+          "256",
+          "4"
+        ],
+        "streamOffset": 39424,
+        "byteLength": 4096
+      },
+      {
+        "name": "blk.0.ssm_out.weight",
+        "ggmlType": "Q4_K",
+        "dataType": "UInt8",
+        "quantizationScheme": "Q4_K",
+        "blockSize": 256,
+        "shape": [
+          "32",
+          "256"
+        ],
+        "streamOffset": 43520,
+        "byteLength": 4608
+      },
+      {
+        "name": "blk.1.attn_norm.weight",
+        "ggmlType": "F32",
+        "dataType": "Float32",
+        "quantizationScheme": null,
+        "blockSize": null,
+        "shape": [
+          "256"
+        ],
+        "streamOffset": 48128,
+        "byteLength": 1024
+      },
+      {
+        "name": "blk.1.attn_q.weight",
+        "ggmlType": "Q4_K",
+        "dataType": "UInt8",
+        "quantizationScheme": "Q4_K",
+        "blockSize": 256,
+        "shape": [
+          "32",
+          "256"
+        ],
+        "streamOffset": 49152,
+        "byteLength": 4608
+      },
+      {
+        "name": "blk.1.attn_output.weight",
+        "ggmlType": "Q8_0",
+        "dataType": "UInt8",
+        "quantizationScheme": "Q8_0",
+        "blockSize": 32,
+        "shape": [
+          "32",
+          "256"
+        ],
+        "streamOffset": 53760,
+        "byteLength": 8704
+      },
+      {
+        "name": "blk.1.ffn_norm.weight",
+        "ggmlType": "F32",
+        "dataType": "Float32",
+        "quantizationScheme": null,
+        "blockSize": null,
+        "shape": [
+          "256"
+        ],
+        "streamOffset": 62464,
+        "byteLength": 1024
+      },
+      {
+        "name": "blk.1.ffn_down.weight",
+        "ggmlType": "Q4_K",
+        "dataType": "UInt8",
+        "quantizationScheme": "Q4_K",
+        "blockSize": 256,
+        "shape": [
+          "32",
+          "256"
+        ],
+        "streamOffset": 63488,
+        "byteLength": 4608
+      },
+      {
+        "name": "output_norm.weight",
+        "ggmlType": "F32",
+        "dataType": "Float32",
+        "quantizationScheme": null,
+        "blockSize": null,
+        "shape": [
+          "256"
+        ],
+        "streamOffset": 68096,
+        "byteLength": 1024
+      },
+      {
+        "name": "output.weight",
+        "ggmlType": "Q8_0",
+        "dataType": "UInt8",
+        "quantizationScheme": "Q8_0",
+        "blockSize": 32,
+        "shape": [
+          "64",
+          "256"
+        ],
+        "streamOffset": 69120,
+        "byteLength": 17408
+      }
+    ]
+  }
+}

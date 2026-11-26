@@ -697,7 +697,8 @@ internal static class GgufGraphSynthesizer
             {
                 hasSsm = true;
             }
-            if (suffix.Contains("attn_", StringComparison.Ordinal) || suffix.Contains("self_attn", StringComparison.Ordinal))
+            if ((suffix.StartsWith("attn_", StringComparison.Ordinal) && !suffix.StartsWith("attn_norm", StringComparison.Ordinal))
+                || suffix.StartsWith("self_attn", StringComparison.Ordinal))
             {
                 hasAttn = true;
             }
