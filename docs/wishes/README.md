@@ -26,4 +26,4 @@ This folder holds **feature briefs for work we want to do after the planned road
 | [W10](W10-nuget-package-deployment-and-tag-versioning.md) | Automated NuGet Package Deployment and Git Tag Versioning | S00, S01, S04 | Proposed |
 | [W11](W11-executorch-xnnpack-delegate-unwrapping.md) | ExecuTorch `XnnpackBackend` Delegate Unwrapping | S07, W01, S11 | Proposed |
 | [W12](W12-gguf-format-support.md) | GGUF Format Support (LLM & Audio Model Graphs) | S01, S04, S11 | Proposed |
-| [W13](W13-mlir-format-support.md) | MLIR Format Support (Textual & Bytecode IR) | S01, S04, S11 | Proposed |
+| [W13](W13-mlir-format-support.md) | MLIR Format Support (Textual & Bytecode IR) | S01, S04, S11 | Done |

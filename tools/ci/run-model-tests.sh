@@ -3,7 +3,7 @@ set -euo pipefail
 
 FORMAT="${1:-}"
 if [[ -z "$FORMAT" ]]; then
-  echo "Usage: $0 <onnx|tflite|executorch|pytorch|pytorch-pt2|keras>" >&2
+  echo "Usage: $0 <onnx|tflite|executorch|pytorch|pytorch-pt2|keras|mlir>" >&2
   exit 1
 fi
 
@@ -50,8 +50,14 @@ case "$FORMAT" in
     echo "=== Running Keras manifest golden snapshot tests ==="
     dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredKerasModel*"
     ;;
+  mlir)
+    echo "=== Running MLIR format integration tests ==="
+    dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/MlirModelTests/*"
+    echo "=== Running MLIR manifest golden snapshot tests ==="
+    dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed -- --treenode-filter "/*/*/ModelManifestTests/ParseRegisteredMlirModel*"
+    ;;
   *)
-    echo "Error: Unknown format '$FORMAT'. Expected one of: onnx, tflite, executorch, pytorch, pytorch-pt2 (or pytorch_pt2), keras." >&2
+    echo "Error: Unknown format '$FORMAT'. Expected one of: onnx, tflite, executorch, pytorch, pytorch-pt2 (or pytorch_pt2), keras, mlir." >&2
     exit 1
     ;;
 esac

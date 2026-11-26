@@ -29,6 +29,8 @@
           href: formats/pytorch.md
         - name: Keras (.keras, .h5)
           href: formats/keras.md
+        - name: MLIR (.mlir, .mlirbc)
+          href: formats/mlir.md
         - name: Arm Ethos-U NPU Delegate
           href: formats/ethos-u.md
     - name: CLI Reference (DotNodeViewer.Cli)

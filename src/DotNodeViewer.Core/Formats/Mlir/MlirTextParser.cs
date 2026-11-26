@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text.RegularExpressions;
 using DotNodeViewer.Core.Abstractions;
 using DotNodeViewer.Core.IO;
 using DotNodeViewer.Core.Ir;
@@ -10,7 +9,7 @@ namespace DotNodeViewer.Core.Formats.Mlir;
 /// Streaming recursive-descent parser for textual MLIR (<c>.mlir</c>) modules, functions,
 /// nested regions, SSA dataflow, dialect attributes, and <c>dense_resource</c> weight references.
 /// </summary>
-internal sealed partial class MlirTextParser
+internal sealed class MlirTextParser
 {
     private readonly MlirTextLexer _lexer;
     private readonly IReadOnlyList<MlirToken> _tokens;
@@ -242,13 +241,69 @@ internal sealed partial class MlirTextParser
 
     private void ParseResourceBlock(string blockText)
     {
-        MatchCollection matches = ResourceEntryRegex().Matches(blockText);
-        foreach (Match match in matches)
+        int i = 0;
+        int len = blockText.Length;
+        while (i < len)
         {
-            string key = match.Groups["key"].Value;
-            string hex = match.Groups["hex"].Value;
-            long byteLength = ComputeMlirHexBlobByteLength(hex);
-            _resources[key] = new ResourceEntryInfo(key, byteLength);
+            int quoteStart = blockText.IndexOf("\"0x", i, StringComparison.OrdinalIgnoreCase);
+            if (quoteStart < 0)
+            {
+                break;
+            }
+
+            int quoteEnd = blockText.IndexOf('"', quoteStart + 1);
+            if (quoteEnd < 0)
+            {
+                break;
+            }
+
+            // Walk backward before quoteStart to find ':' and then the resource key
+            int colon = quoteStart - 1;
+            while (colon >= 0 && char.IsWhiteSpace(blockText[colon]))
+            {
+                colon--;
+            }
+
+            if (colon >= 0 && blockText[colon] == ':')
+            {
+                int keyEnd = colon - 1;
+                while (keyEnd >= 0 && char.IsWhiteSpace(blockText[keyEnd]))
+                {
+                    keyEnd--;
+                }
+
+                if (keyEnd >= 0)
+                {
+                    string? key = null;
+                    if (blockText[keyEnd] == '"')
+                    {
+                        int keyStartQuote = blockText.LastIndexOf('"', keyEnd - 1);
+                        if (keyStartQuote >= 0)
+                        {
+                            key = blockText.Substring(keyStartQuote + 1, keyEnd - keyStartQuote - 1);
+                        }
+                    }
+                    else
+                    {
+                        int keyStart = keyEnd;
+                        while (keyStart >= 0 && (char.IsAsciiLetterOrDigit(blockText[keyStart]) || blockText[keyStart] is '_' or '.' or '$' or '-'))
+                        {
+                            keyStart--;
+                        }
+
+                        key = blockText.Substring(keyStart + 1, keyEnd - keyStart);
+                    }
+
+                    if (!string.IsNullOrEmpty(key))
+                    {
+                        string hex = blockText.Substring(quoteStart + 1, quoteEnd - quoteStart - 1);
+                        long byteLength = ComputeMlirHexBlobByteLength(hex);
+                        _resources[key] = new ResourceEntryInfo(key, byteLength);
+                    }
+                }
+            }
+
+            i = quoteEnd + 1;
         }
     }
 
@@ -2011,7 +2066,4 @@ internal sealed partial class MlirTextParser
     }
 
     private readonly record struct ResourceEntryInfo(string Key, long ByteLength);
-
-    [GeneratedRegex(@"(?<key>[A-Za-z_][A-Za-z0-9_$.-]*|""[^""]+"")\s*:\s*""(?<hex>0x[0-9A-Fa-f]+)""", RegexOptions.CultureInvariant)]
-    private static partial Regex ResourceEntryRegex();
 }

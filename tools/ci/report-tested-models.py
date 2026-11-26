@@ -33,6 +33,7 @@ def main() -> None:
         "pytorch": "PyTorch",
         "pytorch-pt2": "PyTorch .pt2",
         "keras": "Keras",
+        "mlir": "MLIR",
     }
     format_label = display_names.get(target_format, target_format.upper())
 

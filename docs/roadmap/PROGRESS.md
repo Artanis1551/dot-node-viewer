@@ -24,6 +24,7 @@ Every stage agent MUST read this file before starting work and append a completi
 | **W02** | [`W02-visual-subgraph-layout-spatial-indexing.md`](../wishes/W02-visual-subgraph-layout-spatial-indexing.md) | `refactor/visual-subgraph-layout-spatial-indexing` | Complete | Embedded zero-alloc bitset `SpatialGridIndex`, eager immutable `PositionedEdge.Bounds`, thread-safe 1-hop adjacency, `GraphCanvas` buffer reuse, tests & docs |
 | **W03** | [`W03-zero-allocation-model-probe-and-zip-directory.md`](../wishes/W03-zero-allocation-model-probe-and-zip-directory.md) | `refactor/W03-zero-allocation-model-probe` | Complete | Unified `ModelProbe` and `ZipDirectory` into zero-allocation single-pass probing seam (PR #13, `0e5fbe3`) |
 | **W07** | [`W07-github-pages-documentation-deployment.md`](../wishes/W07-github-pages-documentation-deployment.md) | `infra/github-pages-docs-deployment` | Complete | Automated DocFX & WebAssembly deployment via GitHub Pages (`.github/workflows/docs.yml`), `.nojekyll`, co-hosted `/demo/` |
+| **W13** | [`W13-mlir-format-support.md`](../wishes/W13-mlir-format-support.md) | `feature/mlir-format-support` | Complete | MLIR Bytecode (`.mlirbc`) & Textual (`.mlir`) detection and parsing across StableHLO/VHLO, TOSA, Torch-MLIR, Triton, IREE, Linalg; `UInt128` overflow guard, single-`?` dim inference, ADR 0009, 5 committed fixtures & DocFX docs |
 
 ---
 
@@ -881,6 +882,54 @@ Every stage agent MUST read this file before starting work and append a completi
   - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
   - `python3 tools/desktop_harness.py capture docs/screenshots/W02/01-graphcanvas-spatial-culling.png`
   - `python3 tools/desktop_harness.py click-ratio 0.34 0.44 && python3 tools/desktop_harness.py capture docs/screenshots/W02/02-graphcanvas-node-selection-adjacency.png`
+
+---
+
+### Wish W13 — MLIR Format Support (Textual & Bytecode IR)
+- **Branch:** `feature/mlir-format-support` (worktree `.worktrees/W13-mlir-format-support`)
+- **Commits:**
+  - `f767299` — `W13: record ADR 0009 and add ModelFormatId.Mlir`
+  - `e45546b` — `W13: implement MLIR detector, shape helper, operator catalog, and bytecode/textual parsers`
+  - `d4b9e36` — `W13: register MLIR extensions in UI file pickers, drag-and-drop, and format pills`
+  - `2ec1103` — `W13: add MLIR model-gen, committed fixtures, golden snapshots, and tests`
+  - *(final commit)* — `W13: update CI, README, DocFX site, wish status, and PROGRESS.md`
+- **What Was Built:**
+  - **Frozen IR Addition (`ModelFormatId.Mlir`):** Added `ModelFormatId.Mlir => new("mlir")` in `src/DotNodeViewer.Core/Ir/ModelFormatInfo.cs`, governed by **ADR 0009**.
+  - **MLIR Format Detection (`src/DotNodeViewer.Core/Formats/Mlir/MlirFormatDetector.cs`):**
+    - Binary detection via exact 4-byte `ML\xEFR` (`0x4D 0x4C 0xEF 0x52`) magic and `PrefixVarInt` version check (`<= 16`).
+    - Bounded 4 KB textual prefix scan matching MLIR module/function/dialect headers while rejecting JSON, XML, Python, and arbitrary text and restoring `Stream.Position`.
+  - **Internal Streaming MLIR Parsers (`src/DotNodeViewer.Core/Formats/Mlir/`, all `internal`):**
+    - `MlirBytecodeReader`: streaming LLVM MLIR Bytecode section walker (`kString`, `kDialect`, `kAttrType`, `kAttrTypeOffset`, `kIR`, `kResource`, `kResourceOffset`, `kDialectVersions`, `kProperties`) with `PrefixVarInt` decoding and zero-allocation lazy slicing of `kResource` blobs and `DenseIntOrFPElementsAttr` payloads into `TensorDataSlice`.
+    - `MlirTextLexer` & `MlirTextParser`: bounded UTF-8 lexer and recursive-descent parser supporting generic (`"dialect.op"(...)`) and custom dialect forms, `#`/`!` aliases, `{-# dialect_resources #-}` metadata, `dense<...>` / `dense_resource<...>`, nested regions (`scf.if`, `scf.for`, `linalg.generic`, etc.) as child `Subgraph`s (`AttributeValue.Graph` / `GraphList`), multi-block CFG successors (`cf.br`, `cf.cond_br`), and `MaxSubgraphDepth` enforcement.
+    - `MlirShapeHelper`: checked `UInt128` element-count and byte-length arithmetic (`DNV_MLIR_SHAPE_OVERFLOW`), single-`?` dynamic dimension inference from buffer byte length, `!quant.uniform<...>` affine quantization parsing, and graceful `DataType.Unknown` mapping with `DNV_MLIR_UNSUPPORTED_DTYPE` diagnostics for emerging compiler types (`float8e5m3fnu`, `mxi8`, `complex<float16>`).
+    - `MlirOperatorCatalog`: maps dialect operations across `torch.*`, `torch.quantized_decomposed.*`, `torch.torchao.*`, `stablehlo.*`, `vhlo.*`, `mhlo.*`, `chlo.*`, `xla.*`, `tt.*`, `ttg.*`, `ttng.*`, `tosa.*`, `linalg.*`, `iree_input.*`, `flow.*`, `hal.*`, `arith.*`, `math.*`, `tensor.*`, `memref.*`, `scf.*`, `cf.*`, `func.*`, and `builtin.*` into semantic `OperatorCategory` values with `OperatorInfo.Domain`.
+    - `MlirFormatReader`: dispatches `.mlirbc` vs `.mlir` streams, registered in `ModelFormatRegistry.Default`, and rejected early in `OnnxFormatDetector`.
+  - **UI & Drag-and-Drop Integration (`src/DotNodeViewer.App/`):**
+    - Added `.mlir` and `.mlirbc` to `MainWindowViewModel.SupportedModelExtensions`, desktop/browser `FilePickerFileType` filters (`MainWindow.axaml.cs`, `App.axaml.cs`), `LinuxXdndDropBridge`, and `MainView.axaml` format badge strips.
+  - **Deterministic Model Generator, Committed Fixtures & Tests:**
+    - Created `tools/model-gen/mlir/gen_mlir.py` generating 5 committed fixtures (`<= 256 KB`) with independent `*.truth.json` files and CLI-generated `*.expected.json` snapshots (`tiny_stablehlo.mlir`, `tiny_tosa.mlir`, `tiny_torch_quant.mlir`, `tiny_triton_kernel.mlir`, `tiny_stablehlo_bytecode.mlirbc`), registered in `tests/DotNodeViewer.Core.Tests/Fixtures/models.manifest.json`.
+    - Added `MlirSyntheticTests`, `MlirModelTests`, `ModelManifestTests.ParseRegisteredMlirModel_MatchesExpectedTopology`, `.mlir`/`.mlirbc` coverage in `DragAndDropModelLoadingTests`, and `GraphCanvas_Render_MlirTinyStableHlo_RendersToBitmapAndSelectsNode` in `GraphCanvasTests`.
+    - Updated `tools/ci/run-model-tests.sh`, `tools/ci/report-tested-models.py`, `.agents/skills/add-test-model/scripts/stage-model.sh`, and `.github/workflows/ci.yml` (`model-tests-mlir` job).
+- **`README.md` & `docs/site/` Updates:**
+  - Authored [`docs/site/articles/formats/mlir.md`](../site/articles/formats/mlir.md) (Diátaxis Reference + Explanation) and linked it in [`docs/site/articles/toc.yml`](../site/articles/toc.yml) and [`docs/site/articles/formats/overview.md`](../site/articles/formats/overview.md).
+  - Updated root [`README.md`](../../README.md) Supported Model Formats table and `DotNodeViewer.Core` description.
+  - Updated [`docs/wishes/W13-mlir-format-support.md`](../wishes/W13-mlir-format-support.md) and [`docs/wishes/README.md`](../wishes/README.md) status to `Done`.
+- **New ADRs Recorded:**
+  - [`docs/adr/0009-mlir-format-support-and-ir-additions.md`](../adr/0009-mlir-format-support-and-ir-additions.md) — MLIR Format Support & Frozen IR Additions.
+- **Deviations & Known Limitations:**
+  - No X11 display server (`DISPLAY` unset / `:0` unreachable) was available in this headless execution environment, so UI rendering for `.mlir` was verified via headless Avalonia `RenderTargetBitmap` (`GraphCanvas_Render_MlirTinyStableHlo_RendersToBitmapAndSelectsNode`) and drag-and-drop filter unit tests rather than live X11 screenshots.
+- **Test Count:** 316 passed (`DotNodeViewer.Core.Tests`: 213, `DotNodeViewer.Layout.Tests`: 29, `DotNodeViewer.App.Tests`: 74), 0 failed, 0 skipped.
+- **Screenshots Taken:** None (headless environment without X11 display; verified via headless `RenderTargetBitmap` test).
+- **Verification Commands Run:**
+  - `dotnet build dot-node-viewer.slnx -c Release --no-restore`
+  - `dotnet test --solution dot-node-viewer.slnx -c Release --no-build`
+  - `dotnet publish tools/DotNodeViewer.Cli/DotNodeViewer.Cli.csproj -c Release -p:PublishAot=true --no-restore`
+  - `dotnet run --project tools/DotNodeViewer.Cli/DotNodeViewer.Cli.csproj -c Release --no-build -- inspect tests/DotNodeViewer.Core.Tests/Fixtures/mlir/tiny_stablehlo.mlir`
+  - `dotnet run --project tools/DotNodeViewer.Cli/DotNodeViewer.Cli.csproj -c Release --no-build -- inspect tests/DotNodeViewer.Core.Tests/Fixtures/mlir/tiny_stablehlo_bytecode.mlirbc`
+  - `bash tools/ci/run-model-tests.sh mlir`
+  - `dotnet tool run docfx metadata docs/site/docfx.json --warningsAsErrors`
+  - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
+
 
 
 
