@@ -92,7 +92,7 @@ foreach (GraphNode node in primary.Nodes)
 
 ## Layout Engine (`DotNodeViewer.Layout`) Overview
 
-`DotNodeViewer.Layout` is a pure C#, zero-UI-dependency Sugiyama/dagre layered graph layout engine paired with `ModelGraphLayoutAdapter`, which collapses static `Initializer`/`Constant` tensors into compact parameter rows inside operator node cards, renders `GraphInput`/`GraphOutput` ports as terminal pills, surfaces fused activation badges, and routes cubic Bézier edges:
+`DotNodeViewer.Layout` is a pure C#, zero-UI-dependency Sugiyama/dagre layered graph layout engine paired with `ModelGraphLayoutAdapter`, which collapses static `Initializer`/`Constant` tensors into compact parameter rows inside operator node cards, renders `GraphInput`/`GraphOutput` ports as terminal pills, surfaces fused activation badges, and routes cubic Bézier edges. `VisualSubgraphLayout` embeds a 2D spatial hash grid (`SpatialGridIndex`), precomputed edge bounding boxes, zero-allocation viewport culling, and thread-safe 1-hop adjacency queries:
 
 ```csharp
 using DotNodeViewer.Layout;
@@ -101,9 +101,13 @@ VisualSubgraphLayout layout = ModelGraphLayoutAdapter.Default.CreateLayout(
     graph,
     new LayoutOptions { Direction = LayoutDirection.TopToBottom });
 
-foreach (VisualNode vNode in layout.Nodes)
+// O(1) hit-testing, viewport culling, and 1-hop neighborhood queries:
+VisualNode? hit = layout.FindNodeAt(worldX, worldY);
+VisibleLayoutElements visible = layout.GetVisibleElements(new BoundingBox(0, 0, 1280, 720));
+if (hit is not null)
 {
-    Console.WriteLine($"{vNode.Title}: ({vNode.Bounds.X:F1}, {vNode.Bounds.Y:F1}) [{vNode.Bounds.Width:F1}x{vNode.Bounds.Height:F1}]");
+    IReadOnlyList<VisualEdge> connected = layout.GetConnectedEdges(hit.Id);
+    IReadOnlyList<VisualNode> neighbors = layout.GetAdjacentNodes(hit.Id);
 }
 ```
 

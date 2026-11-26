@@ -1,6 +1,6 @@
 # Wish W03 — Unified Zero-Allocation Model Probe and ZIP Directory Seam
 
-**Status:** Accepted  
+**Status:** Done  
 **Depends on:** Stage **S01** (ModelProbe), Stage **S08** (ZipDirectory)  
 **Suggested branch when promoted:** `refactor/zero-allocation-model-probe`  
 

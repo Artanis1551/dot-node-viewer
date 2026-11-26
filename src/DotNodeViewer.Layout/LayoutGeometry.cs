@@ -70,6 +70,18 @@ public readonly record struct BoundingBox(double X, double Y, double Width, doub
         && Bottom - epsilon > other.Y;
 
     /// <summary>
+    /// Determines whether this bounding box intersects or touches <paramref name="other"/> on any boundary,
+    /// including zero-width or zero-height axis-aligned boxes.
+    /// </summary>
+    /// <param name="other">The bounding box to test against.</param>
+    /// <returns><see langword="true"/> if the boxes overlap or touch in both axes; otherwise, <see langword="false"/>.</returns>
+    public bool IntersectsInclusive(BoundingBox other) =>
+        X <= other.Right
+        && Right >= other.X
+        && Y <= other.Bottom
+        && Bottom >= other.Y;
+
+    /// <summary>
     /// Determines whether the specified <paramref name="point"/> lies within or on the boundary of this box.
     /// </summary>
     /// <param name="point">The point to test.</param>

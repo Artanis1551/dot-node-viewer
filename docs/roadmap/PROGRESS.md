@@ -21,6 +21,8 @@ Every stage agent MUST read this file before starting work and append a completi
 | **S12** | [`S12-browser-wasm-aot-and-perf-hardening.md`](stages/S12-browser-wasm-aot-and-perf-hardening.md) | `stage/S12-wasm-aot-and-perf` | Pending | `DotNodeViewer.Browser` WASM head, NativeAOT publish, perf audit, NuGet packaging |
 | **S13** | [`S13-avalonia-12-migration.md`](stages/S13-avalonia-12-migration.md) | `stage/S13-avalonia-12-migration` | Optional | Migrate Avalonia `11.3.12` → `12.x` via `avalonia-12-migration` skill |
 | **W01** | [`W01-ethos-u-command-stream-unwrapping.md`](../wishes/W01-ethos-u-command-stream-unwrapping.md) | `stage/W01-ethos-u-command-stream` | Complete | On-demand Ethos-U NPU command stream unwrapping (TFLite & ExecuTorch), zero-allocation decoder, address inference, CLI, UI drill-down & live screenshots |
+| **W02** | [`W02-visual-subgraph-layout-spatial-indexing.md`](../wishes/W02-visual-subgraph-layout-spatial-indexing.md) | `refactor/visual-subgraph-layout-spatial-indexing` | Complete | Embedded zero-alloc bitset `SpatialGridIndex`, eager immutable `PositionedEdge.Bounds`, thread-safe 1-hop adjacency, `GraphCanvas` buffer reuse, tests & docs |
+| **W03** | [`W03-zero-allocation-model-probe-and-zip-directory.md`](../wishes/W03-zero-allocation-model-probe-and-zip-directory.md) | `refactor/W03-zero-allocation-model-probe` | Complete | Unified `ModelProbe` and `ZipDirectory` into zero-allocation single-pass probing seam (PR #13, `0e5fbe3`) |
 | **W07** | [`W07-github-pages-documentation-deployment.md`](../wishes/W07-github-pages-documentation-deployment.md) | `infra/github-pages-docs-deployment` | Complete | Automated DocFX & WebAssembly deployment via GitHub Pages (`.github/workflows/docs.yml`), `.nojekyll`, co-hosted `/demo/` |
 
 ---
@@ -819,5 +821,66 @@ Every stage agent MUST read this file before starting work and append a completi
   - `dotnet build dot-node-viewer.slnx -c Release`
   - `dotnet tool run docfx metadata docs/site/docfx.json --warningsAsErrors`
   - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
+
+---
+
+### Wish W03 — Unified Zero-Allocation Model Probe and ZIP Directory Seam
+- **Branch:** `refactor/W03-zero-allocation-model-probe` (merged to `main` via PR #13)
+- **Commits:**
+  - `0e5fbe3` — `refactor(core): unify ModelProbe and ZipDirectory into zero-allocation probing seam`
+- **What Was Built:**
+  - Replaced `System.IO.Compression.ZipArchive` inside `ModelProbe` (`src/DotNodeViewer.Core/Abstractions/ModelProbe.cs`) with `ZipDirectory.TryRead` over `RandomAccessSource`.
+  - Added fast container query primitives (`HasZipEntry`, `HasZipEntryEndingWith`, `MatchesMagic`) and memoized `ZipDirectory` sharing via `ModelReadOptions` across `PyTorchFormatDetector`/`PyTorchFormatReader`, `PyTorchPt2FormatDetector`/`PyTorchPt2FormatReader`, and `KerasFormatDetector`/`KerasFormatReader`.
+  - Updated `docs/wishes/W03-zero-allocation-model-probe-and-zip-directory.md` and `docs/wishes/README.md` status to `Done`.
+
+---
+
+### Wish W02 — Visual Subgraph Layout Spatial Partitioning, Viewport Culling & Adjacency
+- **Branch:** `refactor/visual-subgraph-layout-spatial-indexing` (hardening and closure following initial `2f66035` / PR #12)
+- **Commits:**
+  - `2f66035` — `refactor(layout): deepen VisualSubgraphLayout with spatial indexing and adjacency` (PR #12 baseline)
+  - `0bdd19f` — `W02: harden precomputed edge bounds, zero-alloc spatial grid, and thread-safe VisualSubgraphLayout`
+  - `9ff3660` — `W02: use zero-allocation GetVisibleElements buffers in GraphCanvas.Render`
+  - `fb7d547` — `W02: move SpatialGridIndexTests to Layout.Tests and add spatial, zero-alloc, bounds, and adjacency tests`
+  - `99afe82` — `W02: add live desktop verification screenshots`
+  - *(final commit)* — `W02: update documentation, DocFX site, wish statuses (W02/W03), and PROGRESS.md`
+- **What Was Built:**
+  - **Precomputed Edge Bounds & Inclusive Intersection (`DotNodeViewer.Layout`):**
+    - Added `BoundingBox.IntersectsInclusive` in `src/DotNodeViewer.Layout/LayoutGeometry.cs` so straight vertical (`Width == 0`) and horizontal (`Height == 0`) edges are never falsely culled at viewport borders.
+    - Replaced the lazy mutable `_bounds` field on `PositionedEdge` (`src/DotNodeViewer.Layout/PositionedGraph.cs`) with an eagerly computed, thread-safe immutable `Bounds` property enclosing all polyline `Points`, `BezierSegments` control points, and `LabelAnchor` while preserving C# record equality.
+  - **Zero-Allocation Bitset `SpatialGridIndex` (`src/DotNodeViewer.Layout/SpatialGridIndex.cs`):**
+    - Switched grid buckets to dense integer indices, tracked indexed cell extents to clamp extreme/zoomed-out queries without integer overflow, guarded against non-finite/negative coordinates and empty-geometry edges, and replaced per-query `HashSet<string>` allocations with stack-allocated/pooled `ulong` bitset deduplication.
+    - Exposed caller-buffer overloads `FindNodesInRegion(BoundingBox, List<VisualNode>)` and `FindEdgesInRegion(BoundingBox, List<VisualEdge>)`.
+  - **Thread-Safe Queryable `VisualSubgraphLayout` (`src/DotNodeViewer.Layout/VisualSubgraphLayout.cs`):**
+    - Replaced unsynchronized lazy dictionaries with an eager, immutable `AdjacencyIndex` fixing `EdgesById` being empty prior to adjacency queries, self-loop double-counting in `GetConnectedEdges`, and missing `ArgumentNullException` guards.
+    - Added buffer-reusing `FindNodesInRegion`, `FindEdgesInRegion`, and `GetVisibleElements` overloads (including split `nodeViewport` / `edgeViewport` culling).
+  - **Thin Zero-Allocation `GraphCanvas` Integration (`src/DotNodeViewer.App/Controls/GraphCanvas.cs`):**
+    - Replaced separate per-frame `FindEdgesInRegion` / `FindNodesInRegion` calls in `GraphCanvas.Render` with a single `Layout.GetVisibleElements(...)` call backed by persistent `_visibleNodesBuffer` and `_visibleEdgesBuffer` lists.
+  - **Headless Tests (`DotNodeViewer.Layout.Tests` & `DotNodeViewer.App.Tests`):**
+    - Moved `SpatialGridIndexTests.cs` from `DotNodeViewer.App.Tests` to `DotNodeViewer.Layout.Tests` and added tests for overlapping hit-testing, inclusive axis-aligned edge culling, degenerate/extreme viewport clamping, and warm zero-allocation verification (`GC.GetAllocatedBytesForCurrentThread() == 0`).
+    - Expanded `VisualSubgraphLayoutTests.cs` with `EdgesById` initialization, zero-alloc `GetVisibleElements`, `PositionedEdge.Bounds` record equality, parallel/self-loop adjacency + null guards, `Parallel.For` concurrency, and 5,000-node spatial culling tests.
+    - Added `GraphCanvas_RenderWithSelectionAndPanZoom_ReusesVisibleElementBuffersCleanly` in `GraphCanvasTests.cs`.
+- **`README.md` & `docs/site/` Updates:**
+  - Updated root [`README.md`](../../README.md) with spatial query, viewport culling, and adjacency usage in the `DotNodeViewer.Layout` overview.
+  - Updated [`docs/site/articles/library/layout-engine.md`](../site/articles/library/layout-engine.md) with the `Spatial Queries, Viewport Culling & Adjacency (VisualSubgraphLayout)` How-To & Reference section (and fixed typo `Aciclicity` → `Acyclicity`).
+  - Updated [`docs/site/articles/architecture/performance-and-aot.md`](../site/articles/architecture/performance-and-aot.md) with zero-allocation spatial grid and reusable canvas buffer details.
+  - Updated [`GLOSSARY.md`](../../GLOSSARY.md) with `Visual Subgraph Layout` and `Spatial Grid Index`.
+  - Updated [`docs/wishes/README.md`](../wishes/README.md), [`docs/wishes/W02-visual-subgraph-layout-spatial-indexing.md`](../wishes/W02-visual-subgraph-layout-spatial-indexing.md), and [`docs/wishes/W03-zero-allocation-model-probe-and-zip-directory.md`](../wishes/W03-zero-allocation-model-probe-and-zip-directory.md) statuses to `Done`.
+- **New ADRs Recorded:** None.
+- **Deviations & Known Limitations:** None.
+- **Test Count:** 211 passed (`DotNodeViewer.Core.Tests`: 119, `DotNodeViewer.Layout.Tests`: 29, `DotNodeViewer.App.Tests`: 63), 0 failed, 0 skipped.
+- **Screenshots Taken:**
+  - [GraphCanvas Spatial Culling & Straight Edge Rendering](../screenshots/W02/01-graphcanvas-spatial-culling.png)
+  - [GraphCanvas Node Selection & 1-Hop Neighborhood Adjacency](../screenshots/W02/02-graphcanvas-node-selection-adjacency.png)
+- **Verification Commands Run:**
+  - `dotnet build dot-node-viewer.slnx -c Release --no-restore`
+  - `dotnet test --solution dot-node-viewer.slnx -c Release --no-build`
+  - `dotnet publish tools/DotNodeViewer.Cli -c Release -p:PublishAot=true`
+  - `dotnet pack src/DotNodeViewer.Layout -c Release --no-build`
+  - `dotnet tool run docfx metadata docs/site/docfx.json --warningsAsErrors`
+  - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
+  - `python3 tools/desktop_harness.py capture docs/screenshots/W02/01-graphcanvas-spatial-culling.png`
+  - `python3 tools/desktop_harness.py click-ratio 0.34 0.44 && python3 tools/desktop_harness.py capture docs/screenshots/W02/02-graphcanvas-node-selection-adjacency.png`
+
 
 
