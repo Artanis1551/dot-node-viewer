@@ -19,6 +19,11 @@ public enum TensorDataEncoding
     /// Elements are stored as proprietary hardware-accelerator compressed bitstreams (such as Arm Ethos-U weight and scale streams).
     /// </summary>
     EthosUCompressedWeights,
+
+    /// <summary>
+    /// Elements are stored as GGML block-quantized super-blocks (such as <c>Q4_0</c>, <c>Q4_K</c>, <c>Q8_0</c>, <c>IQ*</c>, <c>TQ*</c>, or <c>MXFP4</c>) described by <see cref="BlockQuantization"/>.
+    /// </summary>
+    GgmlQuantizedBlock,
 }
 
 /// <summary>
