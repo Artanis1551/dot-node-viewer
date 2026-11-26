@@ -22,7 +22,7 @@ The application opens in an empty state with a drop target area, a file browser 
 
 ### 1.2 Direct Model Launch
 
-Pass the relative or absolute path of any supported neural network model (`.onnx`, `.tflite`, `.pte`, `.pt`, `.pt2`, `.keras`, `.h5`) directly to the executable:
+Pass the relative or absolute path of any supported neural network model (`.onnx`, `.tflite`, `.pte`, `.pt`, `.pt2`, `.keras`, `.h5`, `.gguf`) directly to the executable:
 
 ```bash
 # Launch with an ONNX model
@@ -42,7 +42,7 @@ The application streams the model on a background thread, extracts the Unified G
 Supported neural network models can be dragged directly onto the application window or browser canvas at any time—both in the initial empty state and when an existing model is already open:
 
 - **Drop Target Overlay:** Dragging a file over the window displays a drop target overlay indicating that the window is ready to accept the file, along with format validation feedback.
-- **Format Validation:** As candidate files are dragged over the window, their extensions are checked against supported formats (`.onnx`, `.tflite`, `.pte`, `.pt`, `.pt2`, `.keras`, `.h5`). Supported files enable the drop target; unsupported files display a format warning message.
+- **Format Validation:** As candidate files are dragged over the window, their extensions are checked against supported formats (`.onnx`, `.tflite`, `.pte`, `.pt`, `.pt2`, `.keras`, `.h5`, `.gguf`). Supported files enable the drop target; unsupported files display a format warning message.
 - **Multi-File & Sidecar Handling:** When an ONNX model definition and its companion external weight file (e.g. `model.onnx` and `model.onnx.data`) are dropped together, the visualizer loads the `.onnx` graph definition while resolving external tensor data references relative to the model directory.
 - **Directory Drops:** Dropping a directory scans for the first primary neural network model file within that folder.
 - **Dismissal:** Pressing `Escape` or dragging the pointer outside the window cancels the drop operation and restores the prior view.

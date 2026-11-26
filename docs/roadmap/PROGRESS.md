@@ -882,5 +882,56 @@ Every stage agent MUST read this file before starting work and append a completi
   - `python3 tools/desktop_harness.py capture docs/screenshots/W02/01-graphcanvas-spatial-culling.png`
   - `python3 tools/desktop_harness.py click-ratio 0.34 0.44 && python3 tools/desktop_harness.py capture docs/screenshots/W02/02-graphcanvas-node-selection-adjacency.png`
 
+---
+
+### Wish W12 — GGUF Format Support (LLM & Audio Model Graphs)
+- **Branch:** `feature/gguf-format-support` (worktree `.worktrees/W12-gguf-format-support`)
+- **Commits:**
+  - `5b5fdcd` — `W12: record ADR 0009 and extend frozen IR for GGUF format`
+  - `a531056` — `W12: implement GGUF detector, binary reader, type catalog, and graph synthesizer`
+  - `87d9681` — `W12: wire GGUF support into Layout, App, CI scripts, and workflows`
+  - `857e46d` — `W12: add deterministic GGUF generator, test fixtures, truth files, and golden snapshots`
+  - `9b0662e` — `W12: add synthetic, manifest, integration, and app tests for GGUF`
+  - *(final commit)* — `W12: update README, DocFX site, wish status, and PROGRESS.md`
+- **What Was Built:**
+  - **Frozen IR Extensions (`DotNodeViewer.Core.Ir`):**
+    - Added `ModelFormatId.Gguf` (`"gguf"`) in `ModelFormatInfo.cs`.
+    - Added `TensorDataEncoding.GgmlQuantizedBlock` in `TensorDataSource.cs`.
+  - **GGUF Format Detector & Zero-Allocation Streaming Reader (`src/DotNodeViewer.Core/Formats/Gguf/`, `internal`):**
+    - `GgufFormatDetector`: non-destructive 24-byte header probe supporting GGUF v1, v2, and v3 (little-endian and big-endian v3) with bounded header count validation.
+    - `GgufBinaryReader`: streaming metadata KV and tensor-table reader over `RandomAccessSource` with hard safety caps (`MaxMetadataKvCount`, `MaxTensorCount`, `MaxStringByteLength`, `MaxTensorDimensions`, `MaxArrayNestingDepth`), checked alignment math (`general.alignment`, default 32), bounds checking of every tensor slice against `stream.Length`, and $O(1)$ / 4-sample summarization of large tokenizer arrays (`> 64` entries).
+    - `GgmlTypeCatalog`: authoritative catalog of `ggml_type` codes (`F32`, `F16`, `BF16`, `F64`, `I8`–`I64`, `Q4_0`–`Q8_1`, `Q2_K`–`Q8_K`, `IQ1_S`–`IQ4_XS`, `TQ1_0`, `TQ2_0`, `MXFP4`) using checked 128-bit (`UInt128`) arithmetic to compute exact tensor byte lengths and block-size divisibility.
+    - `GgufGraphSynthesizer`: normalizes GGML innermost-first dims into row-major `TensorShape`, maps every tensor to `TensorKind.Initializer` with lazy `TensorDataSlice`, synthesizes a hierarchical block-level `ModelGraph` supporting modern LLM/MoE/SSM/Engram/audio architectures (`llama`, `qwen*`, `deepseek41` Engram, `mistral-large4`, `lfm3`, `kimi-k31`, `kokoro`, `moshi`, `limite`, `whisper`, plus data-driven fallback for unseen architectures), and attaches nested drill-down `Subgraph`s (`RMSNorm`, `Attention`, `MultiHeadLatentAttention`, `StateSpace`, `EngramMemory`, `FeedForward`, `MoEFeedForward`) to indexed block nodes.
+    - Registered `GgufFormatDetector` and `GgufFormatReader` in `ModelFormatRegistry.CreateDefault()`.
+  - **Layout & App Integration:**
+    - Updated `ModelGraphLayoutAdapter` to display block quantization scheme names (`q4_0`, `q8_0`, `q4_k`) in collapsed parameter rows and edge labels.
+    - Updated `TensorInspectorViewModel` to display `BlockQuantization` scheme/block-size/bit-width metadata and safely render `TensorDataEncoding.GgmlQuantizedBlock` payloads as raw hex bytes.
+    - Added `.gguf` to `MainWindowViewModel.SupportedModelExtensions`, drag-and-drop validation (`LinuxXdndDropBridge`), Desktop/Browser `FilePickerFileType` filters, and `MainView.axaml` supported-format badges.
+  - **Generator, Fixtures, Tests & CI:**
+    - Created deterministic Python generator `tools/model-gen/gguf/gen_gguf.py` emitting 4 committed fixtures (`<= 256 KB` each) and independent `*.truth.json` files: `tiny_llm.gguf` (`llama`), `tiny_moe_engram.gguf` (`deepseek41`), `tiny_audio_kokoro.gguf` (`kokoro`), and `tiny_hybrid_ssm.gguf` (`lfm3`).
+    - Registered all 4 fixtures in `models.manifest.json` with golden `.expected.json` snapshots verified against `*.truth.json`.
+    - Added `GgufSyntheticTests` (header/endianness probing, v2/BE v3 alignment, large tokenizer array skipping, 16 MB `AllocationProbe` `< 10%` check, all 32 `ggml_type` byte sizes, architecture synthesis, overflow/corruption resilience), `GgufModelTests`, `ModelManifestTests.ParseRegisteredGgufModel_MatchesExpectedTopology`, and App tests (`DragAndDropModelLoadingTests`, `TensorInspectorViewModelTests`, `MainWindowViewModelTests`).
+    - Updated `.github/workflows/ci.yml`, `tools/ci/run-model-tests.sh`, `tools/ci/report-tested-models.py`, and `.agents/skills/add-test-model/scripts/stage-model.sh` for `gguf`.
+- **`README.md` & `docs/site/` Updates:**
+  - Added Diátaxis Reference & Explanation article [`docs/site/articles/formats/gguf.md`](../site/articles/formats/gguf.md).
+  - Updated [`docs/site/articles/toc.yml`](../site/articles/toc.yml), [`docs/site/articles/formats/overview.md`](../site/articles/formats/overview.md), [`docs/site/articles/cli/reference.md`](../site/articles/cli/reference.md), [`docs/site/articles/visualizer/user-guide.md`](../site/articles/visualizer/user-guide.md), [`README.md`](../../README.md), [`docs/wishes/W12-gguf-format-support.md`](../wishes/W12-gguf-format-support.md), and [`docs/wishes/README.md`](../wishes/README.md).
+- **New ADRs Recorded:** [ADR 0009](../adr/0009-gguf-format-and-block-graph-synthesis.md) (plus index update in [`docs/adr/README.md`](../adr/README.md)).
+- **Deviations & Known Limitations:** None.
+- **Test Count:** 306 passed (`DotNodeViewer.Core.Tests`: 202, `DotNodeViewer.Layout.Tests`: 29, `DotNodeViewer.App.Tests`: 75), 0 failed, 0 skipped.
+- **Screenshots Taken:**
+  - [Empty State with GGUF Format Pill](../screenshots/W12/01-empty-state-gguf-pill.png)
+  - [GGUF LLM Block-Level Graph (`tiny_llm.gguf`)](../screenshots/W12/02-gguf-llm-block-graph.png)
+  - [GGUF DeepSeek41 MoE + Engram & Weight Inspector (`tiny_moe_engram.gguf`)](../screenshots/W12/03-gguf-moe-engram-weights.png)
+- **Verification Commands Run:**
+  - `python3 tools/model-gen/gguf/gen_gguf.py`
+  - `dotnet build dot-node-viewer.slnx -c Release`
+  - `dotnet test --solution dot-node-viewer.slnx -c Release --no-build`
+  - `bash tools/ci/run-model-tests.sh gguf`
+  - `dotnet publish tools/DotNodeViewer.Cli/DotNodeViewer.Cli.csproj -c Release -p:PublishAot=true`
+  - `dotnet run --project tools/DotNodeViewer.Cli -c Release --no-build -- detect tests/DotNodeViewer.Core.Tests/Fixtures/gguf/tiny_llm.gguf`
+  - `dotnet run --project tools/DotNodeViewer.Cli -c Release --no-build -- inspect tests/DotNodeViewer.Core.Tests/Fixtures/gguf/tiny_llm.gguf`
+  - `dotnet tool run docfx metadata docs/site/docfx.json --warningsAsErrors`
+  - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
+
 
 
