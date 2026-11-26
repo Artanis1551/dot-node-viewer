@@ -1,4 +1,3 @@
-using System.Buffers;
 using System.Text.Json;
 using DotNodeViewer.Core.Abstractions;
 using DotNodeViewer.Core.Delegates.EthosU;
@@ -32,26 +31,8 @@ public sealed class EthosUDelegateModelTests
         Subgraph? expanded = await DelegateSubgraphExpanderRegistry.Default.ExpandAsync(stream, graph, delegateNode);
         await Assert.That(expanded).IsNotNull();
 
-        using JsonDocument truthDoc = JsonDocument.Parse(await File.ReadAllTextAsync(truthPath));
-        JsonElement delegateElem = truthDoc.RootElement.GetProperty("delegate");
-
-        string expectedArch = delegateElem.GetProperty("architecture").GetString()!;
-        int expectedOpCount = delegateElem.GetProperty("totalNpuOperations").GetInt32();
-
-        await Assert.That(expanded!.Name).Contains(expectedArch);
-        await Assert.That(expanded.Nodes.Count).IsEqualTo(expectedOpCount);
-
-        // Check op histogram
-        Dictionary<string, int> actualHistogram = [];
-        foreach (GraphNode node in expanded.Nodes)
-        {
-            actualHistogram[node.Operator.Name] = actualHistogram.GetValueOrDefault(node.Operator.Name) + 1;
-        }
-
-        foreach (JsonProperty prop in delegateElem.GetProperty("operatorHistogram").EnumerateObject())
-        {
-            await Assert.That(actualHistogram.GetValueOrDefault(prop.Name)).IsEqualTo(prop.Value.GetInt32());
-        }
+        await AssertMatchesTruthAsync(expanded!, truthPath);
+        await AssertCleanConnectedTopologyAsync(expanded!, "serving_default_input:0", "StatefulPartitionedCall_1:0");
     }
 
     [Test]
@@ -69,14 +50,8 @@ public sealed class EthosUDelegateModelTests
         Subgraph? expanded = await DelegateSubgraphExpanderRegistry.Default.ExpandAsync(stream, graph, delegateNode);
         await Assert.That(expanded).IsNotNull();
 
-        using JsonDocument truthDoc = JsonDocument.Parse(await File.ReadAllTextAsync(truthPath));
-        JsonElement delegateElem = truthDoc.RootElement.GetProperty("delegate");
-
-        string expectedArch = delegateElem.GetProperty("architecture").GetString()!;
-        int expectedOpCount = delegateElem.GetProperty("totalNpuOperations").GetInt32();
-
-        await Assert.That(expanded!.Name).Contains(expectedArch);
-        await Assert.That(expanded.Nodes.Count).IsEqualTo(expectedOpCount);
+        await AssertMatchesTruthAsync(expanded!, truthPath);
+        await AssertCleanConnectedTopologyAsync(expanded!, "serving_default_input:0", "StatefulPartitionedCall_1:0");
     }
 
     [Test]
@@ -98,26 +73,8 @@ public sealed class EthosUDelegateModelTests
         Subgraph? expanded = await DelegateSubgraphExpanderRegistry.Default.ExpandAsync(stream, graph, delegateNode!);
         await Assert.That(expanded).IsNotNull();
 
-        using JsonDocument truthDoc = JsonDocument.Parse(await File.ReadAllTextAsync(truthPath));
-        JsonElement delegateElem = truthDoc.RootElement.GetProperty("delegate");
-
-        string expectedArch = delegateElem.GetProperty("architecture").GetString()!;
-        int expectedOpCount = delegateElem.GetProperty("totalNpuOperations").GetInt32();
-
-        await Assert.That(expanded!.Name).Contains(expectedArch);
-        await Assert.That(expanded.Nodes.Count).IsEqualTo(expectedOpCount);
-
-        // Check op histogram
-        Dictionary<string, int> actualHistogram = [];
-        foreach (GraphNode node in expanded.Nodes)
-        {
-            actualHistogram[node.Operator.Name] = actualHistogram.GetValueOrDefault(node.Operator.Name) + 1;
-        }
-
-        foreach (JsonProperty prop in delegateElem.GetProperty("operatorHistogram").EnumerateObject())
-        {
-            await Assert.That(actualHistogram.GetValueOrDefault(prop.Name)).IsEqualTo(prop.Value.GetInt32());
-        }
+        await AssertMatchesTruthAsync(expanded!, truthPath);
+        await AssertCleanConnectedTopologyAsync(expanded!, "v1", "v7");
     }
 
     [Test]
@@ -136,6 +93,165 @@ public sealed class EthosUDelegateModelTests
 
         await Assert.That(warmCount > 0).IsTrue();
         await Assert.That(allocatedDelta).IsEqualTo(0L);
+    }
+
+    private static async Task AssertMatchesTruthAsync(Subgraph expanded, string truthPath)
+    {
+        using JsonDocument truthDoc = JsonDocument.Parse(await File.ReadAllTextAsync(truthPath));
+        JsonElement delegateElem = truthDoc.RootElement.GetProperty("delegate");
+
+        string expectedArch = delegateElem.GetProperty("architecture").GetString()!;
+        int expectedOpCount = delegateElem.GetProperty("totalNpuOperations").GetInt32();
+
+        await Assert.That(expanded.Name).Contains(expectedArch);
+        await Assert.That(expanded.Nodes.Count).IsEqualTo(expectedOpCount);
+
+        Dictionary<string, int> actualHistogram = [];
+        foreach (GraphNode node in expanded.Nodes)
+        {
+            actualHistogram[node.Operator.Name] = actualHistogram.GetValueOrDefault(node.Operator.Name) + 1;
+        }
+
+        foreach (JsonProperty prop in delegateElem.GetProperty("operatorHistogram").EnumerateObject())
+        {
+            await Assert.That(actualHistogram.GetValueOrDefault(prop.Name)).IsEqualTo(prop.Value.GetInt32());
+        }
+    }
+
+    private static async Task AssertCleanConnectedTopologyAsync(
+        Subgraph expanded,
+        string expectedInputName,
+        string expectedOutputName)
+    {
+        await Assert.That(expanded.Inputs.Count).IsEqualTo(1);
+        await Assert.That(expanded.Inputs[0].Name).IsEqualTo(expectedInputName);
+        await Assert.That(expanded.Outputs.Count).IsEqualTo(1);
+        await Assert.That(expanded.Outputs[0].Name).IsEqualTo(expectedOutputName);
+
+        var producerByTensorName = new Dictionary<string, string>(StringComparer.Ordinal);
+        var nodeIndexByVertexId = new Dictionary<string, int>(StringComparer.Ordinal);
+        var adj = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        var inDegree = new Dictionary<string, int>(StringComparer.Ordinal);
+        var outDegree = new Dictionary<string, int>(StringComparer.Ordinal);
+
+        void EnsureVertex(string id)
+        {
+            if (!adj.ContainsKey(id))
+            {
+                adj[id] = new HashSet<string>(StringComparer.Ordinal);
+                inDegree[id] = 0;
+                outDegree[id] = 0;
+            }
+        }
+
+        foreach (GraphPort inPort in expanded.Inputs)
+        {
+            string vId = $"in:{inPort.Name}";
+            EnsureVertex(vId);
+            foreach (TensorEdge edge in inPort.Tensors)
+            {
+                producerByTensorName[edge.Name] = vId;
+            }
+        }
+
+        var uniqueOutputTensorNames = new HashSet<string>(StringComparer.Ordinal);
+        for (int i = 0; i < expanded.Nodes.Count; i++)
+        {
+            GraphNode node = expanded.Nodes[i];
+            string vId = $"node:{i}:{node.Name}";
+            EnsureVertex(vId);
+            nodeIndexByVertexId[vId] = i;
+
+            foreach (NodePort outPort in node.Outputs)
+            {
+                foreach (TensorEdge edge in outPort.Tensors)
+                {
+                    bool added = uniqueOutputTensorNames.Add(edge.Name);
+                    await Assert.That(added).IsTrue();
+                    producerByTensorName[edge.Name] = vId;
+                }
+            }
+        }
+
+        for (int i = 0; i < expanded.Nodes.Count; i++)
+        {
+            GraphNode node = expanded.Nodes[i];
+            string targetId = $"node:{i}:{node.Name}";
+
+            foreach (NodePort inPort in node.Inputs)
+            {
+                foreach (TensorEdge edge in inPort.Tensors)
+                {
+                    bool hasProducer = producerByTensorName.TryGetValue(edge.Name, out string? srcId);
+                    if ((edge.Kind == TensorKind.Initializer || edge.Kind == TensorKind.Constant) && !hasProducer)
+                    {
+                        continue;
+                    }
+
+                    await Assert.That(hasProducer).IsTrue();
+                    if (nodeIndexByVertexId.TryGetValue(srcId!, out int srcIdx))
+                    {
+                        await Assert.That(srcIdx < i).IsTrue();
+                    }
+
+                    adj[srcId!].Add(targetId);
+                    adj[targetId].Add(srcId!);
+                    outDegree[srcId!]++;
+                    inDegree[targetId]++;
+                }
+            }
+        }
+
+        foreach (GraphPort outPort in expanded.Outputs)
+        {
+            string outId = $"out:{outPort.Name}";
+            EnsureVertex(outId);
+            await Assert.That(outPort.Tensors.Count > 0).IsTrue();
+
+            foreach (TensorEdge edge in outPort.Tensors)
+            {
+                bool hasProducer = producerByTensorName.TryGetValue(edge.Name, out string? srcId);
+                await Assert.That(hasProducer).IsTrue();
+
+                adj[srcId!].Add(outId);
+                adj[outId].Add(srcId!);
+                outDegree[srcId!]++;
+                inDegree[outId]++;
+            }
+        }
+
+        // Verify 0 dead-ends and 0 orphan non-DMA operators
+        for (int i = 0; i < expanded.Nodes.Count; i++)
+        {
+            GraphNode node = expanded.Nodes[i];
+            string vId = $"node:{i}:{node.Name}";
+            await Assert.That(outDegree[vId] > 0).IsTrue();
+            if (!string.Equals(node.Operator.Name, "NPU_DMA", StringComparison.Ordinal))
+            {
+                await Assert.That(inDegree[vId] > 0).IsTrue();
+            }
+        }
+
+        // Verify single connected component across all inputs, nodes, and outputs
+        var visited = new HashSet<string>(StringComparer.Ordinal);
+        var queue = new Queue<string>();
+        string start = adj.Keys.First();
+        visited.Add(start);
+        queue.Enqueue(start);
+
+        while (queue.Count > 0)
+        {
+            string cur = queue.Dequeue();
+            foreach (string nb in adj[cur])
+            {
+                if (visited.Add(nb))
+                {
+                    queue.Enqueue(nb);
+                }
+            }
+        }
+
+        await Assert.That(visited.Count).IsEqualTo(adj.Count);
     }
 
     private sealed class CommandCounter

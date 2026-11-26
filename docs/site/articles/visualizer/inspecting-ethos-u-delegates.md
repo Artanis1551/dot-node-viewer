@@ -47,7 +47,7 @@ This indicates that connections between layers were synthesized by matching outp
 
 ### Step 5: Inspect Hardware Registers & Microcode Disassembly
 
-Click any synthesized NPU operation node (such as `npu_op_0_npu_conv` or `npu_op_1_npu_dma`) to view its hardware execution parameters in the Properties Panel:
+Click any synthesized NPU operation node (such as `op_0` (`NPU_CONV`) or `op_2` (`NPU_DMA`)) to view its hardware execution parameters in the Properties Panel:
 
 - **Shape & Dimensions:** Input and output shapes, channel counts, and tensor sizes.
 - **Hardware Config:** Kernel size, strides, dilations, padding, and NPU block configuration (`block_config`).
@@ -92,16 +92,22 @@ Subgraph [0] 'main':
     - StatefulPartitionedCall_1:0: Int8 [1, 3]
 
   [Delegate Expansion] 'CUSTOM(ethos-u)_0' (ethos-u) -> CUSTOM(ethos-u)_0 (Ethos-U55-128):
-    Synthesized Nodes:   91
-    Synthesized Tensors: 209
-    DMA Operations:      19
+    Synthesized Nodes:   36
+    Synthesized Tensors: 55
+    DMA Operations:      2
     Operator Distribution:
-      - NPU_MUL: 27
-      - NPU_MAXPOOL: 21
-      - NPU_DMA: 19
+      - NPU_MUL: 11
       - NPU_SUB: 6
       - NPU_ADD: 5
-      ...
+      - NPU_AVGPOOL: 3
+      - NPU_CONV: 2
+      - NPU_DMA: 2
+      - NPU_SHR: 2
+      - NPU_CLZ: 1
+      - NPU_DEPTHWISE: 1
+      - NPU_MAXPOOL: 1
+      - NPU_REDUCE_SUM: 1
+      - NPU_SHL: 1
 ```
 
 ### 2. Microcode Disassembly (`cmdstream`)

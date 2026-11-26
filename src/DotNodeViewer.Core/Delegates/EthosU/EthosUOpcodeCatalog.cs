@@ -7,6 +7,9 @@ namespace DotNodeViewer.Core.Delegates.EthosU;
 /// </summary>
 internal static class EthosUOpcodeCatalog
 {
+    // Base pointer region identifiers
+    public const int BasePointerIndexMem2Mem = 0x0103;
+
     // cmd0 Operation Opcodes
     public const int NpuOpStop = 0x0000;
     public const int NpuOpIrq = 0x0001;
@@ -221,6 +224,29 @@ internal static class EthosUOpcodeCatalog
     {
         NpuOpConv or NpuOpDepthwise or NpuOpPool or NpuOpElementwise or NpuOpDmaStart => true,
         _ => false,
+    };
+
+    /// <summary>
+    /// Determines whether a decoded command represents an executable hardware operation (<c>cmd0</c> only).
+    /// </summary>
+    public static bool IsExecutableOperation(in EthosUCommand cmd) =>
+        !cmd.IsCmd1 && IsExecutableOperation(cmd.Opcode);
+
+    /// <summary>
+    /// Determines whether an <see cref="NpuOpElementwise"/> parameter selects a unary operation (<c>NPU_LRELU</c>, <c>NPU_ABS</c>, or <c>NPU_CLZ</c>).
+    /// </summary>
+    public static bool IsUnaryElementwise(int param) => param is 5 or 6 or 7;
+
+    /// <summary>
+    /// Formats a memory region index into a human-readable identifier.
+    /// </summary>
+    public static string FormatRegionName(int region) => region switch
+    {
+        0 => "flash",
+        1 => "sram",
+        2 => "sram_fast",
+        BasePointerIndexMem2Mem => "shram_lut",
+        _ => string.Create(CultureInfo.InvariantCulture, $"r{region}"),
     };
 }
 
