@@ -231,7 +231,7 @@ public sealed class LinuxXdndDropBridge : IDisposable
                 Dispatcher.UIThread.Post(() => _viewModel.SetDropTargetState(
                     isActive: true,
                     isValid: isValid,
-                    feedbackMessage: isValid ? null : "Unsupported format. Supported: .onnx, .tflite, .pte, .pt, .pt2, .keras, .h5"));
+                    feedbackMessage: isValid ? null : "Unsupported format. Supported: .onnx, .tflite, .pte, .pt, .pt2, .keras, .h5, .mlir, .mlirbc"));
             }
             else
             {
@@ -345,7 +345,7 @@ public sealed class LinuxXdndDropBridge : IDisposable
                 Dispatcher.UIThread.Post(() => _viewModel.SetDropTargetState(
                     isActive: true,
                     isValid: false,
-                    feedbackMessage: "Unsupported format. Supported: .onnx, .tflite, .pte, .pt, .pt2, .keras, .h5"));
+                    feedbackMessage: "Unsupported format. Supported: .onnx, .tflite, .pte, .pt, .pt2, .keras, .h5, .mlir, .mlirbc"));
             }
         }
         else
@@ -354,7 +354,7 @@ public sealed class LinuxXdndDropBridge : IDisposable
             Dispatcher.UIThread.Post(() => _viewModel.SetDropTargetState(
                 isActive: true,
                 isValid: isValid,
-                feedbackMessage: isValid ? null : "Unsupported format. Supported: .onnx, .tflite, .pte, .pt, .pt2, .keras, .h5"));
+                feedbackMessage: isValid ? null : "Unsupported format. Supported: .onnx, .tflite, .pte, .pt, .pt2, .keras, .h5, .mlir, .mlirbc"));
 
             if (_lastPositionSource != IntPtr.Zero)
             {

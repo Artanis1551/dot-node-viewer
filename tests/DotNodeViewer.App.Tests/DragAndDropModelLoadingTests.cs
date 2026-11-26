@@ -73,7 +73,8 @@ public sealed class DragAndDropModelLoadingTests
         string[] validExecuTorch = ["model.pte"];
         string[] validPyTorch = ["weights.pt", "model.pt2", "legacy.pth"];
         string[] validKeras = ["network.keras", "legacy.h5"];
-        string[] mixedCase = ["MODEL.ONNX", "GRAPH.TFLITE"];
+        string[] validMlir = ["stablehlo.mlir", "compiled.mlirbc"];
+        string[] mixedCase = ["MODEL.ONNX", "GRAPH.TFLITE", "KERNEL.MLIR", "MODULE.MLIRBC"];
 
         await Assert.That(MainWindowViewModel.CanAcceptFiles(validSingle)).IsTrue();
         await Assert.That(MainWindowViewModel.CanAcceptFiles(validMultiple)).IsTrue();
@@ -81,6 +82,7 @@ public sealed class DragAndDropModelLoadingTests
         await Assert.That(MainWindowViewModel.CanAcceptFiles(validExecuTorch)).IsTrue();
         await Assert.That(MainWindowViewModel.CanAcceptFiles(validPyTorch)).IsTrue();
         await Assert.That(MainWindowViewModel.CanAcceptFiles(validKeras)).IsTrue();
+        await Assert.That(MainWindowViewModel.CanAcceptFiles(validMlir)).IsTrue();
         await Assert.That(MainWindowViewModel.CanAcceptFiles(mixedCase)).IsTrue();
     }
 

@@ -157,9 +157,9 @@ public sealed class App : Application
                             AllowMultiple = false,
                             FileTypeFilter =
                             [
-                                new FilePickerFileType("All Supported Models (*.onnx, *.tflite, *.pte, *.pt, *.pt2, *.keras, *.h5)")
+                                new FilePickerFileType("All Supported Models (*.onnx, *.tflite, *.pte, *.pt, *.pt2, *.keras, *.h5, *.mlir, *.mlirbc)")
                                 {
-                                    Patterns = ["*.onnx", "*.tflite", "*.pte", "*.pt", "*.pt2", "*.keras", "*.h5"]
+                                    Patterns = ["*.onnx", "*.tflite", "*.pte", "*.pt", "*.pt2", "*.keras", "*.h5", "*.mlir", "*.mlirbc"]
                                 },
                                 FilePickerFileTypes.All
                             ]
