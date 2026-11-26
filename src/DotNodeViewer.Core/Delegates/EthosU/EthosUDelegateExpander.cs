@@ -163,20 +163,45 @@ internal sealed class EthosUDelegateExpander : IDelegateSubgraphExpander
         TensorDataSlice cmdSlice,
         CancellationToken cancellationToken)
     {
-        // 1. Identify flash weights buffer offset
+        // 1. Identify flash weights buffer offset and byte length
         long weightBaseOffset = 0;
+        long weightByteLength = 0;
         if (node.Inputs.Count > 1 && node.Inputs[1].Tensors.Count > 0 && node.Inputs[1].Tensors[0].Data is TensorDataSlice flashSlice)
         {
             weightBaseOffset = flashSlice.StreamOffset;
+            weightByteLength = flashSlice.ByteLength;
         }
 
-        // 2. Extract OfflineMemoryAllocation arena offsets from metadata if present
-        var inputOffsets = new Dictionary<uint, string>();
-        var outputOffsets = new Dictionary<uint, string>();
+        // 2. Filter out Vela scaffolding inputs (command stream, flash read_only, scratch, scratch_fast)
+        List<TensorEdge> runtimeInputTensors = ExtractTfliteRuntimeInputs(node);
+        List<TensorEdge> runtimeOutputTensors = ExtractRuntimeOutputs(node);
 
-        await TryExtractTfliteArenaOffsetsAsync(modelStream, graph, inputOffsets, outputOffsets, cancellationToken).ConfigureAwait(false);
+        // 3. Extract OfflineMemoryAllocation arena offsets mapped by tensor name
+        Dictionary<string, uint> arenaOffsetsByTensorName = await TryExtractTfliteArenaOffsetsAsync(
+            modelStream,
+            graph,
+            node,
+            cancellationToken).ConfigureAwait(false);
 
-        // 3. Read command stream slice
+        var inputRegions = new List<EthosUIoRegion>();
+        foreach (TensorEdge inTensor in runtimeInputTensors)
+        {
+            if (arenaOffsetsByTensorName.TryGetValue(inTensor.Name, out uint offset))
+            {
+                inputRegions.Add(new EthosUIoRegion(1, offset, ComputeTensorByteLength(inTensor), inTensor));
+            }
+        }
+
+        var outputRegions = new List<EthosUIoRegion>();
+        foreach (TensorEdge outTensor in runtimeOutputTensors)
+        {
+            if (arenaOffsetsByTensorName.TryGetValue(outTensor.Name, out uint offset))
+            {
+                outputRegions.Add(new EthosUIoRegion(1, offset, ComputeTensorByteLength(outTensor), outTensor));
+            }
+        }
+
+        // 4. Read command stream slice
         byte[] buffer = ArrayPool<byte>.Shared.Rent((int)cmdSlice.ByteLength);
         try
         {
@@ -196,14 +221,14 @@ internal sealed class EthosUDelegateExpander : IDelegateSubgraphExpander
             EthosUCommandStreamDecoder.Decode(wordsSpan, (in EthosUCommand cmd) =>
             {
                 state.Apply(in cmd);
-                if (EthosUOpcodeCatalog.IsExecutableOperation(cmd.Opcode))
+                if (EthosUOpcodeCatalog.IsExecutableOperation(in cmd))
                 {
                     snapshots.Add(state.CreateSnapshot(cmd.Opcode, cmd.Param));
                 }
             });
 
-            var outerInputs = node.Inputs.Select(p => new GraphPort(p.Name, p.Tensors)).ToList();
-            var outerOutputs = node.Outputs.Select(p => new GraphPort(p.Name, p.Tensors)).ToList();
+            var outerInputs = runtimeInputTensors.Select(t => new GraphPort(t.Name, new[] { t })).ToList();
+            var outerOutputs = runtimeOutputTensors.Select(t => new GraphPort(t.Name, new[] { t })).ToList();
             string subgraphName = $"{node.Name} ({driverPayload.Architecture})";
 
             return EthosUSubgraphBuilder.Build(
@@ -211,10 +236,11 @@ internal sealed class EthosUDelegateExpander : IDelegateSubgraphExpander
                 driverPayload,
                 snapshots,
                 weightBaseOffset,
+                weightByteLength,
                 outerInputs,
                 outerOutputs,
-                inputOffsets,
-                outputOffsets);
+                inputRegions,
+                outputRegions);
         }
         finally
         {
@@ -257,28 +283,60 @@ internal sealed class EthosUDelegateExpander : IDelegateSubgraphExpander
             EthosUCommandStreamDecoder.Decode(wordsSpan, (in EthosUCommand cmd) =>
             {
                 state.Apply(in cmd);
-                if (EthosUOpcodeCatalog.IsExecutableOperation(cmd.Opcode))
+                if (EthosUOpcodeCatalog.IsExecutableOperation(in cmd))
                 {
                     snapshots.Add(state.CreateSnapshot(cmd.Opcode, cmd.Param));
                 }
             });
 
-            var outerInputs = node.Inputs.Select(p => new GraphPort(p.Name, p.Tensors)).ToList();
-            var outerOutputs = node.Outputs.Select(p => new GraphPort(p.Name, p.Tensors)).ToList();
+            List<TensorEdge> runtimeInputTensors = node.Inputs
+                .Where(p => p.Tensors.Count > 0)
+                .Select(p => p.Tensors[0])
+                .ToList();
 
-            var inputOffsets = new Dictionary<uint, string>();
-            for (int i = 0; i < velaStream.Inputs.Count && i < outerInputs.Count; i++)
+            List<TensorEdge> runtimeOutputTensors = ExtractRuntimeOutputs(node);
+
+            var inputRegions = new List<EthosUIoRegion>(velaStream.Inputs.Count);
+            var outerInputTensors = new List<TensorEdge>(Math.Max(runtimeInputTensors.Count, velaStream.Inputs.Count));
+            for (int i = 0; i < velaStream.Inputs.Count; i++)
             {
-                inputOffsets[(uint)velaStream.Inputs[i].Offset] = outerInputs[i].Name;
+                VelaIoTensor io = velaStream.Inputs[i];
+                TensorEdge tensor = i < runtimeInputTensors.Count
+                    ? runtimeInputTensors[i]
+                    : CreateSynthesizedIoTensor($"in_{i}", io, TensorKind.GraphInput);
+
+                inputRegions.Add(new EthosUIoRegion(io.Region, (uint)io.Offset, ComputeVelaIoByteLength(io), tensor));
+                outerInputTensors.Add(tensor);
             }
 
-            var outputOffsets = new Dictionary<uint, string>();
-            for (int i = 0; i < velaStream.Outputs.Count && i < outerOutputs.Count; i++)
+            for (int i = velaStream.Inputs.Count; i < runtimeInputTensors.Count; i++)
             {
-                outputOffsets[(uint)velaStream.Outputs[i].Offset] = outerOutputs[i].Name;
+                outerInputTensors.Add(runtimeInputTensors[i]);
             }
+
+            var outputRegions = new List<EthosUIoRegion>(velaStream.Outputs.Count);
+            var outerOutputTensors = new List<TensorEdge>(Math.Max(runtimeOutputTensors.Count, velaStream.Outputs.Count));
+            for (int i = 0; i < velaStream.Outputs.Count; i++)
+            {
+                VelaIoTensor io = velaStream.Outputs[i];
+                TensorEdge tensor = i < runtimeOutputTensors.Count
+                    ? runtimeOutputTensors[i]
+                    : CreateSynthesizedIoTensor($"out_{i}", io, TensorKind.GraphOutput);
+
+                outputRegions.Add(new EthosUIoRegion(io.Region, (uint)io.Offset, ComputeVelaIoByteLength(io), tensor));
+                outerOutputTensors.Add(tensor);
+            }
+
+            for (int i = velaStream.Outputs.Count; i < runtimeOutputTensors.Count; i++)
+            {
+                outerOutputTensors.Add(runtimeOutputTensors[i]);
+            }
+
+            var outerInputs = outerInputTensors.Select(t => new GraphPort(t.Name, new[] { t })).ToList();
+            var outerOutputs = outerOutputTensors.Select(t => new GraphPort(t.Name, new[] { t })).ToList();
 
             long weightBaseOffset = velaStream.WeightData?.Offset ?? 0;
+            long weightByteLength = velaStream.WeightData?.Length ?? 0;
             string subgraphName = $"{node.Name} ({driverPayload.Architecture})";
 
             return EthosUSubgraphBuilder.Build(
@@ -286,10 +344,11 @@ internal sealed class EthosUDelegateExpander : IDelegateSubgraphExpander
                 driverPayload,
                 snapshots,
                 weightBaseOffset,
+                weightByteLength,
                 outerInputs,
                 outerOutputs,
-                inputOffsets,
-                outputOffsets);
+                inputRegions,
+                outputRegions);
         }
         finally
         {
@@ -297,19 +356,143 @@ internal sealed class EthosUDelegateExpander : IDelegateSubgraphExpander
         }
     }
 
-    private static async Task TryExtractTfliteArenaOffsetsAsync(
+    private static List<TensorEdge> ExtractTfliteRuntimeInputs(GraphNode node)
+    {
+        var result = new List<TensorEdge>();
+        string? scratchName = node.Inputs.Count > 2 && node.Inputs[2].Tensors.Count > 0
+            ? node.Inputs[2].Tensors[0].Name
+            : null;
+
+        for (int i = 0; i < node.Inputs.Count; i++)
+        {
+            if (node.Inputs[i].Tensors.Count == 0)
+            {
+                continue;
+            }
+
+            TensorEdge tensor = node.Inputs[i].Tensors[0];
+
+            // Skip Vela's internal scaffolding ports:
+            // [0] ethos_u_command_stream, [1] read_only (flash weights), [2] scratch, [3] scratch / scratch_fast
+            if (i == 0)
+            {
+                continue;
+            }
+
+            if (i == 1 && (tensor.Data is TensorDataSlice || string.Equals(tensor.Name, "read_only", StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            if ((i == 2 || i == 3) &&
+                (string.Equals(tensor.Name, "scratch", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(tensor.Name, "scratch_fast", StringComparison.OrdinalIgnoreCase) ||
+                 (i == 3 && scratchName is not null && string.Equals(tensor.Name, scratchName, StringComparison.Ordinal))))
+            {
+                continue;
+            }
+
+            result.Add(tensor);
+        }
+
+        return result;
+    }
+
+    private static List<TensorEdge> ExtractRuntimeOutputs(GraphNode node)
+    {
+        var result = new List<TensorEdge>(node.Outputs.Count);
+        for (int i = 0; i < node.Outputs.Count; i++)
+        {
+            if (node.Outputs[i].Tensors.Count > 0)
+            {
+                result.Add(node.Outputs[i].Tensors[0]);
+            }
+        }
+        return result;
+    }
+
+    private static uint ComputeTensorByteLength(TensorEdge tensor)
+    {
+        long elemSize = EthosUSubgraphBuilder.GetElementByteSize(tensor.Descriptor.DataType);
+        TensorShape? shape = tensor.Descriptor.Shape;
+        if (shape is null || shape.IsScalar)
+        {
+            return (uint)elemSize;
+        }
+
+        long elements = 1;
+        bool hasFixed = false;
+        for (int i = 0; i < shape.Dimensions.Count; i++)
+        {
+            if (shape.Dimensions[i] is TensorDimension.Fixed f && f.Value > 0)
+            {
+                elements *= f.Value;
+                hasFixed = true;
+            }
+        }
+
+        long total = (hasFixed ? elements : 1) * elemSize;
+        return (uint)Math.Clamp(total, 1, uint.MaxValue);
+    }
+
+    private static uint ComputeVelaIoByteLength(VelaIoTensor io)
+    {
+        long elements = 1;
+        for (int i = 0; i < io.Shape.Count; i++)
+        {
+            if (io.Shape[i] > 0)
+            {
+                elements *= io.Shape[i];
+            }
+        }
+
+        long total = elements * Math.Max(1, io.ElementSize);
+        return (uint)Math.Clamp(total, 1, uint.MaxValue);
+    }
+
+    private static TensorEdge CreateSynthesizedIoTensor(string name, VelaIoTensor io, TensorKind kind)
+    {
+        DataType dataType = io.ElementSize switch
+        {
+            1 => DataType.Int8,
+            2 => DataType.Int16,
+            4 => DataType.Int32,
+            _ => DataType.UInt8,
+        };
+
+        var dims = new List<TensorDimension>(io.Shape.Count);
+        for (int i = 0; i < io.Shape.Count; i++)
+        {
+            if (io.Shape[i] > 1 || dims.Count > 0 || i == io.Shape.Count - 1)
+            {
+                dims.Add(new TensorDimension.Fixed(Math.Max(1, io.Shape[i])));
+            }
+        }
+
+        var descriptor = new TensorDescriptor(dataType, new TensorShape(dims));
+        return new TensorEdge(name, descriptor, kind);
+    }
+
+    private static async Task<Dictionary<string, uint>> TryExtractTfliteArenaOffsetsAsync(
         Stream modelStream,
         ModelGraph graph,
-        Dictionary<uint, string> inputOffsets,
-        Dictionary<uint, string> outputOffsets,
+        GraphNode node,
         CancellationToken cancellationToken)
     {
+        var offsetsByName = new Dictionary<string, uint>(StringComparer.Ordinal);
+
         if (graph.Metadata.TryGetValue("metadata.OfflineMemoryAllocation.offset", out string? offsetStr) &&
             graph.Metadata.TryGetValue("metadata.OfflineMemoryAllocation.length", out string? lengthStr) &&
             long.TryParse(offsetStr, CultureInfo.InvariantCulture, out long metaOffset) &&
             int.TryParse(lengthStr, CultureInfo.InvariantCulture, out int metaLength) &&
             metaLength >= 12)
         {
+            Subgraph? owningSubgraph = FindOwningSubgraph(graph, node) ?? graph.PrimarySubgraph;
+            if (owningSubgraph is null)
+            {
+                return offsetsByName;
+            }
+
             byte[] metaBuf = ArrayPool<byte>.Shared.Rent(metaLength);
             try
             {
@@ -317,21 +500,20 @@ internal sealed class EthosUDelegateExpander : IDelegateSubgraphExpander
                 await modelStream.ReadExactlyAsync(metaBuf.AsMemory(0, metaLength), cancellationToken).ConfigureAwait(false);
 
                 ReadOnlySpan<byte> span = metaBuf.AsSpan(0, metaLength);
-                int version = BinaryPrimitives.ReadInt32LittleEndian(span[..4]);
-                int subgraphIdx = BinaryPrimitives.ReadInt32LittleEndian(span.Slice(4, 4));
+                _ = BinaryPrimitives.ReadInt32LittleEndian(span[..4]); // version
+                _ = BinaryPrimitives.ReadInt32LittleEndian(span.Slice(4, 4)); // subgraphIdx
                 int nbrTensors = BinaryPrimitives.ReadInt32LittleEndian(span.Slice(8, 4));
 
-                if (nbrTensors > 0 && 12 + nbrTensors * 4 <= metaLength && graph.PrimarySubgraph != null)
+                if (nbrTensors > 0 && 12 + nbrTensors * 4 <= metaLength)
                 {
-                    IReadOnlyList<TensorEdge> tensors = graph.PrimarySubgraph.Tensors;
+                    IReadOnlyList<TensorEdge> tensors = owningSubgraph.Tensors;
                     int pos = 12;
                     for (int i = 0; i < nbrTensors && i < tensors.Count; i++)
                     {
                         int arenaOffset = BinaryPrimitives.ReadInt32LittleEndian(span.Slice(pos, 4));
                         if (arenaOffset >= 0)
                         {
-                            inputOffsets[(uint)arenaOffset] = tensors[i].Name;
-                            outputOffsets[(uint)arenaOffset] = tensors[i].Name;
+                            offsetsByName[tensors[i].Name] = (uint)arenaOffset;
                         }
                         pos += 4;
                     }
@@ -342,5 +524,24 @@ internal sealed class EthosUDelegateExpander : IDelegateSubgraphExpander
                 ArrayPool<byte>.Shared.Return(metaBuf);
             }
         }
+
+        return offsetsByName;
+    }
+
+    private static Subgraph? FindOwningSubgraph(ModelGraph graph, GraphNode node)
+    {
+        for (int s = 0; s < graph.Subgraphs.Count; s++)
+        {
+            Subgraph sg = graph.Subgraphs[s];
+            for (int n = 0; n < sg.Nodes.Count; n++)
+            {
+                if (ReferenceEquals(sg.Nodes[n], node) || string.Equals(sg.Nodes[n].Name, node.Name, StringComparison.Ordinal))
+                {
+                    return sg;
+                }
+            }
+        }
+
+        return null;
     }
 }

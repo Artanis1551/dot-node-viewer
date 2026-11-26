@@ -332,7 +332,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ".pt",
         ".pt2",
         ".keras",
-        ".h5"
+        ".h5",
+        ".mlir",
+        ".mlirbc"
     ];
 
     /// <summary>
@@ -409,7 +411,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         IsDropTargetValid = isValid;
         DropTargetFeedbackMessage = feedbackMessage ?? (isValid
             ? "Release file to inspect neural network architecture"
-            : "Unsupported format. Supported: .onnx, .tflite, .pte, .pt, .pt2, .keras, .h5");
+            : "Unsupported format. Supported: .onnx, .tflite, .pte, .pt, .pt2, .keras, .h5, .mlir, .mlirbc");
     }
 
     /// <summary>
@@ -530,7 +532,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (primary is null)
         {
             HasError = true;
-            ErrorMessage = "Unsupported file format. Supported: .onnx, .tflite, .pte, .pt, .pt2, .keras, .h5";
+            ErrorMessage = "Unsupported file format. Supported: .onnx, .tflite, .pte, .pt, .pt2, .keras, .h5, .mlir, .mlirbc";
             StatusText = ErrorMessage;
             SetDropTargetState(isActive: true, isValid: false, feedbackMessage: ErrorMessage);
             ScheduleInvalidDropDismissal(cancellationToken);
@@ -629,7 +631,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (primary is null)
         {
             HasError = true;
-            ErrorMessage = "Unsupported file format. Supported: .onnx, .tflite, .pte, .pt, .pt2, .keras, .h5";
+            ErrorMessage = "Unsupported file format. Supported: .onnx, .tflite, .pte, .pt, .pt2, .keras, .h5, .mlir, .mlirbc";
             StatusText = ErrorMessage;
             SetDropTargetState(isActive: true, isValid: false, feedbackMessage: ErrorMessage);
             ScheduleInvalidDropDismissal(cancellationToken);
@@ -1075,7 +1077,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
 
         string prefix = SelectedNodeTitle;
-        string title = !string.IsNullOrWhiteSpace(prefix) ? $"{prefix}: {subgraph.Name}" : subgraph.Name;
+        string title = !string.IsNullOrWhiteSpace(prefix) && !subgraph.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            ? $"{prefix}: {subgraph.Name}"
+            : subgraph.Name;
         Breadcrumbs.Add(new SubgraphBreadcrumbItem(title, subgraph, isCurrent: true));
 
         SelectSubgraphInternal(subgraph);
@@ -1478,6 +1482,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 if (opName.Contains("xnnpack", StringComparison.OrdinalIgnoreCase))
                 {
                     delegateText = "Delegate: XNNPACK";
+                }
+                else if (opName.Contains("ethos-u", StringComparison.OrdinalIgnoreCase)
+                    || opName.Contains("ethosu", StringComparison.OrdinalIgnoreCase))
+                {
+                    delegateText = "Delegate: Ethos-U";
                 }
                 else if (delegateText is null && opName.Contains("delegate", StringComparison.OrdinalIgnoreCase))
                 {

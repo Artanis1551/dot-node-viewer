@@ -41,9 +41,9 @@ public partial class MainWindow : Window
             AllowMultiple = false,
             FileTypeFilter =
             [
-                new FilePickerFileType("All Supported Models (*.onnx, *.tflite, *.pte, *.pt, *.pt2, *.keras, *.h5)")
+                new FilePickerFileType("All Supported Models (*.onnx, *.tflite, *.pte, *.pt, *.pt2, *.keras, *.h5, *.mlir, *.mlirbc)")
                 {
-                    Patterns = ["*.onnx", "*.tflite", "*.pte", "*.pt", "*.pt2", "*.keras", "*.h5"]
+                    Patterns = ["*.onnx", "*.tflite", "*.pte", "*.pt", "*.pt2", "*.keras", "*.h5", "*.mlir", "*.mlirbc"]
                 },
                 new FilePickerFileType("ONNX Models (*.onnx)")
                 {
@@ -64,6 +64,10 @@ public partial class MainWindow : Window
                 new FilePickerFileType("Keras Models (*.keras, *.h5)")
                 {
                     Patterns = ["*.keras", "*.h5"]
+                },
+                new FilePickerFileType("MLIR Models (*.mlir, *.mlirbc)")
+                {
+                    Patterns = ["*.mlir", "*.mlirbc"]
                 },
                 FilePickerFileTypes.All
             ]

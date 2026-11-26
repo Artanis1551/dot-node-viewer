@@ -1,0 +1,56 @@
+{
+  "modelId": "mlir-tiny_tosa",
+  "format": "MLIR Textual",
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "main",
+    "nodeCount": 6,
+    "operatorHistogram": {
+      "tosa.const": 2,
+      "tosa.conv2d": 1,
+      "tosa.clamp": 1,
+      "tosa.rescale": 1,
+      "tosa.avg_pool2d": 1
+    },
+    "inputs": [
+      {
+        "name": "%arg0",
+        "dataType": "Int8",
+        "shape": [
+          "1",
+          "8",
+          "8",
+          "3"
+        ],
+        "quantization": {
+          "scale": [
+            0.05
+          ],
+          "zeroPoint": [
+            128
+          ]
+        }
+      }
+    ],
+    "outputs": [
+      {
+        "name": "%pool",
+        "dataType": "Int8",
+        "shape": [
+          "1",
+          "4",
+          "4",
+          "4"
+        ],
+        "quantization": {
+          "scale": [
+            0.02
+          ],
+          "zeroPoint": [
+            128
+          ]
+        }
+      }
+    ]
+  }
+}

@@ -238,13 +238,27 @@ public sealed class MainWindowViewModelTests
 
         // Breadcrumb and NPU inferred state
         await Assert.That(vm.Breadcrumbs.Count).IsEqualTo(2);
+        await Assert.That(vm.Breadcrumbs[1].Name).IsEqualTo("CUSTOM(ethos-u)_0 (Ethos-U55-128)");
         await Assert.That(vm.CanNavigateBackSubgraph).IsTrue();
         await Assert.That(vm.IsInferredNpuSubgraph).IsTrue();
         await Assert.That(vm.SelectedSubgraph?.Name).Contains("Ethos-U");
 
-        // The synthesized graph should have NPU ops
+        // The synthesized graph should have NPU ops and full visual edge connectivity
         await Assert.That(vm.CurrentLayout).IsNotNull();
         await Assert.That(vm.CurrentLayout!.Nodes.Count).IsGreaterThan(0);
+        await Assert.That(vm.CurrentLayout.Edges.Count).IsGreaterThan(0);
+
+        var connectedIds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var edge in vm.CurrentLayout.Edges)
+        {
+            connectedIds.Add(edge.Layout.SourceNodeId);
+            connectedIds.Add(edge.Layout.TargetNodeId);
+        }
+
+        foreach (VisualNode vn in vm.CurrentLayout.Nodes)
+        {
+            await Assert.That(connectedIds.Contains(vn.Id)).IsTrue();
+        }
 
         // Select an NPU operation node (excluding input/output terminal pills)
         VisualNode? npuVisualNode = vm.CurrentLayout.Nodes.FirstOrDefault(n => n.GraphNode is not null);

@@ -86,9 +86,11 @@ def decode_command_stream(data: bytes, cop1_idx: int) -> dict:
         else:
             w_idx += 1
 
-    # Extract executable op names matching EthosUSubgraphBuilder
+    # Extract executable op names matching EthosUSubgraphBuilder (cmd0 only)
     exec_ops = []
-    for opcode, param, _ in commands:
+    for opcode, param, payload in commands:
+        if payload is not None:
+            continue
         if opcode == 0x002:
             exec_ops.append("NPU_CONV")
         elif opcode == 0x003:

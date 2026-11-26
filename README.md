@@ -63,6 +63,7 @@ dot-node-viewer.slnx
 | [**PyTorch (`state_dict` & TorchScript)**](docs/site/articles/formats/pytorch.md) | `.pt`, `.pth` | `pytorch` | PKZIP container, safe `PickleMachine` VM (protocols 2–5, zero reflection), TorchScript Python AST mini-parser with module inlining, scripted `if` control flow fallback, hierarchical `state_dict` parameter grouping, and lazy weight slicing | **Supported (S08)** |
 | [**PyTorch ExportedProgram**](docs/site/articles/formats/pytorch.md#pytorch-2-exportedprogram-pt2) | `.pt2` | `pytorch-pt2` | `torch.export` PKZIP archive, `ExportedProgram` JSON schema, ATen operators, symbolic `SymInt` dimensions & `range_constraints`, parameter/buffer initializer isolation, and zero-allocation lazy stored weight slicing | **Supported (S09)** |
 | [**Keras v3 & Legacy HDF5**](docs/site/articles/formats/keras.md) | `.keras`, `.h5` | `keras` | Keras v3 PKZIP archive (`config.json` + `model.weights.h5`), legacy HDF5 `.h5` (`model_config`), pure C# `Hdf5File` reader over `RandomAccessSource`, Sequential and Functional graphs with residual skip connections, weights-only fallback, and contiguous dataset lazy slicing | **Supported (S10)** |
+| [**MLIR (Textual & Bytecode)**](docs/site/articles/formats/mlir.md) | `.mlir`, `.mlirbc` | `mlir` | Streaming LLVM MLIR Bytecode (`ML\xEFR`) & textual assembly across StableHLO/VHLO, TOSA, Torch-MLIR (`torch.quantized_decomposed`, `torch.torchao`), Triton (`tt.*`), IREE, and Linalg; nested region subgraphs, `UInt128` shape overflow guard, single-`?` dim inference, and lazy `kResource` slicing | **Supported (W13)** |
 | [**Arm Ethos-U NPU Delegate**](docs/site/articles/formats/ethos-u.md) | *(embedded in `.tflite` / `.pte`)* | `ethos-u` | On-demand hardware microcode decompilation for Ethos-U55/U65/U85, Vela `COP1` & driver payload `ETHU` readers, zero-allocation command stream decoder, register state machine, last-writer-wins address dataflow edge inference, and raw disassembly listing | **Supported (W01)** |
 
 ---
@@ -216,7 +217,7 @@ Neural networks compiled with the Arm Vela compiler (`.tflite`) or lowered via E
 
 The core model parsing, layout engines, and CLI tool are packaged as independent, AOT-compatible NuGet packages with centralized SemVer versioning (`Directory.Build.props`), Source Link, `.snupkg` symbols, and SLSA build provenance:
 
-* **`DotNodeViewer.Core`**: Pure C# Unified Graph IR, format detectors, streaming readers for ONNX, TFLite, ExecuTorch, PyTorch, and Keras, plus lazy tensor data loaders.
+* **`DotNodeViewer.Core`**: Pure C# Unified Graph IR, format detectors, streaming readers for ONNX, TFLite, ExecuTorch, PyTorch, Keras and MLIR, plus lazy tensor data loaders.
 * **`DotNodeViewer.Layout`**: Pure C# Sugiyama-style layered graph layout engine and spatial grid index for neural network topologies.
 * **`DotNodeViewer.Cli`**: Cross-platform `.NET 10` Global Tool (`dot-node-viewer`) for format detection, graph inspection, golden snapshots, and NPU command stream disassembly.
 

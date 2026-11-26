@@ -15,19 +15,19 @@
     "macs": 128,
     "shramKb": 24,
     "commandWords": 756,
-    "totalNpuOperations": 91,
+    "totalNpuOperations": 36,
     "operatorHistogram": {
-      "NPU_CONV": 3,
-      "NPU_DEPTHWISE": 2,
-      "NPU_MAXPOOL": 21,
-      "NPU_MUL": 27,
-      "NPU_DMA": 19,
+      "NPU_CONV": 2,
       "NPU_AVGPOOL": 3,
+      "NPU_DMA": 2,
+      "NPU_DEPTHWISE": 1,
+      "NPU_MAXPOOL": 1,
       "NPU_SUB": 6,
       "NPU_SHR": 2,
       "NPU_REDUCE_SUM": 1,
       "NPU_CLZ": 1,
       "NPU_SHL": 1,
+      "NPU_MUL": 11,
       "NPU_ADD": 5
     }
   }
