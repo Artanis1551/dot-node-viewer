@@ -1,0 +1,286 @@
+name: Publish NuGet Packages
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Perform a dry run (build, test, AOT check, and pack without publishing)'
+        required: true
+        type: boolean
+        default: true
+      version:
+        description: 'Optional SemVer version override for dry-run dispatch (defaults to Directory.Build.props VersionPrefix)'
+        required: false
+        type: string
+        default: ''
+
+concurrency:
+  group: "nuget-release"
+  cancel-in-progress: false
+
+env:
+  DOTNET_NOLOGO: "1"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  AVALONIA_TELEMETRY_OPTOUT: "1"
+
+jobs:
+  verify-and-pack:
+    name: Build, Verify & Pack Packages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.parse_version.outputs.version }}
+      tag_name: ${{ steps.parse_version.outputs.tag_name }}
+      is_prerelease: ${{ steps.parse_version.outputs.is_prerelease }}
+      should_publish: ${{ steps.parse_version.outputs.should_publish }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract & Validate Release Version
+        id: parse_version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PROPS_PREFIX="$(python3 -c '
+          import re, sys
+          text = open("Directory.Build.props", encoding="utf-8").read()
+          m = re.search(r"<VersionPrefix>([^<]+)</VersionPrefix>", text)
+          if not m:
+              sys.exit(1)
+          print(m.group(1).strip())
+          ')"
+
+          SEMVER_REGEX='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
+
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            RAW_REF="${GITHUB_REF_NAME}"
+            if [[ ! "${RAW_REF}" =~ ^v(.+)$ ]]; then
+              echo "Error: Tag '${RAW_REF}' must start with lowercase 'v'." >&2
+              exit 1
+            fi
+            VERSION="${BASH_REMATCH[1]}"
+            TAG_NAME="${RAW_REF}"
+            SHOULD_PUBLISH="true"
+          else
+            RAW_INPUT="${{ inputs.version }}"
+            if [[ -z "${RAW_INPUT}" ]]; then
+              VERSION="${PROPS_PREFIX}"
+            else
+              VERSION="${RAW_INPUT#v}"
+            fi
+            TAG_NAME="v${VERSION}"
+            if [[ "${{ inputs.dry_run }}" == "true" || "${{ github.ref_type }}" != "tag" ]]; then
+              SHOULD_PUBLISH="false"
+            else
+              SHOULD_PUBLISH="true"
+            fi
+          fi
+
+          if [[ ! "${VERSION}" =~ ${SEMVER_REGEX} ]]; then
+            echo "Error: Version '${VERSION}' does not follow SemVer 2.0.0 format X.Y.Z[-prerelease]." >&2
+            exit 1
+          fi
+
+          CORE_PREFIX="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
+          if [[ "${CORE_PREFIX}" != "${PROPS_PREFIX}" ]]; then
+            echo "Error: Version parity mismatch! Tag/input core version '${CORE_PREFIX}' does not match Directory.Build.props <VersionPrefix> '${PROPS_PREFIX}'." >&2
+            exit 1
+          fi
+
+          if [[ "${VERSION}" == *-* ]]; then
+            IS_PRERELEASE="true"
+          else
+            IS_PRERELEASE="false"
+          fi
+
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag_name=${TAG_NAME}" >> "$GITHUB_OUTPUT"
+          echo "is_prerelease=${IS_PRERELEASE}" >> "$GITHUB_OUTPUT"
+          echo "should_publish=${SHOULD_PUBLISH}" >> "$GITHUB_OUTPUT"
+          echo "Validated release version: ${VERSION} (tag=${TAG_NAME}, prerelease=${IS_PRERELEASE}, publish=${SHOULD_PUBLISH})"
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore .NET local tools
+        run: dotnet tool restore
+
+      - name: Restore cached model fixtures
+        uses: actions/cache@v4
+        with:
+          path: tests/DotNodeViewer.Core.Tests/.model-cache
+          key: model-cache-${{ hashFiles('tests/DotNodeViewer.Core.Tests/Fixtures/models.manifest.json') }}
+          restore-keys: |
+            model-cache-
+
+      - name: Build solution (Release, zero warnings)
+        run: dotnet build dot-node-viewer.slnx -c Release -p:Version=${{ steps.parse_version.outputs.version }}
+
+      - name: Run Core, Layout & App Tests (Release)
+        run: |
+          dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build --output Detailed
+          dotnet test --project tests/DotNodeViewer.Layout.Tests -c Release --no-build --output Detailed
+          dotnet test --project tests/DotNodeViewer.App.Tests -c Release --no-build --output Detailed
+
+      - name: Ensure NativeAOT build prerequisites
+        run: |
+          if ! command -v clang >/dev/null 2>&1 || ! dpkg -s zlib1g-dev >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends clang zlib1g-dev
+          fi
+
+      - name: Verify NativeAOT & Trimming Compatibility
+        run: |
+          dotnet publish tools/DotNodeViewer.Cli/DotNodeViewer.Cli.csproj \
+            -c Release \
+            -p:PublishAot=true \
+            -p:Version=${{ steps.parse_version.outputs.version }} \
+            -o ./artifacts/aot-test-cli
+
+      - name: Pack NuGet Packages (Core, Layout & Cli)
+        run: |
+          mkdir -p ./artifacts/packages
+          dotnet pack src/DotNodeViewer.Core/DotNodeViewer.Core.csproj \
+            -c Release \
+            --no-build \
+            -p:Version=${{ steps.parse_version.outputs.version }} \
+            -p:PackageVersion=${{ steps.parse_version.outputs.version }} \
+            -o ./artifacts/packages
+          dotnet pack src/DotNodeViewer.Layout/DotNodeViewer.Layout.csproj \
+            -c Release \
+            --no-build \
+            -p:Version=${{ steps.parse_version.outputs.version }} \
+            -p:PackageVersion=${{ steps.parse_version.outputs.version }} \
+            -o ./artifacts/packages
+          dotnet pack tools/DotNodeViewer.Cli/DotNodeViewer.Cli.csproj \
+            -c Release \
+            -p:Version=${{ steps.parse_version.outputs.version }} \
+            -p:PackageVersion=${{ steps.parse_version.outputs.version }} \
+            -o ./artifacts/packages
+
+      - name: Smoke-Test Packed Libraries & Global Tool
+        shell: bash
+        run: |
+          set -euo pipefail
+          PKG_DIR="$(pwd)/artifacts/packages"
+          FIXTURE_ONNX="$(pwd)/tests/DotNodeViewer.Core.Tests/Fixtures/onnx/tiny_mlp.onnx"
+          VERSION="${{ steps.parse_version.outputs.version }}"
+
+          WORK_DIR="$(mktemp -d)"
+          trap 'rm -rf "${WORK_DIR}"' EXIT
+          export NUGET_PACKAGES="${WORK_DIR}/nuget-packages"
+
+          mkdir -p "${WORK_DIR}/app"
+          cd "${WORK_DIR}/app"
+          dotnet new console --no-restore
+          dotnet add package DotNodeViewer.Core --source "${PKG_DIR}" --version "${VERSION}"
+          dotnet add package DotNodeViewer.Layout --source "${PKG_DIR}" --version "${VERSION}"
+          cat <<'CS' > Program.cs
+          using DotNodeViewer.Core.Abstractions;
+          using DotNodeViewer.Layout;
+
+          Console.WriteLine($"Registered formats: {ModelFormatRegistry.Default.RegisteredFormats.Count}");
+          Console.WriteLine($"Layout adapter: {ModelGraphLayoutAdapter.Default.GetType().Name}");
+          CS
+          dotnet run -c Release --no-restore
+
+          dotnet tool install DotNodeViewer.Cli \
+            --add-source "${PKG_DIR}" \
+            --version "${VERSION}" \
+            --tool-path "${WORK_DIR}/tool"
+          "${WORK_DIR}/tool/dot-node-viewer" --help
+          DETECTED="$("${WORK_DIR}/tool/dot-node-viewer" detect "${FIXTURE_ONNX}")"
+          if [[ "${DETECTED}" != "onnx" ]]; then
+            echo "Error: Expected 'onnx', got '${DETECTED}'." >&2
+            exit 1
+          fi
+
+      - name: Generate Checksums
+        working-directory: ./artifacts/packages
+        run: |
+          sha256sum *.nupkg *.snupkg > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Upload Package Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages-${{ steps.parse_version.outputs.version }}
+          path: ./artifacts/packages
+          if-no-files-found: error
+
+  publish:
+    name: Attest, Publish & Create GitHub Release
+    needs: [verify-and-pack]
+    if: ${{ needs.verify-and-pack.outputs.should_publish == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+      attestations: write
+    steps:
+      - name: Download Package Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: nuget-packages-${{ needs.verify-and-pack.outputs.version }}
+          path: ./artifacts/packages
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Verify NuGet API Key Secret
+        shell: bash
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          if [[ -z "${NUGET_API_KEY}" ]]; then
+            echo "Error: NUGET_API_KEY repository secret is not configured." >&2
+            echo "Add a scoped API key (glob pattern: DotNodeViewer.*) under Settings -> Secrets and variables -> Actions." >&2
+            exit 1
+          fi
+
+      - name: Attest Build Provenance (SLSA)
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: './artifacts/packages/*.nupkg'
+
+      - name: Publish to NuGet.org
+        run: |
+          dotnet nuget push "./artifacts/packages/*.nupkg" \
+            --api-key "${{ secrets.NUGET_API_KEY }}" \
+            --source "https://api.nuget.org/v3/index.json" \
+            --skip-duplicate
+
+      - name: Publish to GitHub Packages
+        run: |
+          dotnet nuget push "./artifacts/packages/*.nupkg" \
+            --api-key "${{ secrets.GITHUB_TOKEN }}" \
+            --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
+            --no-symbols \
+            --skip-duplicate
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.verify-and-pack.outputs.tag_name }}
+          name: Release ${{ needs.verify-and-pack.outputs.tag_name }}
+          files: |
+            ./artifacts/packages/*.nupkg
+            ./artifacts/packages/*.snupkg
+            ./artifacts/packages/SHA256SUMS.txt
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ needs.verify-and-pack.outputs.is_prerelease == 'true' }}
