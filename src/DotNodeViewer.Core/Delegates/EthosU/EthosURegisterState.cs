@@ -24,6 +24,10 @@ internal sealed record EthosURegisterSnapshot(
     uint Ifm2Base0,
     int Ifm2Width,
     int Ifm2Height,
+    uint Ifm2StrideX,
+    uint Ifm2StrideY,
+    uint Ifm2StrideC,
+    int Ifm2Scalar,
     int Ifm2Precision,
     int Ifm2ZeroPoint,
     int Ifm2Broadcast,
@@ -43,6 +47,10 @@ internal sealed record EthosURegisterSnapshot(
     int KernelWidth,
     int KernelHeight,
     int KernelStride,
+    int KernelStrideX,
+    int KernelStrideY,
+    int DilationX,
+    int DilationY,
     int WeightRegion,
     uint WeightBase,
     uint WeightLength,
@@ -93,6 +101,7 @@ internal sealed class EthosURegisterState
     public uint Ifm2StrideC { get; set; }
     public int Ifm2Precision { get; set; }
     public int Ifm2ZeroPoint { get; set; }
+    public int Ifm2Scalar { get; set; }
     public int Ifm2Broadcast { get; set; }
 
     // OFM
@@ -221,6 +230,9 @@ internal sealed class EthosURegisterState
                 break;
             case EthosUOpcodeCatalog.NpuSetIfm2Broadcast:
                 Ifm2Broadcast = param;
+                break;
+            case EthosUOpcodeCatalog.NpuSetIfm2Scalar:
+                Ifm2Scalar = unchecked((short)param);
                 break;
 
             case EthosUOpcodeCatalog.NpuSetOfmRegion:
@@ -375,6 +387,13 @@ internal sealed class EthosURegisterState
     /// <returns>A new <see cref="EthosURegisterSnapshot"/> instance.</returns>
     public EthosURegisterSnapshot CreateSnapshot(int opcode, int param)
     {
+        int strideX = ((KernelStride & 1) | (((KernelStride >> 6) & 0x7) << 1)) + 1;
+        int strideY = (((KernelStride >> 1) & 1) | (((KernelStride >> 9) & 0x7) << 1)) + 1;
+        int dilationX = ((KernelStride >> 3) & 1) + 1;
+        int dilationY = ((KernelStride >> 4) & 1) + 1;
+        int kernelW = (KernelWidthM1 / dilationX) + 1;
+        int kernelH = (KernelHeightM1 / dilationY) + 1;
+
         var snapshot = new EthosURegisterSnapshot(
             opcode,
             param,
@@ -396,6 +415,10 @@ internal sealed class EthosURegisterState
             Ifm2Base0,
             Ifm2WidthM1 + 1,
             Math.Max(Ifm2Height0M1, Ifm2Height1M1) + 1,
+            Ifm2StrideX,
+            Ifm2StrideY,
+            Ifm2StrideC,
+            Ifm2Scalar,
             Ifm2Precision,
             Ifm2ZeroPoint,
             Ifm2Broadcast,
@@ -412,9 +435,13 @@ internal sealed class EthosURegisterState
             OfmBlkWidthM1 + 1,
             OfmBlkHeightM1 + 1,
             OfmBlkDepthM1 + 1,
-            KernelWidthM1 + 1,
-            KernelHeightM1 + 1,
+            kernelW,
+            kernelH,
             KernelStride,
+            strideX,
+            strideY,
+            dilationX,
+            dilationY,
             WeightRegion,
             WeightBase,
             WeightLength,
