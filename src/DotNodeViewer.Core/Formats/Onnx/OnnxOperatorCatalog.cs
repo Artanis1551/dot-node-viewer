@@ -3,7 +3,7 @@ using DotNodeViewer.Core.Ir;
 namespace DotNodeViewer.Core.Formats.Onnx;
 
 /// <summary>
-/// Maps standard ONNX (<c>ai.onnx</c>) operator types, formal port names, and <c>TensorProto.DataType</c> codes into the Unified Graph IR.
+/// Maps standard ONNX (<c>ai.onnx</c>, through opset 29) and Microsoft (<c>com.microsoft</c>) operator types, formal port names, and <c>TensorProto.DataType</c> codes into the Unified Graph IR.
 /// </summary>
 internal static class OnnxOperatorCatalog
 {
@@ -47,6 +47,23 @@ internal static class OnnxOperatorCatalog
             case "ScatterND":
             case "Compress":
             case "EmbedLayerNormalization":
+            // ONNX opset 29 compute layers
+            case "CausalConvWithState":
+            case "LinearAttention":
+            case "GroupedMatMul":
+            // com.microsoft LLM & MoE layers
+            case "MultiHeadLatentAttention":
+            case "Mamba2Verify":
+            case "MatMulNBitsQLoRA":
+            case "MatMulNBitsQLoRAMlp":
+            case "MatMulNBitsQLoRAQkv":
+            case "MatMulPacked":
+            case "MoEGroupRouter":
+            case "MoEPacked":
+            case "RouterGateUpProj":
+            case "HyperConnectionLowRankMix":
+            case "GatherPacked":
+            case "SpeculativePrefixCommit":
                 return OperatorCategory.Layer;
 
             // Non-linear activations
@@ -63,6 +80,8 @@ internal static class OnnxOperatorCatalog
             case "Gelu":
             case "FastGelu":
             case "BiasGelu":
+            case "GeGLU":
+            case "SwiGLU":
             case "Softmax":
             case "LogSoftmax":
             case "Hardmax":
@@ -87,6 +106,7 @@ internal static class OnnxOperatorCatalog
             case "GroupNormalization":
             case "LRN":
             case "MeanVarianceNormalization":
+            case "RMSNormRotary":
                 return OperatorCategory.Normalization;
 
             // Spatial & global pooling
@@ -106,6 +126,9 @@ internal static class OnnxOperatorCatalog
             case "QuantizeLinear":
             case "DequantizeLinear":
             case "DynamicQuantizeLinear":
+            case "DequantizePacked":
+            case "Pack":
+            case "Unpack":
                 return OperatorCategory.Quantization;
 
             // Shape, view & layout manipulation
@@ -161,7 +184,9 @@ internal static class OnnxOperatorCatalog
             case "Abs":
             case "Sqrt":
             case "Exp":
+            case "Expm1":
             case "Log":
+            case "Log1p":
             case "Sin":
             case "Cos":
             case "Tan":
@@ -214,6 +239,7 @@ internal static class OnnxOperatorCatalog
             case "ArgMin":
             case "TopK":
             case "CumSum":
+            case "LogCumSumExp":
             case "NonZero":
             case "OneHot":
             case "Range":
@@ -283,6 +309,38 @@ internal static class OnnxOperatorCatalog
             2 => "B",
             _ => $"input_{index}",
         },
+        "CausalConvWithState" => index switch
+        {
+            0 => "input",
+            1 => "weight",
+            2 => "bias",
+            3 => "past_state",
+            _ => $"input_{index}",
+        },
+        "LinearAttention" => index switch
+        {
+            0 => "query",
+            1 => "key",
+            2 => "value",
+            3 => "past_state",
+            4 => "decay",
+            5 => "beta",
+            _ => $"input_{index}",
+        },
+        "GroupedMatMul" => index switch
+        {
+            0 => "input",
+            1 => "weights",
+            2 => "group_indices",
+            3 => "bias",
+            _ => $"input_{index}",
+        },
+        "GeGLU" => index switch
+        {
+            0 => "A",
+            1 => "B",
+            _ => $"input_{index}",
+        },
         "Gemm" => index switch
         {
             0 => "A",
@@ -320,9 +378,21 @@ internal static class OnnxOperatorCatalog
         },
         "Relu" or "LeakyRelu" or "Sigmoid" or "Tanh" or "Gelu" or "Softmax" or "LogSoftmax"
             or "MaxPool" or "AveragePool" or "GlobalAveragePool" or "GlobalMaxPool"
-            or "Flatten" or "Identity" or "Dropout" => index switch
+            or "Flatten" or "Identity" or "Dropout"
+            or "Pack" or "LogCumSumExp" => index switch
         {
             0 => "X",
+            _ => $"input_{index}",
+        },
+        "Unpack" => index switch
+        {
+            0 => "X",
+            1 => "count",
+            _ => $"input_{index}",
+        },
+        "Expm1" or "Log1p" => index switch
+        {
+            0 => "input",
             _ => $"input_{index}",
         },
         "Clip" => index switch
@@ -368,6 +438,11 @@ internal static class OnnxOperatorCatalog
             2 => "x_zero_point",
             _ => $"input_{index}",
         },
+        "DequantizePacked" => index switch
+        {
+            0 => "x",
+            _ => $"input_{index}",
+        },
         "If" => index == 0 ? "cond" : $"input_{index}",
         "Loop" => index switch
         {
@@ -387,10 +462,24 @@ internal static class OnnxOperatorCatalog
     public static string GetOutputPortName(string opType, int index) => opType switch
     {
         "Conv" or "ConvTranspose" or "Gemm" or "MatMul"
-            or "Relu" or "LeakyRelu" or "Sigmoid" or "Tanh" or "Gelu" or "Softmax" or "LogSoftmax"
+            or "Relu" or "LeakyRelu" or "Sigmoid" or "Tanh" or "Gelu" or "GeGLU" or "Softmax" or "LogSoftmax"
             or "MaxPool" or "AveragePool" or "GlobalAveragePool" or "GlobalMaxPool"
             or "Flatten" or "Identity" or "Dropout" or "LayerNormalization"
+            or "Pack" or "Unpack" or "LogCumSumExp"
             when index == 0 => "Y",
+        "CausalConvWithState" => index switch
+        {
+            0 => "output",
+            1 => "present_state",
+            _ => $"output_{index}",
+        },
+        "LinearAttention" => index switch
+        {
+            0 => "output",
+            1 => "present_state",
+            2 => "states",
+            _ => $"output_{index}",
+        },
         "BatchNormalization" => index switch
         {
             0 => "Y",
@@ -402,8 +491,8 @@ internal static class OnnxOperatorCatalog
         "Reshape" when index == 0 => "reshaped",
         "Transpose" when index == 0 => "transposed",
         "Concat" when index == 0 => "concat_result",
-        "Slice" or "Clip" or "Constant" when index == 0 => "output",
-        "QuantizeLinear" or "DequantizeLinear" when index == 0 => "y",
+        "Slice" or "Clip" or "Constant" or "GroupedMatMul" or "Expm1" or "Log1p" when index == 0 => "output",
+        "QuantizeLinear" or "DequantizeLinear" or "DequantizePacked" when index == 0 => "y",
         "If" => $"outputs[{index}]",
         _ => $"output_{index}",
     };
