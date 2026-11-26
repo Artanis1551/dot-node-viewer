@@ -179,6 +179,16 @@ internal sealed class OnnxFormatDetector : IModelFormatDetector
             return true;
         }
 
+        // MLIR bytecode magic: ML\xEFR
+        if (header.Length >= 4
+            && header[0] == (byte)'M'
+            && header[1] == (byte)'L'
+            && header[2] == 0xEF
+            && header[3] == (byte)'R')
+        {
+            return true;
+        }
+
         return false;
     }
 
