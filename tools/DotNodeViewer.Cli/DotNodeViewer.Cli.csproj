@@ -3,11 +3,20 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>DotNodeViewer.Cli</RootNamespace>
     <AssemblyName>DotNodeViewer.Cli</AssemblyName>
+    <PackageId>DotNodeViewer.Cli</PackageId>
+    <PackAsTool Condition="'$(PublishAot)' != 'true'">true</PackAsTool>
+    <ToolCommandName>dot-node-viewer</ToolCommandName>
+    <Description>Command-line tool for neural network model format detection, topology inspection, golden snapshots, and NPU command stream disassembly.</Description>
+    <PackageTags>neural-networks;onnx;tflite;pytorch;executorch;keras;cli;dotnet-tool;machine-learning</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\DotNodeViewer.Core\DotNodeViewer.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 </Project>
 

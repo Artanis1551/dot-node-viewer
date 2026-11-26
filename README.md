@@ -2,6 +2,9 @@
 
 [![CI](https://github.com/Artanis1551/dot-node-viewer/actions/workflows/ci.yml/badge.svg)](https://github.com/Artanis1551/dot-node-viewer/actions/workflows/ci.yml)
 [![Documentation](https://github.com/Artanis1551/dot-node-viewer/actions/workflows/docs.yml/badge.svg)](https://artanis1551.github.io/dot-node-viewer/)
+[![NuGet DotNodeViewer.Core](https://img.shields.io/nuget/v/DotNodeViewer.Core.svg?label=NuGet%20Core)](https://www.nuget.org/packages/DotNodeViewer.Core/)
+[![NuGet DotNodeViewer.Layout](https://img.shields.io/nuget/v/DotNodeViewer.Layout.svg?label=NuGet%20Layout)](https://www.nuget.org/packages/DotNodeViewer.Layout/)
+[![NuGet DotNodeViewer.Cli](https://img.shields.io/nuget/v/DotNodeViewer.Cli.svg?label=NuGet%20Cli)](https://www.nuget.org/packages/DotNodeViewer.Cli/)
 
 **`dot-node-viewer`** is a high-performance, NativeAOT- and WebAssembly-compatible `.NET 10` rewrite of [Netron](https://github.com/lutzroeder/netron), split into reusable pure-C# libraries for neural network graph extraction (`DotNodeViewer.Core`) and layered graph layout (`DotNodeViewer.Layout`), paired with a cross-platform Avalonia visualizer (`DotNodeViewer.App`, `DotNodeViewer.Desktop`, `DotNodeViewer.Browser`) and CLI tool (`DotNodeViewer.Cli`).
 
@@ -210,30 +213,47 @@ Neural networks compiled with the Arm Vela compiler (`.tflite`) or lowered via E
 
 ---
 
-## NuGet Packages
+## NuGet Packages & Automated Releases
 
-The core model parsing and layout engines are published as independent, AOT-compatible NuGet packages:
+The core model parsing, layout engines, and CLI tool are packaged as independent, AOT-compatible NuGet packages with centralized SemVer versioning (`Directory.Build.props`), Source Link, `.snupkg` symbols, and SLSA build provenance:
 
-* **`DotNodeViewer.Core`**: Pure C# Unified Graph IR, streaming readers for ONNX, TFLite, ExecuTorch, PyTorch, Keras, and MLIR, plus lazy tensor data loaders.
-* **`DotNodeViewer.Layout`**: Pure C# Sugiyama-style layered graph layout engine for neural network topologies.
+* **`DotNodeViewer.Core`**: Pure C# Unified Graph IR, format detectors, streaming readers for ONNX, TFLite, ExecuTorch, PyTorch, Keras and MLIR, plus lazy tensor data loaders.
+* **`DotNodeViewer.Layout`**: Pure C# Sugiyama-style layered graph layout engine and spatial grid index for neural network topologies.
+* **`DotNodeViewer.Cli`**: Cross-platform `.NET 10` Global Tool (`dot-node-viewer`) for format detection, graph inspection, golden snapshots, and NPU command stream disassembly.
 
 ```bash
-# Pack NuGet packages
-dotnet pack src/DotNodeViewer.Core -c Release
-dotnet pack src/DotNodeViewer.Layout -c Release
-
-# Install in your project
+# Install libraries in your .NET 10 project (from NuGet.org)
 dotnet add package DotNodeViewer.Core
 dotnet add package DotNodeViewer.Layout
+
+# Install CLI as a .NET Global Tool
+dotnet tool install -g DotNodeViewer.Cli
+
+# Pack NuGet packages locally
+dotnet pack src/DotNodeViewer.Core -c Release -o ./artifacts/packages
+dotnet pack src/DotNodeViewer.Layout -c Release -o ./artifacts/packages
+dotnet pack tools/DotNodeViewer.Cli -c Release -o ./artifacts/packages
+
+# Cut and verify a SemVer release tag (maintainers)
+./tools/tag-release.sh --dry-run 0.12.0
 ```
+
+Packages are automatically verified, attested (`actions/attest-build-provenance`), and published to **NuGet.org**, **GitHub Packages**, and **GitHub Releases** on `v*` tag pushes via `.github/workflows/publish-nuget.yml`. See the [NuGet Packages & Releases Guide](docs/site/articles/library/nuget-packages-and-releases.md) for GitHub Packages setup and provenance verification.
 
 ---
 
 ## CLI Tool (`DotNodeViewer.Cli`)
 
-`DotNodeViewer.Cli` provides commands for inspecting model files, disassembling embedded NPU command streams, and generating golden regression snapshots:
+`DotNodeViewer.Cli` can be installed globally (`dotnet tool install -g DotNodeViewer.Cli`, exposing `dot-node-viewer`) or executed directly from source via `dotnet run`:
 
 ```bash
+# Using the installed global tool
+dot-node-viewer detect <path-to-model>
+dot-node-viewer inspect <path-to-model> --expand-delegates
+dot-node-viewer cmdstream <path-to-model> [--node <name>]
+dot-node-viewer snapshot <path-to-model> --id <model-id>
+
+# Or running directly from source:
 # Detect a model file's format ID from its header / container entries
 dotnet run --project tools/DotNodeViewer.Cli -c Release -- detect <path-to-model>
 
@@ -291,6 +311,7 @@ dotnet tool run docfx docs/site/docfx.json --serve
   - [Reference: Arm Ethos-U NPU Delegate](docs/site/articles/formats/ethos-u.md)
   - [Reference: CLI Tool (`DotNodeViewer.Cli`)](docs/site/articles/cli/reference.md)
   - [Reference: Domain Glossary](docs/site/articles/glossary.md)
+  - [How-To: Installing NuGet Packages & Releasing](docs/site/articles/library/nuget-packages-and-releases.md)
   - [How-To: Visualizer User Guide](docs/site/articles/visualizer/user-guide.md)
   - [How-To: Inspecting Arm Ethos-U Delegates](docs/site/articles/visualizer/inspecting-ethos-u-delegates.md)
   - [How-To: Running in the Browser (WebAssembly)](docs/site/articles/visualizer/webassembly.md)

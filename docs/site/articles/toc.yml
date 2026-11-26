@@ -4,6 +4,8 @@
       href: getting-started.md
 - name: How-To Guides
   items:
+    - name: Installing NuGet Packages & Releasing
+      href: library/nuget-packages-and-releases.md
     - name: Visualizer User Guide
       href: visualizer/user-guide.md
     - name: Deploying WebAssembly (WASM) Head

@@ -2,6 +2,10 @@
 
 This tutorial walks you through setting up your development environment, building the `.NET 10` solution, running the `TUnit` test suite, and building the documentation site locally.
 
+> [!TIP]
+> **Installing via NuGet (For Library & CLI Consumers):**  
+> If you only want to consume `DotNodeViewer.Core` / `DotNodeViewer.Layout` in your `.NET 10` project (`dotnet add package DotNodeViewer.Core`) or install the CLI globally (`dotnet tool install -g DotNodeViewer.Cli`), see [**Installing NuGet Packages & Publishing Releases**](library/nuget-packages-and-releases.md).
+
 ---
 
 ## What You Will Learn

@@ -4,6 +4,19 @@
 
 ---
 
+## Installation (.NET Global Tool)
+
+Install `DotNodeViewer.Cli` as a global `.NET 10` tool from NuGet.org to invoke `dot-node-viewer` directly from any shell:
+
+```bash
+dotnet tool install -g DotNodeViewer.Cli
+dot-node-viewer <command> <file> [options]
+```
+
+See [**Installing NuGet Packages & Publishing Releases**](../library/nuget-packages-and-releases.md) for GitHub Packages feed instructions and SLSA provenance verification.
+
+---
+
 ## Command Dispatch Architecture
 
 ```mermaid

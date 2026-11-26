@@ -57,15 +57,19 @@ The compiled NativeAOT desktop binary was verified via automated UI harness (`to
 
 ---
 
-## NuGet Library Distribution
+## NuGet Package Distribution
 
-The core libraries are packaged as lightweight, AOT-compatible NuGet packages:
+The core libraries and CLI tool are packaged as lightweight, deterministic NuGet packages with centralized SemVer versioning (`Directory.Build.props`), **Source Link**, **`.snupkg` symbols**, and `<EnablePackageValidation>true</EnablePackageValidation>`:
 
-* **`DotNodeViewer.Core`**: Pure C# Unified Graph IR, format detectors, streaming readers, and lazy tensor data loader.
-* **`DotNodeViewer.Layout`**: High-performance Sugiyama-style layered graph layout engine.
+* **`DotNodeViewer.Core`**: Pure C# Unified Graph IR, format detectors, streaming readers, and lazy tensor data loader (`IsAotCompatible=true`, `IsTrimmable=true`, `.snupkg` symbols).
+* **`DotNodeViewer.Layout`**: High-performance Sugiyama-style layered graph layout engine (`IsAotCompatible=true`, `IsTrimmable=true`, `.snupkg` symbols).
+* **`DotNodeViewer.Cli`**: Cross-platform `.NET 10` Global Tool (`dot-node-viewer`, `PackAsTool=true` when not publishing NativeAOT).
 
 ```bash
-dotnet pack src/DotNodeViewer.Core -c Release
-dotnet pack src/DotNodeViewer.Layout -c Release
+dotnet pack src/DotNodeViewer.Core -c Release -o ./artifacts/packages
+dotnet pack src/DotNodeViewer.Layout -c Release -o ./artifacts/packages
+dotnet pack tools/DotNodeViewer.Cli -c Release -o ./artifacts/packages
 ```
+
+See [**Installing NuGet Packages & Publishing Releases**](../library/nuget-packages-and-releases.md) for consumer installation and GitHub Actions release automation.
 

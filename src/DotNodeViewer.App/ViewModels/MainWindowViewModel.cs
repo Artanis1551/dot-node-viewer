@@ -552,28 +552,28 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
                 if (!string.IsNullOrWhiteSpace(candidate))
                 {
-                    await LoadModelAsync(candidate, cancellationToken).ConfigureAwait(false);
+                    await LoadModelAsync(candidate, cancellationToken).ConfigureAwait(true);
                     return;
                 }
             }
             else
             {
-                await foreach (IStorageItem child in folder.GetItemsAsync().WithCancellation(cancellationToken).ConfigureAwait(false))
+                await foreach (IStorageItem child in folder.GetItemsAsync().WithCancellation(cancellationToken).ConfigureAwait(true))
                 {
                     if (child is IStorageFile file && IsSupportedModelExtension(Path.GetExtension(child.Name)))
                     {
-                        await using Stream source = await file.OpenReadAsync().ConfigureAwait(false);
+                        await using Stream source = await file.OpenReadAsync().ConfigureAwait(true);
                         MemoryStream seekable = await BrowserStreamAdapter.CreateSeekableStreamAsync(
                             source,
                             file.Name,
-                            cancellationToken: cancellationToken).ConfigureAwait(false);
+                            cancellationToken: cancellationToken).ConfigureAwait(true);
 
                         byte[] buffer = seekable.ToArray();
                         await LoadModelStreamAsync(
                             seekable,
                             file.Name,
                             streamFactory: BrowserStreamAdapter.CreateStreamFactory(buffer),
-                            cancellationToken: cancellationToken).ConfigureAwait(false);
+                            cancellationToken: cancellationToken).ConfigureAwait(true);
                         return;
                     }
                 }
@@ -591,25 +591,25 @@ public sealed partial class MainWindowViewModel : ObservableObject
         string? localPath = primary.TryGetLocalPath();
         if (!string.IsNullOrWhiteSpace(localPath))
         {
-            await LoadModelAsync(localPath, cancellationToken).ConfigureAwait(false);
+            await LoadModelAsync(localPath, cancellationToken).ConfigureAwait(true);
             return;
         }
 
         // WebAssembly / Browser stream fallback
         if (primary is IStorageFile storageFile)
         {
-            await using Stream source = await storageFile.OpenReadAsync().ConfigureAwait(false);
+            await using Stream source = await storageFile.OpenReadAsync().ConfigureAwait(true);
             MemoryStream seekable = await BrowserStreamAdapter.CreateSeekableStreamAsync(
                 source,
                 storageFile.Name,
-                cancellationToken: cancellationToken).ConfigureAwait(false);
+                cancellationToken: cancellationToken).ConfigureAwait(true);
 
             byte[] buffer = seekable.ToArray();
             await LoadModelStreamAsync(
                 seekable,
                 storageFile.Name,
                 streamFactory: BrowserStreamAdapter.CreateStreamFactory(buffer),
-                cancellationToken: cancellationToken).ConfigureAwait(false);
+                cancellationToken: cancellationToken).ConfigureAwait(true);
         }
     }
 
@@ -648,7 +648,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
             if (!string.IsNullOrWhiteSpace(candidate))
             {
-                await LoadModelAsync(candidate, cancellationToken).ConfigureAwait(false);
+                await LoadModelAsync(candidate, cancellationToken).ConfigureAwait(true);
                 return;
             }
 
@@ -660,7 +660,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        await LoadModelAsync(primary, cancellationToken).ConfigureAwait(false);
+        await LoadModelAsync(primary, cancellationToken).ConfigureAwait(true);
     }
 
     private void ScheduleInvalidDropDismissal(CancellationToken cancellationToken)

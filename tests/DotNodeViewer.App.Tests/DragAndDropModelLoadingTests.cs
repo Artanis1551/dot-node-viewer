@@ -295,22 +295,19 @@ public sealed class DragAndDropModelLoadingTests
     [Test]
     public async Task MainView_ProcessDropAsync_LoadsModelAndClearsOverlay()
     {
-        Window window = null!;
-        MainView view = null!;
         MainWindowViewModel vm = new();
         string path = ResolveFixturePath("onnx/tiny_mlp.onnx");
-        IStorageFile file = null!;
 
         await HeadlessAppSession.DispatchAsync(async () =>
         {
-            window = new Window();
-            file = await GetStorageFileAsync(window, path);
-            view = new MainView { DataContext = vm };
+            Window window = new();
+            IStorageFile file = await GetStorageFileAsync(window, path);
+            MainView view = new() { DataContext = vm };
             vm.SetDropTargetState(isActive: true, isValid: true);
-        });
 
-        DragEventArgs dropArgs = CreateDragEventArgs(DragDrop.DropEvent, [file], view);
-        await view.ProcessDropAsync(dropArgs);
+            DragEventArgs dropArgs = CreateDragEventArgs(DragDrop.DropEvent, [file], view);
+            await view.ProcessDropAsync(dropArgs);
+        });
 
         await Assert.That(vm.IsDropTargetActive).IsFalse();
         await Assert.That(vm.HasModel).IsTrue();
@@ -370,26 +367,25 @@ public sealed class DragAndDropModelLoadingTests
     public async Task MainView_ProcessDropAsync_WithFileNamesFallback_LoadsModel()
     {
         MainWindowViewModel vm = new();
-        MainView view = null!;
         string path = ResolveFixturePath("onnx/tiny_mlp.onnx");
 
-        await HeadlessAppSession.Dispatch(() =>
+        await HeadlessAppSession.DispatchAsync(async () =>
         {
-            view = new MainView { DataContext = vm };
+            MainView view = new() { DataContext = vm };
             vm.SetDropTargetState(isActive: true, isValid: true);
-        });
 
 #pragma warning disable CS0618
-        DataObject data = new();
-        data.Set(DataFormats.FileNames, new[] { path });
+            DataObject data = new();
+            data.Set(DataFormats.FileNames, new[] { path });
 
-        DragEventArgs dropArgs = new(DragDrop.DropEvent, data, view, new Point(0, 0), KeyModifiers.None)
-        {
-            Source = view
-        };
+            DragEventArgs dropArgs = new(DragDrop.DropEvent, data, view, new Point(0, 0), KeyModifiers.None)
+            {
+                Source = view
+            };
 #pragma warning restore CS0618
 
-        await view.ProcessDropAsync(dropArgs);
+            await view.ProcessDropAsync(dropArgs);
+        });
 
         await Assert.That(vm.IsDropTargetActive).IsFalse();
         await Assert.That(vm.HasModel).IsTrue();
