@@ -25,7 +25,7 @@ public sealed class DragAndDropModelLoadingTests
     private static string ResolveFixturePath(string relative)
     {
         string? dir = AppContext.BaseDirectory;
-        while (!string.IsNullOrEmpty(dir) && !File.Exists(Path.Combine(dir, "dot-node-viewer.slnx")))
+        while (!string.IsNullOrEmpty(dir) && !File.Exists(Path.Combine(dir, "dot-node-viewer.sln")))
         {
             dir = Path.GetDirectoryName(dir);
         }

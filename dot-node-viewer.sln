@@ -1,0 +1,87 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{F5D6B050-CF31-4028-B5D3-B020349B4A96}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNodeViewer.Core", "src\DotNodeViewer.Core\DotNodeViewer.Core.csproj", "{BB1EAC48-893D-4BD6-85B3-84FB4304F6D6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNodeViewer.Layout", "src\DotNodeViewer.Layout\DotNodeViewer.Layout.csproj", "{BF0B5D64-F183-4C62-A278-F2375C64B242}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNodeViewer.App", "src\DotNodeViewer.App\DotNodeViewer.App.csproj", "{056D5B27-B438-40D6-A6AA-33C882DB580A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNodeViewer.Desktop", "src\DotNodeViewer.Desktop\DotNodeViewer.Desktop.csproj", "{E028AFAC-C020-4D0B-8FDB-9ACB749325F5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNodeViewer.Browser", "src\DotNodeViewer.Browser\DotNodeViewer.Browser.csproj", "{ADA07DF7-C0BF-46FF-967B-47B8AFEA3FAF}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{381267CF-92E0-408C-974C-A37505E9A5A7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNodeViewer.Cli", "tools\DotNodeViewer.Cli\DotNodeViewer.Cli.csproj", "{D45030C5-CF7A-4F12-AC8C-04C85342EEF2}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{ECF8128D-FBEB-4C4F-8542-FA64E3F42D25}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNodeViewer.Core.Tests", "tests\DotNodeViewer.Core.Tests\DotNodeViewer.Core.Tests.csproj", "{464949F9-41BB-43D5-9982-F11AA6D94CEB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNodeViewer.Layout.Tests", "tests\DotNodeViewer.Layout.Tests\DotNodeViewer.Layout.Tests.csproj", "{D9847F8C-78FC-451E-93A7-BA8B618345A8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNodeViewer.App.Tests", "tests\DotNodeViewer.App.Tests\DotNodeViewer.App.Tests.csproj", "{27A3AA3E-1C99-4160-8E7F-9D000E4C0EA2}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{BB1EAC48-893D-4BD6-85B3-84FB4304F6D6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BB1EAC48-893D-4BD6-85B3-84FB4304F6D6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BB1EAC48-893D-4BD6-85B3-84FB4304F6D6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BB1EAC48-893D-4BD6-85B3-84FB4304F6D6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BF0B5D64-F183-4C62-A278-F2375C64B242}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BF0B5D64-F183-4C62-A278-F2375C64B242}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BF0B5D64-F183-4C62-A278-F2375C64B242}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BF0B5D64-F183-4C62-A278-F2375C64B242}.Release|Any CPU.Build.0 = Release|Any CPU
+		{056D5B27-B438-40D6-A6AA-33C882DB580A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{056D5B27-B438-40D6-A6AA-33C882DB580A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{056D5B27-B438-40D6-A6AA-33C882DB580A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{056D5B27-B438-40D6-A6AA-33C882DB580A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E028AFAC-C020-4D0B-8FDB-9ACB749325F5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E028AFAC-C020-4D0B-8FDB-9ACB749325F5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E028AFAC-C020-4D0B-8FDB-9ACB749325F5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E028AFAC-C020-4D0B-8FDB-9ACB749325F5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ADA07DF7-C0BF-46FF-967B-47B8AFEA3FAF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ADA07DF7-C0BF-46FF-967B-47B8AFEA3FAF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ADA07DF7-C0BF-46FF-967B-47B8AFEA3FAF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ADA07DF7-C0BF-46FF-967B-47B8AFEA3FAF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D45030C5-CF7A-4F12-AC8C-04C85342EEF2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D45030C5-CF7A-4F12-AC8C-04C85342EEF2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D45030C5-CF7A-4F12-AC8C-04C85342EEF2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D45030C5-CF7A-4F12-AC8C-04C85342EEF2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{464949F9-41BB-43D5-9982-F11AA6D94CEB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{464949F9-41BB-43D5-9982-F11AA6D94CEB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{464949F9-41BB-43D5-9982-F11AA6D94CEB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{464949F9-41BB-43D5-9982-F11AA6D94CEB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D9847F8C-78FC-451E-93A7-BA8B618345A8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D9847F8C-78FC-451E-93A7-BA8B618345A8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D9847F8C-78FC-451E-93A7-BA8B618345A8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D9847F8C-78FC-451E-93A7-BA8B618345A8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{27A3AA3E-1C99-4160-8E7F-9D000E4C0EA2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{27A3AA3E-1C99-4160-8E7F-9D000E4C0EA2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{27A3AA3E-1C99-4160-8E7F-9D000E4C0EA2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{27A3AA3E-1C99-4160-8E7F-9D000E4C0EA2}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{BB1EAC48-893D-4BD6-85B3-84FB4304F6D6} = {F5D6B050-CF31-4028-B5D3-B020349B4A96}
+		{BF0B5D64-F183-4C62-A278-F2375C64B242} = {F5D6B050-CF31-4028-B5D3-B020349B4A96}
+		{056D5B27-B438-40D6-A6AA-33C882DB580A} = {F5D6B050-CF31-4028-B5D3-B020349B4A96}
+		{E028AFAC-C020-4D0B-8FDB-9ACB749325F5} = {F5D6B050-CF31-4028-B5D3-B020349B4A96}
+		{ADA07DF7-C0BF-46FF-967B-47B8AFEA3FAF} = {F5D6B050-CF31-4028-B5D3-B020349B4A96}
+		{D45030C5-CF7A-4F12-AC8C-04C85342EEF2} = {381267CF-92E0-408C-974C-A37505E9A5A7}
+		{464949F9-41BB-43D5-9982-F11AA6D94CEB} = {ECF8128D-FBEB-4C4F-8542-FA64E3F42D25}
+		{D9847F8C-78FC-451E-93A7-BA8B618345A8} = {ECF8128D-FBEB-4C4F-8542-FA64E3F42D25}
+		{27A3AA3E-1C99-4160-8E7F-9D000E4C0EA2} = {ECF8128D-FBEB-4C4F-8542-FA64E3F42D25}
+	EndGlobalSection
+EndGlobal

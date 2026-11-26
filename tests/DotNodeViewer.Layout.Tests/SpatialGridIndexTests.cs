@@ -16,8 +16,8 @@ public sealed class SpatialGridIndexTests
         await Assert.That(index.Count).IsEqualTo(0);
         await Assert.That(index.EdgeCount).IsEqualTo(0);
         await Assert.That(index.FindNodeAt(100, 100)).IsNull();
-        await Assert.That(index.FindNodesInRegion(0, 0, 500, 500)).IsEmpty();
-        await Assert.That(index.FindEdgesInRegion(new BoundingBox(0, 0, 500, 500))).IsEmpty();
+        await Assert.That(index.FindNodesInRegion(0, 0, 500, 500).Count).IsEqualTo(0);
+        await Assert.That(index.FindEdgesInRegion(new BoundingBox(0, 0, 500, 500)).Count).IsEqualTo(0);
     }
 
     [Test]
@@ -116,7 +116,7 @@ public sealed class SpatialGridIndexTests
 
         // Region at origin should not match empty edge
         List<VisualEdge> originHits = index.FindEdgesInRegion(new BoundingBox(-10, -10, 20, 20));
-        await Assert.That(originHits).IsEmpty();
+        await Assert.That(originHits.Count).IsEqualTo(0);
     }
 
     [Test]
@@ -132,8 +132,8 @@ public sealed class SpatialGridIndexTests
         // Negative dimensions & non-finite bounds clear destination and return empty
         index.FindNodesInRegion(new BoundingBox(0, 0, -10, 100), nodeDest);
         index.FindEdgesInRegion(new BoundingBox(double.NaN, 0, 100, 100), edgeDest);
-        await Assert.That(nodeDest).IsEmpty();
-        await Assert.That(edgeDest).IsEmpty();
+        await Assert.That(nodeDest.Count).IsEqualTo(0);
+        await Assert.That(edgeDest.Count).IsEqualTo(0);
 
         // Extremely large zoomed-out viewport clamps cleanly to indexed cell bounds without int overflow
         index.FindNodesInRegion(new BoundingBox(-1_000_000, -1_000_000, 2_000_000, 2_000_000), nodeDest);
