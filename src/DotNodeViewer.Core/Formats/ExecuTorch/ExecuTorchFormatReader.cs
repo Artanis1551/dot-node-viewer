@@ -604,6 +604,11 @@ internal sealed class ExecuTorchFormatReader : IModelFormatReader
                 attributes.Add(new NodeAttribute("delegate.backend", new AttributeValue.String("ethos-u")));
                 attributes.Add(new NodeAttribute("delegate.expandable", new AttributeValue.Bool(true)));
             }
+            else if (backendId.Contains("Xnnpack", StringComparison.OrdinalIgnoreCase))
+            {
+                attributes.Add(new NodeAttribute("delegate.backend", new AttributeValue.String("xnnpack")));
+                attributes.Add(new NodeAttribute("delegate.expandable", new AttributeValue.Bool(true)));
+            }
 
             // Extract processed delegate data slice
             if (delTable.ReadTable(1) is FlatBufferTable refTable)

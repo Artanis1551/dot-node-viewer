@@ -262,6 +262,53 @@ public sealed class MainWindowViewModelTests
         await Assert.That(vm.IsInferredNpuSubgraph).IsFalse();
     }
 
+    [Test]
+    public async Task LoadModelAsync_XnnpackDelegate_UnwrapsNavigatesBreadcrumbAndInspectsWeights()
+    {
+        string path = ResolveFixturePath("executorch/tiny_xnnpack_ops.pte");
+        MainWindowViewModel vm = new();
+
+        await vm.LoadModelAsync(path);
+
+        await Assert.That(vm.HasModel).IsTrue();
+        await Assert.That(vm.CurrentLayout).IsNotNull();
+
+        VisualNode? delegateVisualNode = vm.CurrentLayout!.Nodes.FirstOrDefault(
+            n => n.GraphNode?.Operator.Name.Contains("Xnnpack", StringComparison.OrdinalIgnoreCase) == true);
+        await Assert.That(delegateVisualNode).IsNotNull();
+        await Assert.That(delegateVisualNode!.FusedActivationBadge).Contains("xnnpack");
+
+        vm.SelectedNode = delegateVisualNode;
+        await Assert.That(vm.CanExpandSelectedDelegate).IsTrue();
+        await Assert.That(vm.SelectedDelegateBackend).IsEqualTo("xnnpack");
+
+        await vm.ExpandSelectedDelegateAsync();
+
+        await Assert.That(vm.Breadcrumbs.Count).IsEqualTo(2);
+        await Assert.That(vm.CanNavigateBackSubgraph).IsTrue();
+        await Assert.That(vm.IsInferredNpuSubgraph).IsFalse();
+        await Assert.That(vm.SelectedSubgraph?.Name).Contains("(XNNPACK)");
+        await Assert.That(vm.CurrentLayout).IsNotNull();
+        await Assert.That(vm.CurrentLayout!.Nodes.Count).IsGreaterThan(0);
+
+        // Inspect an internal XNNPACK initializer weight tensor lazily from the .pte stream
+        TensorEdge? weightTensor = vm.SelectedSubgraph!.Tensors.FirstOrDefault(
+            t => t.Kind == TensorKind.Initializer && t.Data is TensorDataSlice);
+        await Assert.That(weightTensor).IsNotNull();
+
+        await vm.InspectTensorAsync(weightTensor);
+        await Assert.That(vm.IsTensorInspectorOpen).IsTrue();
+        await Assert.That(vm.TensorInspector).IsNotNull();
+        await Assert.That(vm.TensorInspector!.HasData).IsTrue();
+        await Assert.That(vm.TensorInspector.ErrorMessage).IsNull();
+        await Assert.That(vm.TensorInspector.PreviewValues.Count).IsGreaterThan(0);
+
+        vm.CloseTensorInspector();
+        vm.NavigateBackSubgraph();
+        await Assert.That(vm.Breadcrumbs.Count).IsEqualTo(1);
+        await Assert.That(vm.CanNavigateBackSubgraph).IsFalse();
+    }
+
     private static string ResolveFixturePath(string relative)
     {
         string? dir = AppContext.BaseDirectory;

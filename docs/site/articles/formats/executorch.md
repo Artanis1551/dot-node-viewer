@@ -70,7 +70,93 @@ ExecuTorch stores static weight buffers either inline in `Program.constant_buffe
 ### 3. Kernel Calls, Delegate Calls & Operator Classification
 
 - **Kernel Calls (`KernelCall`):** Named by `plan.operators[op_index]` (e.g., `aten::linear.out`, `aten::conv2d.out`). Scalar arguments (`Int`, `Double`, `Bool`, `String`, `IntList`) map to strongly typed `NodeAttribute` records, and tensor arguments map topologically to input and output `NodePort`s.
-- **Backend Delegates (`DelegateCall`):** Represent lowered hardware acceleration blocks (such as `XnnpackBackend`, `CoreMLBackend`, or `EthosUBackend`). Mapped to `OperatorCategory.Custom` with operator name `Delegate (<backend_id>)`. The compiled backend payload is exposed as `AttributeValue.Bytes(TensorDataSlice)` under attribute `"processed"`. When `EthosUBackend` is present, `ExecuTorchFormatReader` tags the node with `delegate.backend = "ethos-u"`, enabling on-demand microcode unwrapping and register disassembly via [Arm Ethos-U NPU Delegate](ethos-u.md).
+- **Backend Delegates (`DelegateCall`):** Represent lowered hardware acceleration blocks (such as `XnnpackBackend`, `CoreMLBackend`, or `EthosUBackend`). Mapped to `OperatorCategory.Custom` with operator name `Delegate (<backend_id>)`. The compiled backend payload is exposed as `AttributeValue.Bytes(TensorDataSlice)` under attribute `"processed"`.
+  - When `EthosUBackend` is present, `ExecuTorchFormatReader` tags the node with `delegate.backend = "ethos-u"` and `delegate.expandable = true`, enabling on-demand microcode unwrapping and register disassembly via [Arm Ethos-U NPU Delegate](ethos-u.md).
+  - When `XnnpackBackend` is present, `ExecuTorchFormatReader` tags the node with `delegate.backend = "xnnpack"` and `delegate.expandable = true`, enabling on-demand XNNPACK FlatBuffer unwrapping via `XnnpackDelegateSubgraphExpander`.
+
+---
+
+## XNNPACK Delegate Unwrapping (`XnnpackBackend`)
+
+`DotNodeViewer.Core` includes an on-demand XNNPACK delegate decoder (`DotNodeViewer.Core.Delegates.Xnnpack`, all `internal`) registered in `DelegateSubgraphExpanderRegistry.Default` (`BackendId = "xnnpack"`). During `ExecuTorchFormatReader.ReadAsync`, `XnnpackBackend` payloads are **not** decoded eagerly; instead, calling `IDelegateSubgraphExpander.ExpandAsync` (via the CLI `--expand-delegates` flag or double-clicking / clicking **Unwrap Delegate Subgraph** in the visualizer) decodes the payload into a synthesized `Subgraph` named `"{node.Name} (XNNPACK)"`.
+
+> [!NOTE]
+> **Pinned Upstream Schema Revision:** Operator discriminants and table field layouts are verified against PyTorch ExecuTorch `executorch==1.5.1+cpu` (`backends/xnnpack/serialization/schema.fbs`, identifier `"XN01"`, and `runtime_schema.fbs`, identifier `"XN00"`), plus forward-compatible Netron-tracked `XNodeUnion` entries `49: XNNDepthToSpace2d` and `50: _XNNStaticReduce`.
+
+```mermaid
+flowchart TD
+    DC["Delegate (XnnpackBackend) Node"] --> Attr["Attribute 'processed' (TensorDataSlice)"]
+    Attr --> HDR["XnnpackHeaderReader (30-byte 'XH00' at offset 4, or direct 'XN01'/'XN00')"]
+    HDR --> WIN["BoundedReadOnlyStream + RandomAccessSource (FlatBuffer window only)"]
+    WIN --> GRAPH["fb_xnnpack.XNNGraph ('XN01')"]
+    GRAPH --> VALS["xvalues (XNNTensorValue / XNNQuantizedTensorValue)"]
+    GRAPH --> NODES["xnodes (XNodeUnion + OutputMinMax)"]
+    GRAPH --> CONST["constant_data / legacy constant_buffer"]
+    CONST -->|"named_key"| PTD["Program.named_data -> TensorDataSlice (or .ptd ExternalTensorDataReference)"]
+    CONST -->|"offset + size"| TRAILING["Trailing XH00 constant segment -> TensorDataSlice"]
+    VALS --> SG["Synthesized Subgraph ('{node.Name} (XNNPACK)')"]
+    NODES --> SG
+    PTD --> SG
+    TRAILING --> SG
+```
+
+### Supported `XNodeUnion` Operator Coverage
+
+| Semantic Category | Supported `fb_xnnpack.XNodeUnion` Operators |
+|---|---|
+| `Layer` | `XNNConv2d`, `XNNDepthwiseConv2d`, `XNNConvTranspose2d`, `XNNFullyConnected`, `XNNBatchMatrixMultiply`, `XNNScaledDotProductAttention` |
+| `Activation` | `XNNSoftmax`, `XNNSigmoid`, `XNNClamp`, `XNNHardswish`, `XNNLeakyReLU`, `XNNELU`, `XNNPReLU`, `XNNGelu`, `XNNTanh` |
+| `Pooling` | `XNNAvgPooling2d`, `XNNMaxPooling2d`, `XNNGlobalAvgPooling2d`, `XNNArgMaxPooling2d` |
+| `Shape` | `XNNStaticTranspose`, `XNNStaticResizeBilinear2D`, `XNNStaticConstantPad`, `XNNStaticReshape`, `XNNStaticSlice`, `XNNConcatenate2`..`XNNConcatenate5`, `XNNDepthToSpace2d` (`49`) |
+| `Tensor` | `XNNAdd`, `XNNSubtract`, `XNNMultiply`, `XNNDiv`, `XNNMinimum`, `XNNMaximum`, `XNNFloor`, `XNNCeiling`, `XNNSquareRoot`, `XNNReciprocalSquareRoot`, `XNNNegate`, `XNNSquare`, `XNNAbs`, `XNNLog`, `XNNExp`, `XNNSin`, `XNNCos`, `_XNNStaticReduce` (`50`) |
+| `Quantization` | `XNNConvert` |
+| `Data` | `XNNCopy` |
+| `Unknown` | Any unrecognized `XNodeUnion` discriminant maps safely to `XNNUnknown_<id>` (`OperatorCategory.Unknown`) with a `DNV_XNNPACK_UNKNOWN_OP` warning diagnostic |
+
+### Constant Weight Slicing & Quantization Mapping
+
+- **ExecuTorch 1.x `Program.named_data`:** When `ConstantDataOffset.named_key` is populated (`offset == UINT64_MAX`), the decoder looks up `key` in the `.pte` file's `Program.named_data` and `Program.segments` (adjusted by `eh00` `segment_base_offset`) to create an exact zero-allocation `TensorDataSlice`. Keys not embedded in `Program.named_data` emit an `ExternalTensorDataReference` (`<named_key>.ptd`) and a `DNV_XNNPACK_EXTERNAL_NAMED_DATA` warning.
+- **Trailing & Legacy Buffers:** Inline `XH00` trailing `constant_data` segments and legacy `XNNGraph.constant_buffer` entries are bounds-checked and captured as `TensorDataSlice` without allocating weight arrays.
+- **Quantization Parameters:**
+  - `PerTensorQuant` → `AffineQuantization([scale], [zeroPoint], QuantizedDimension: null)`
+  - `PerChannelQuant` → `AffineQuantization(scales, zeroPoints, QuantizedDimension: channelDim)` (inline or lazily resolved from `scale_buffer_idx`)
+  - `PerTokenDynamicQuant` → `BlockQuantization("PerTokenDynamic", numNonbatchDims, 8)`
+  - `PerChannelGroupQuant` → `BlockQuantization($"PerChannelGroup(axis={channelDim})", groupSize, 4 or 8)`
+- **Fused Activations:** `XNode.output_min_max` maps `[0, +Inf]` to `fused_activation_function = "RELU"`, `[0, 6]` to `"RELU6"`, and other bounded ranges to `"CLAMP"`, surfacing fused activation badges on node cards.
+
+### CLI `--expand-delegates` Example (`tiny_xnnpack_ops.pte`)
+
+```bash
+dotnet run --project tools/DotNodeViewer.Cli -c Release -- inspect tests/DotNodeViewer.Core.Tests/Fixtures/executorch/tiny_xnnpack_ops.pte --expand-delegates
+```
+
+```text
+Format:    ExecuTorch (executorch)
+Producer:  executorch
+Subgraphs: 1
+
+Subgraph [0] 'forward':
+  Nodes:   1
+  Tensors: 2
+  Inputs:  1
+    - v0: Float32 [1, 3, 8, 8]
+  Outputs: 1
+    - v1: Float32 [1, 4]
+
+  [Delegate Expansion] 'XnnpackBackend_0' (xnnpack) -> XnnpackBackend_0 (XNNPACK):
+    Synthesized Nodes:   10
+    Synthesized Tensors: 17
+    Operator Distribution:
+      - XNNStaticTranspose: 2
+      - XNNAdd: 1
+      - XNNConv2d: 1
+      - XNNDepthwiseConv2d: 1
+      - XNNFullyConnected: 1
+      - XNNGlobalAvgPooling2d: 1
+      - XNNHardswish: 1
+      - XNNSoftmax: 1
+      - XNNStaticReshape: 1
+```
 
 ---
 

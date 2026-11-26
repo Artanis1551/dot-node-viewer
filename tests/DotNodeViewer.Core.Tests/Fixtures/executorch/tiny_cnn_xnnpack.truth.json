@@ -33,5 +33,38 @@
       }
     ],
     "initializers": []
+  },
+  "delegate": {
+    "backend": "xnnpack",
+    "nodeCount": 3,
+    "valueCount": 6,
+    "constantCount": 2,
+    "quantizedValueCount": 0,
+    "operatorHistogram": {
+      "XNNStaticTranspose": 2,
+      "XNNConv2d": 1
+    },
+    "inputs": [
+      {
+        "dataType": "Float32",
+        "shape": [
+          1,
+          3,
+          16,
+          16
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "dataType": "Float32",
+        "shape": [
+          1,
+          8,
+          16,
+          16
+        ]
+      }
+    ]
   }
 }

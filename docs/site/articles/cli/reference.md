@@ -158,7 +158,7 @@ Subgraph [2] 'while_body':
 
 #### Delegate Unwrapping Example (`--expand-delegates`):
 
-Pass `--expand-delegates` to decompile embedded NPU delegate microcode (such as Arm Ethos-U `CUSTOM(ethos-u)` or `EthosUBackend`) and display synthesized node counts, tensor counts, and operator distributions:
+Pass `--expand-delegates` to unwrap embedded hardware/runtime delegates (Arm Ethos-U `CUSTOM(ethos-u)` / `EthosUBackend` and ExecuTorch `XnnpackBackend`) and display synthesized node counts, tensor counts, and operator distributions:
 
 ```bash
 dotnet run --project tools/DotNodeViewer.Cli -c Release -- inspect tests/DotNodeViewer.Core.Tests/Fixtures/tflite/tiny_cnn_int8_vela_u55.tflite --expand-delegates
