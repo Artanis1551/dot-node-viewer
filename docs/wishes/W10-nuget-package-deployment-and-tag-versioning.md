@@ -1,8 +1,11 @@
 # Wish W10 — Automated NuGet Package Deployment & Git Tag Versioning
 
-**Status:** Proposed  
+**Status:** Done (Implemented on branch `infra/nuget-package-deployment`)  
 **Depends on:** Stage **S00** (Bootstrap & CI Governance), Stage **S01** (Unified IR & Abstractions), Stage **S04** (Sugiyama Layout Engine)  
-**Suggested branch when promoted:** `infra/nuget-package-deployment`  
+**Implemented branch:** `infra/nuget-package-deployment`  
+
+> [!NOTE]
+> **Implementation Notes:** Resolved repository metadata URLs to `https://github.com/Artanis1551/dot-node-viewer` and included `DotNodeViewer.Cli` (`PackAsTool` conditioned on `PublishAot != true`) alongside `DotNodeViewer.Core` and `DotNodeViewer.Layout` in both `Directory.Build.props` and `.github/workflows/publish-nuget.yml`. Live NuGet.org publication awaits configuring `NUGET_API_KEY` and pushing the first `v*` tag after merging to `main`.
 
 ---
 

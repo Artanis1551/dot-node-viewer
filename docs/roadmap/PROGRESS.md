@@ -882,5 +882,54 @@ Every stage agent MUST read this file before starting work and append a completi
   - `python3 tools/desktop_harness.py capture docs/screenshots/W02/01-graphcanvas-spatial-culling.png`
   - `python3 tools/desktop_harness.py click-ratio 0.34 0.44 && python3 tools/desktop_harness.py capture docs/screenshots/W02/02-graphcanvas-node-selection-adjacency.png`
 
+---
+
+### Wish W10 — Automated NuGet Package Deployment & Git Tag Versioning
+- **Branch:** `infra/nuget-package-deployment` (worktree: `.worktrees/W10-nuget-package-deployment`)
+- **Commits:**
+  - `319cfb7` — `W10: centralize versioning and NuGet package metadata for Core, Layout, and Cli`
+  - `16e8110` — `W10: add SemVer release tagging helper script`
+  - `dd5677d` — `W10: add GitHub Actions NuGet release and provenance workflow`
+  - *(final commit)* — `W10: update README, Diataxis docs, wish status, and PROGRESS.md`
+- **What Was Built:**
+  - **Centralized Versioning & Packaging Metadata (`Directory.Build.props` & `.csproj` files):**
+    - Added centralized `<VersionPrefix>0.12.0</VersionPrefix>` and `<VersionSuffix>` in `Directory.Build.props`.
+    - Consolidated shared NuGet metadata (`Authors`, `Company`, `PackageLicenseExpression=MIT`, `PackageProjectUrl`, `RepositoryUrl=https://github.com/Artanis1551/dot-node-viewer`, `PackageReadmeFile`, `PublishRepositoryUrl`, `EmbedUntrackedSources`, `ContinuousIntegrationBuild`) across `DotNodeViewer.Core`, `DotNodeViewer.Layout`, and `DotNodeViewer.Cli`.
+    - Enabled `DebugType=portable`, `IncludeSymbols=true`, `SymbolPackageFormat=snupkg`, and `EnablePackageValidation=true` for library packages (`DotNodeViewer.Core`, `DotNodeViewer.Layout`).
+    - Configured `tools/DotNodeViewer.Cli/DotNodeViewer.Cli.csproj` as a .NET Global Tool (`PackageId=DotNodeViewer.Cli`, `ToolCommandName=dot-node-viewer`, `PackAsTool` conditioned on `'$(PublishAot)' != 'true'` to preserve NativeAOT publishing).
+    - Removed duplicate hardcoded `<Version>` and repository URL properties from `src/DotNodeViewer.Core/DotNodeViewer.Core.csproj` and `src/DotNodeViewer.Layout/DotNodeViewer.Layout.csproj`.
+  - **SemVer Release Tagging Helper (`tools/tag-release.sh`):**
+    - Executable script supporting `--dry-run` and `-h`/`--help`, enforcing `main` branch, clean working tree, strict SemVer 2.0.0 syntax (`X.Y.Z[-prerelease]`), non-existing tag check, `dotnet build` / `dotnet test` quality gates, automatic `<VersionPrefix>` update + `chore: release vX.Y.Z` commit if needed, and annotated Git tag creation (`vX.Y.Z`).
+  - **GitHub Actions Release Workflow (`.github/workflows/publish-nuget.yml`):**
+    - Triggered on `v[0-9]+.[0-9]+.[0-9]+*` tag pushes and manual `workflow_dispatch` (`dry_run` defaulting to `true`, optional `version` override).
+    - Split into `verify-and-pack` (`contents: read`) and `publish` (`contents: write`, `packages: write`, `id-token: write`, `attestations: write`).
+    - Enforces `<VersionPrefix>` parity against tag/input SemVer, runs `Release` build and all three TUnit suites (`Core`, `Layout`, `App`), verifies NativeAOT publish of `DotNodeViewer.Cli`, packs `.nupkg`/`.snupkg` artifacts, runs downstream console + global tool smoke tests, generates `SHA256SUMS.txt`, attests SLSA build provenance (`actions/attest-build-provenance@v2`), pushes to NuGet.org (`NUGET_API_KEY`) and GitHub Packages (`GITHUB_TOKEN` with `--no-symbols`), and creates a GitHub Release (`softprops/action-gh-release@v2`).
+- **`README.md` & `docs/site/` Updates:**
+  - Updated root [`README.md`](../../README.md) with NuGet version badges, expanded `NuGet Packages & Automated Releases` section, global tool usage examples, and documentation links.
+  - Added Diátaxis How-To guide [`docs/site/articles/library/nuget-packages-and-releases.md`](../site/articles/library/nuget-packages-and-releases.md) and linked it in [`docs/site/articles/toc.yml`](../site/articles/toc.yml), [`docs/site/index.md`](../site/index.md), [`docs/site/articles/getting-started.md`](../site/articles/getting-started.md), [`docs/site/articles/cli/reference.md`](../site/articles/cli/reference.md), and [`docs/site/articles/architecture/performance-and-aot.md`](../site/articles/architecture/performance-and-aot.md).
+  - Updated [`docs/wishes/W10-nuget-package-deployment-and-tag-versioning.md`](../wishes/W10-nuget-package-deployment-and-tag-versioning.md) and [`docs/wishes/README.md`](../wishes/README.md) status to `Done`.
+- **New ADRs Recorded:** None.
+- **Deviations & Known Limitations:**
+  - Live publishing to NuGet.org, GitHub Packages, and GitHub Releases cannot be executed until this branch is merged to `main`, the `NUGET_API_KEY` secret is configured in GitHub repository settings, and a `v*` release tag is pushed.
+- **Test Count:** 288 passed (`DotNodeViewer.Core.Tests`: 186, `DotNodeViewer.Layout.Tests`: 29, `DotNodeViewer.App.Tests`: 73), 0 failed, 0 skipped.
+- **Screenshots Taken:** None (no UI changes).
+- **Verification Commands Run:**
+  - `dotnet tool restore`
+  - `dotnet build dot-node-viewer.slnx -c Release`
+  - `dotnet test --solution dot-node-viewer.slnx -c Release --no-build`
+  - `dotnet test --project tests/DotNodeViewer.Core.Tests -c Release --no-build`
+  - `dotnet test --project tests/DotNodeViewer.Layout.Tests -c Release --no-build`
+  - `dotnet test --project tests/DotNodeViewer.App.Tests -c Release --no-build`
+  - `dotnet publish tools/DotNodeViewer.Cli/DotNodeViewer.Cli.csproj -c Release -p:PublishAot=true`
+  - `dotnet pack src/DotNodeViewer.Core/DotNodeViewer.Core.csproj -c Release --no-build -o ./artifacts/packages`
+  - `dotnet pack src/DotNodeViewer.Layout/DotNodeViewer.Layout.csproj -c Release --no-build -o ./artifacts/packages`
+  - `dotnet pack tools/DotNodeViewer.Cli/DotNodeViewer.Cli.csproj -c Release -o ./artifacts/packages`
+  - Downstream console app (`dotnet add package DotNodeViewer.Core` + `DotNodeViewer.Layout`) and global tool (`dotnet tool install DotNodeViewer.Cli`) smoke tests against local `./artifacts/packages`
+  - `dotnet tool run docfx metadata docs/site/docfx.json --warningsAsErrors`
+  - `dotnet tool run docfx build docs/site/docfx.json --warningsAsErrors`
+  - `bash -n tools/tag-release.sh` and `./tools/tag-release.sh --help`
+  - `python3 -c "import yaml; yaml.safe_load(open('.github/workflows/publish-nuget.yml'))"`
+
+
 
 

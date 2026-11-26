@@ -18,6 +18,7 @@ Our documentation is organized around the four quadrants of the **Diátaxis** fr
 - [**Getting Started with `dot-node-viewer`**](articles/getting-started.md) — Verify your .NET 10 environment, build the solution, run the TUnit test suite, and build the documentation site.
 
 ### 2. How-To Guides *(Task-oriented)*
+- [**Installing NuGet Packages & Publishing Releases**](articles/library/nuget-packages-and-releases.md) — Consume `DotNodeViewer.Core`, `DotNodeViewer.Layout`, and `DotNodeViewer.Cli` via NuGet.org or GitHub Packages, verify SLSA provenance, and cut SemVer release tags.
 - [**Visualizer User Guide (`DotNodeViewer.Desktop` & `DotNodeViewer.Browser`)**](articles/visualizer/user-guide.md) — Open neural network models, navigate layered graphs, inspect node attributes, and examine lazy tensor weight slices.
 
 ### 3. Reference *(Information-oriented)*
