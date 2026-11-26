@@ -589,5 +589,32 @@ public sealed class TensorInspectorViewModelTests
             await Assert.That(vm.HasStatistics).IsFalse();
         }
     }
+
+    [Test]
+    public async Task InspectAsync_GgmlQuantizedBlock_RendersRawHexAndBlockQuantizationMetadata()
+    {
+        byte[] blockBytes = [0x12, 0x34, 0xAB, 0xCD, 0x00, 0xFF, 0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80, 0x90, 0xA0, 0xB0, 0xC0];
+        using MemoryStream stream = new(blockBytes);
+
+        TensorDataSlice slice = new(0, blockBytes.Length, DataType.UInt8, TensorDataEncoding.GgmlQuantizedBlock);
+        TensorDescriptor desc = new(
+            DataType.UInt8,
+            new TensorShape([new TensorDimension.Fixed(1), new TensorDimension.Fixed(32)]),
+            Quantization: new BlockQuantization("Q4_0", BlockSize: 32, Bits: 4));
+        TensorEdge tensor = new("blk.0.attn_q.weight", desc, TensorKind.Initializer, slice);
+
+        TensorInspectorViewModel vm = new();
+        await vm.InspectAsync(tensor, stream);
+
+        await Assert.That(vm.ErrorMessage).IsNull();
+        await Assert.That(vm.HasData).IsTrue();
+        await Assert.That(vm.HasDequantization).IsFalse();
+        await Assert.That(vm.DataTypeText).IsEqualTo("Q4_0 (UInt8)");
+        await Assert.That(vm.QuantizationDescription).IsEqualTo("Q4_0 (Block Size: 32, 4-bit)");
+        await Assert.That(vm.EncodingText).IsEqualTo(nameof(TensorDataEncoding.GgmlQuantizedBlock));
+        await Assert.That(vm.SampledElementCount).IsEqualTo(blockBytes.Length);
+        await Assert.That(vm.PreviewValues[0].RawValue).IsEqualTo("0x12");
+        await Assert.That(vm.PreviewValues[2].RawValue).IsEqualTo("0xAB");
+    }
 }
 

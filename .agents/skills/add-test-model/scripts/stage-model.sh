@@ -4,10 +4,10 @@ set -euo pipefail
 # Usage: stage-model.sh <source-path-or-url> <format-slug> [test-project-dir] [max-committed-kb] [companion-files...]
 #
 # Supported format-slug values:
-#   onnx, tflite, executorch, pytorch, pytorch-pt2 (or pytorch_pt2), keras
+#   onnx, tflite, executorch, pytorch, pytorch-pt2 (or pytorch_pt2), keras, gguf
 
 SOURCE="${1:?Error: Provide a local file path or download URL as argument 1}"
-FORMAT="${2:?Error: Provide a format slug (onnx, tflite, executorch, pytorch, pytorch-pt2, keras) as argument 2}"
+FORMAT="${2:?Error: Provide a format slug (onnx, tflite, executorch, pytorch, pytorch-pt2, keras, gguf) as argument 2}"
 TEST_DIR="${3:-tests/DotNodeViewer.Core.Tests}"
 MAX_COMMITTED_KB="${4:-256}"
 shift 4 2>/dev/null || shift $#
@@ -51,8 +51,14 @@ case "$FORMAT_INPUT" in
     ID_PREFIX="keras"
     TEST_METHOD_FORMAT="Keras"
     ;;
+  gguf)
+    CANONICAL_FORMAT="gguf"
+    FOLDER_SLUG="gguf"
+    ID_PREFIX="gguf"
+    TEST_METHOD_FORMAT="Gguf"
+    ;;
   *)
-    echo "Error: Unknown format '$FORMAT'. Expected one of: onnx, tflite, executorch, pytorch, pytorch-pt2 (or pytorch_pt2), keras." >&2
+    echo "Error: Unknown format '$FORMAT'. Expected one of: onnx, tflite, executorch, pytorch, pytorch-pt2 (or pytorch_pt2), keras, gguf." >&2
     exit 1
     ;;
 esac

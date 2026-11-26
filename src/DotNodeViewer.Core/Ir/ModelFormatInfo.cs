@@ -43,6 +43,12 @@ public readonly record struct ModelFormatId(string Value)
     public static ModelFormatId Keras => new("keras");
 
     /// <summary>
+    /// Gets the format identifier for GGUF (<c>.gguf</c>) large language, multimodal, and audio models.
+    /// </summary>
+    /// <value>The GGUF format identifier.</value>
+    public static ModelFormatId Gguf => new("gguf");
+
+    /// <summary>
     /// Returns the string representation of the format identifier.
     /// </summary>
     /// <returns>The underlying <see cref="Value"/>, or an empty string if uninitialized.</returns>

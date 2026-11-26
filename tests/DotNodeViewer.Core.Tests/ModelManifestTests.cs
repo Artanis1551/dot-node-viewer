@@ -72,6 +72,13 @@ public sealed class ModelManifestTests
     public static IEnumerable<ModelManifestEntry> GetRegisteredKerasModels() =>
         ModelFixtureLoader.LoadManifest().Models.Where(m => m.Format == "keras");
 
+    /// <summary>
+    /// Enumerates all GGUF model entries registered in <c>Fixtures/models.manifest.json</c>.
+    /// </summary>
+    /// <returns>The sequence of registered GGUF <see cref="ModelManifestEntry"/> instances.</returns>
+    public static IEnumerable<ModelManifestEntry> GetRegisteredGgufModels() =>
+        ModelFixtureLoader.LoadManifest().Models.Where(m => m.Format == "gguf");
+
     [Test]
     [MethodDataSource(nameof(GetRegisteredOnnxModels))]
     public async Task ParseRegisteredOnnxModel_MatchesExpectedTopology(ModelManifestEntry entry) =>
@@ -100,6 +107,11 @@ public sealed class ModelManifestTests
     [Test]
     [MethodDataSource(nameof(GetRegisteredKerasModels))]
     public async Task ParseRegisteredKerasModel_MatchesExpectedTopology(ModelManifestEntry entry) =>
+        await AssertModelMatchesExpectedTopologyAsync(entry);
+
+    [Test]
+    [MethodDataSource(nameof(GetRegisteredGgufModels))]
+    public async Task ParseRegisteredGgufModel_MatchesExpectedTopology(ModelManifestEntry entry) =>
         await AssertModelMatchesExpectedTopologyAsync(entry);
 
     private static async Task AssertModelMatchesExpectedTopologyAsync(ModelManifestEntry entry)

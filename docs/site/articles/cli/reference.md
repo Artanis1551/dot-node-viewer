@@ -42,7 +42,7 @@ Commands:
 
 ### 1. `detect` — Detect Model Format ID
 
-Probes the first 64 header bytes (and lazy ZIP central-directory entries when applicable) via `ModelProbe` and `ModelFormatRegistry.Default`, then prints the canonical lowercase `ModelFormatId` (`onnx`, `tflite`, `executorch`, `pytorch`, `pytorch-pt2`, or `keras`) to standard output.
+Probes the first 64 header bytes (and lazy ZIP central-directory entries when applicable) via `ModelProbe` and `ModelFormatRegistry.Default`, then prints the canonical lowercase `ModelFormatId` (`onnx`, `tflite`, `executorch`, `pytorch`, `pytorch-pt2`, `keras`, or `gguf`) to standard output.
 
 #### ONNX Example:
 
@@ -195,6 +195,27 @@ Subgraph [0] 'main':
       - NPU_CLZ: 1
       - NPU_REDUCE_SUM: 1
       - NPU_SHL: 1
+```
+
+#### GGUF LLM Example (`tiny_llm.gguf`):
+
+```bash
+dotnet run --project tools/DotNodeViewer.Cli -c Release -- inspect tests/DotNodeViewer.Core.Tests/Fixtures/gguf/tiny_llm.gguf
+```
+
+**Output:**
+```text
+Format:    GGUF v3 (gguf)
+Producer:  dot-node-viewer-model-gen 1.0
+Subgraphs: 1
+
+Subgraph [0] 'tiny-llama-2L':
+  Nodes:   5
+  Tensors: 27
+  Inputs:  1
+    - input_ids: Int32 [batch, seq_len]
+  Outputs: 1
+    - logits: Float32 [batch, seq_len, 128]
 ```
 
 ---

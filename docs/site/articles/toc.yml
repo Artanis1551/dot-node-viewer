@@ -29,6 +29,8 @@
           href: formats/pytorch.md
         - name: Keras (.keras, .h5)
           href: formats/keras.md
+        - name: GGUF (.gguf)
+          href: formats/gguf.md
         - name: Arm Ethos-U NPU Delegate
           href: formats/ethos-u.md
     - name: CLI Reference (DotNodeViewer.Cli)

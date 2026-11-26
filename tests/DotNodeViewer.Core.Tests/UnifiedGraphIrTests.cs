@@ -88,11 +88,13 @@ public sealed class UnifiedGraphIrTests
         QuantizationInfo block = new BlockQuantization("Q4_0", BlockSize: 32, Bits: 4);
 
         TensorDataSource slice = new TensorDataSlice(1024, 4096, DataType.Int8, TensorDataEncoding.Raw);
+        TensorDataSource ggufSlice = new TensorDataSlice(2048, 144, DataType.UInt8, TensorDataEncoding.GgmlQuantizedBlock);
         TensorDataSource external = new ExternalTensorDataReference("weights.bin", Offset: 0, Length: 8192, DataType.Float16);
 
         await Assert.That(affine is AffineQuantization { QuantizedDimension: 0 }).IsTrue();
         await Assert.That(block is BlockQuantization { Scheme: "Q4_0", BlockSize: 32, Bits: 4 }).IsTrue();
         await Assert.That(slice is TensorDataSlice { StreamOffset: 1024, ByteLength: 4096 }).IsTrue();
+        await Assert.That(ggufSlice is TensorDataSlice { Encoding: TensorDataEncoding.GgmlQuantizedBlock }).IsTrue();
         await Assert.That(external is ExternalTensorDataReference { RelativePath: "weights.bin", Length: 8192 }).IsTrue();
     }
 
@@ -109,6 +111,7 @@ public sealed class UnifiedGraphIrTests
         await Assert.That(ModelFormatId.PyTorch.Value).IsEqualTo("pytorch");
         await Assert.That(ModelFormatId.PyTorchPt2.Value).IsEqualTo("pytorch-pt2");
         await Assert.That(ModelFormatId.Keras.Value).IsEqualTo("keras");
+        await Assert.That(ModelFormatId.Gguf.Value).IsEqualTo("gguf");
     }
 }
 

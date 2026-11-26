@@ -385,7 +385,9 @@ public sealed class ModelGraphLayoutAdapter
 
     private static string FormatTensorSummary(TensorEdge tensor)
     {
-        string typeStr = tensor.Descriptor.DataType.ToString().ToLowerInvariant();
+        string typeStr = tensor.Descriptor.Quantization is BlockQuantization bq && !string.IsNullOrWhiteSpace(bq.Scheme)
+            ? bq.Scheme.ToLowerInvariant()
+            : tensor.Descriptor.DataType.ToString().ToLowerInvariant();
         string? shapeStr = tensor.Descriptor.Shape?.ToDisplayString();
 
         return string.IsNullOrEmpty(shapeStr)
@@ -399,6 +401,11 @@ public sealed class ModelGraphLayoutAdapter
         if (string.IsNullOrEmpty(shapeStr))
         {
             return string.Empty;
+        }
+
+        if (tensor.Descriptor.Quantization is BlockQuantization bq && !string.IsNullOrWhiteSpace(bq.Scheme))
+        {
+            return $"{shapeStr} ({bq.Scheme})";
         }
 
         return tensor.Descriptor.Quantization is not null

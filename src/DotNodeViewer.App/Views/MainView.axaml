@@ -303,7 +303,7 @@
                        FontWeight="SemiBold"
                        Foreground="{DynamicResource ShellTextPrimaryBrush}"
                        HorizontalAlignment="Center" />
-            <TextBlock Text="Drop an ONNX, TensorFlow Lite, ExecuTorch, PyTorch, or Keras model file here to inspect its architecture."
+            <TextBlock Text="Drop an ONNX, TensorFlow Lite, ExecuTorch, PyTorch, Keras, or GGUF model file here to inspect its architecture."
                        FontSize="13"
                        Foreground="{DynamicResource ShellTextSecondaryBrush}"
                        HorizontalAlignment="Center"
@@ -381,6 +381,9 @@
               </Border>
               <Border Classes="format-pill">
                 <TextBlock Text="Keras (.keras, .h5)" />
+              </Border>
+              <Border Classes="format-pill">
+                <TextBlock Text="GGUF (.gguf)" />
               </Border>
             </WrapPanel>
           </StackPanel>
@@ -700,6 +703,9 @@
                   </Border>
                   <Border Classes="format-pill">
                     <TextBlock Text="Keras (.keras, .h5)" />
+                  </Border>
+                  <Border Classes="format-pill">
+                    <TextBlock Text="GGUF (.gguf)" />
                   </Border>
                 </WrapPanel>
               </StackPanel>

@@ -1,0 +1,42 @@
+{
+  "modelId": "gguf-tiny_audio_kokoro",
+  "format": "GGUF v3",
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "tiny-kokoro-tts",
+    "nodeCount": 5,
+    "operatorHistogram": {
+      "AlbertEncoder": 1,
+      "BertProjection": 1,
+      "TextEncoder": 1,
+      "ProsodyPredictor": 1,
+      "AudioDecoder": 1
+    },
+    "inputs": [
+      {
+        "name": "input_ids",
+        "dataType": "Int32",
+        "shape": [
+          "batch",
+          "seq_len"
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "audio",
+        "dataType": "Float32",
+        "shape": [
+          "batch",
+          "samples"
+        ]
+      }
+    ],
+    "sampleWeightSlice": {
+      "tensorName": "bert.embeddings.word_embeddings.weight",
+      "dataType": "Float16",
+      "streamOffset": 736,
+      "byteLength": 8192
+    }
+  }
+}

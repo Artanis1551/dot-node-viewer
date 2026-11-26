@@ -1,0 +1,42 @@
+{
+  "modelId": "gguf-tiny_llm",
+  "format": "GGUF v3",
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "tiny-llama-2L",
+    "nodeCount": 5,
+    "operatorHistogram": {
+      "TokenEmbedding": 1,
+      "TransformerBlock": 2,
+      "OutputNorm": 1,
+      "LMHead": 1
+    },
+    "inputs": [
+      {
+        "name": "input_ids",
+        "dataType": "Int32",
+        "shape": [
+          "batch",
+          "seq_len"
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "logits",
+        "dataType": "Float32",
+        "shape": [
+          "batch",
+          "seq_len",
+          "128"
+        ]
+      }
+    ],
+    "sampleWeightSlice": {
+      "tensorName": "token_embd.weight",
+      "dataType": "Float16",
+      "streamOffset": 1888,
+      "byteLength": 16384
+    }
+  }
+}

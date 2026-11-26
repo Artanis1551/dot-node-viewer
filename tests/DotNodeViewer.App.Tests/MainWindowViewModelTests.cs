@@ -262,6 +262,36 @@ public sealed class MainWindowViewModelTests
         await Assert.That(vm.IsInferredNpuSubgraph).IsFalse();
     }
 
+    [Test]
+    public async Task LoadModelAsync_GgufTinyLlm_LoadsGraphWithBlockQuantizationAndDrillDown()
+    {
+        string path = ResolveFixturePath("gguf/tiny_llm.gguf");
+        MainWindowViewModel vm = new();
+
+        await vm.LoadModelAsync(path);
+
+        await Assert.That(vm.HasModel).IsTrue();
+        await Assert.That(vm.HasError).IsFalse();
+        await Assert.That(vm.FormatDisplayName).Contains("GGUF");
+        await Assert.That(vm.TotalNodeCount).IsEqualTo(5);
+        await Assert.That(vm.TotalParameters).IsGreaterThan(0);
+        await Assert.That(vm.QuantizedTensorCount).IsGreaterThan(0);
+        await Assert.That(vm.PrecisionMixText).Contains("Block Quantized");
+        await Assert.That(vm.CurrentLayout).IsNotNull();
+
+        VisualNode? blk0 = vm.CurrentLayout!.Nodes.FirstOrDefault(n => n.Subtitle == "blk.0");
+        await Assert.That(blk0).IsNotNull();
+        vm.SelectedNode = blk0;
+
+        NodeAttributeItem? subAttr = vm.SelectedNodeAttributes.FirstOrDefault(a => a.HasSubgraph);
+        await Assert.That(subAttr).IsNotNull();
+        await Assert.That(subAttr!.Subgraph).IsNotNull();
+        vm.DrillDownSubgraph(subAttr.Subgraph!);
+
+        await Assert.That(vm.Breadcrumbs.Count).IsEqualTo(2);
+        await Assert.That(vm.CurrentLayout!.Nodes.Count).IsGreaterThan(0);
+    }
+
     private static string ResolveFixturePath(string relative)
     {
         string? dir = AppContext.BaseDirectory;

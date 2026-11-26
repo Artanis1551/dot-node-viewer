@@ -253,6 +253,50 @@
       "sha256": "e28aaecfb687749d31a895548595f4a58f9fa230c9ad5dbb930d606f417de1f3",
       "byteLength": 11808,
       "expectedSnapshot": "Fixtures/keras/tiny_weights_only.expected.json"
+    },
+    {
+      "id": "gguf-tiny_llm",
+      "format": "gguf",
+      "fileName": "tiny_llm.gguf",
+      "tier": "committed",
+      "relativePath": "Fixtures/gguf/tiny_llm.gguf",
+      "sourceUrl": null,
+      "sha256": "ce05989c5a9ddac78f0ed17e5a3e674d74fc8afab4b2845f26813d29fd41e10e",
+      "byteLength": 77920,
+      "expectedSnapshot": "Fixtures/gguf/tiny_llm.expected.json"
+    },
+    {
+      "id": "gguf-tiny_moe_engram",
+      "format": "gguf",
+      "fileName": "tiny_moe_engram.gguf",
+      "tier": "committed",
+      "relativePath": "Fixtures/gguf/tiny_moe_engram.gguf",
+      "sourceUrl": null,
+      "sha256": "609f6605d778e9d2cb2590bef9b069c537c4f1b8d92acfa3d47eff9f60e33c8d",
+      "byteLength": 96832,
+      "expectedSnapshot": "Fixtures/gguf/tiny_moe_engram.expected.json"
+    },
+    {
+      "id": "gguf-tiny_audio_kokoro",
+      "format": "gguf",
+      "fileName": "tiny_audio_kokoro.gguf",
+      "tier": "committed",
+      "relativePath": "Fixtures/gguf/tiny_audio_kokoro.gguf",
+      "sourceUrl": null,
+      "sha256": "a7e43170557de4a4871d738e51d9ff53de99271c673137ddf08a09ea6c05e7a1",
+      "byteLength": 40160,
+      "expectedSnapshot": "Fixtures/gguf/tiny_audio_kokoro.expected.json"
+    },
+    {
+      "id": "gguf-tiny_hybrid_ssm",
+      "format": "gguf",
+      "fileName": "tiny_hybrid_ssm.gguf",
+      "tier": "committed",
+      "relativePath": "Fixtures/gguf/tiny_hybrid_ssm.gguf",
+      "sourceUrl": null,
+      "sha256": "91967755fa8a45602fb0dbfa5e7f7534501cea30ca0f32492c3ddba253242a6e",
+      "byteLength": 86528,
+      "expectedSnapshot": "Fixtures/gguf/tiny_hybrid_ssm.expected.json"
     }
   ]
 }

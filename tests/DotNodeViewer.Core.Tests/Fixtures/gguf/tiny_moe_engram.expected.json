@@ -1,0 +1,43 @@
+{
+  "modelId": "gguf-tiny_moe_engram",
+  "format": "GGUF v3",
+  "subgraphCount": 1,
+  "primarySubgraph": {
+    "name": "tiny-deepseek41-moe-engram",
+    "nodeCount": 5,
+    "operatorHistogram": {
+      "TokenEmbedding": 1,
+      "MoETransformerBlock": 1,
+      "EngramTransformerBlock": 1,
+      "OutputNorm": 1,
+      "LMHead": 1
+    },
+    "inputs": [
+      {
+        "name": "input_ids",
+        "dataType": "Int32",
+        "shape": [
+          "batch",
+          "seq_len"
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "logits",
+        "dataType": "Float32",
+        "shape": [
+          "batch",
+          "seq_len",
+          "96"
+        ]
+      }
+    ],
+    "sampleWeightSlice": {
+      "tensorName": "token_embd.weight",
+      "dataType": "BFloat16",
+      "streamOffset": 1728,
+      "byteLength": 12288
+    }
+  }
+}

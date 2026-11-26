@@ -1,6 +1,6 @@
 # Wish W12 — GGUF Format Support (LLM & Audio Model Graphs)
 
-**Status:** Proposed
+**Status:** Done
 **Depends on:** Stage **S01** (Unified Graph IR & Abstractions), Stage **S04** (Layout Engine), Stage **S11** (Tensor Inspector & Polish)
 **Suggested branch when promoted:** `feature/gguf-format-support`
 
