@@ -221,9 +221,11 @@ public partial class MainView : UserControl
     {
         _dragDepth = 0;
         MainWindowViewModel? vm = null;
+        TopLevel? topLevel = null;
         if (Dispatcher.UIThread.CheckAccess())
         {
             vm = DataContext as MainWindowViewModel;
+            topLevel = TopLevel.GetTopLevel(this);
             e.Handled = true;
         }
         else
@@ -231,6 +233,7 @@ public partial class MainView : UserControl
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
                 vm = DataContext as MainWindowViewModel;
+                topLevel = TopLevel.GetTopLevel(this);
                 e.Handled = true;
             });
         }
@@ -253,7 +256,7 @@ public partial class MainView : UserControl
 
         if (files is { Length: > 0 })
         {
-            await vm.HandleDroppedFilesAsync(files).ConfigureAwait(false);
+            await vm.HandleDroppedFilesAsync(files).ConfigureAwait(true);
             return;
         }
 
@@ -269,7 +272,6 @@ public partial class MainView : UserControl
                     string[] pathArr = paths.ToArray();
                     if (pathArr.Length > 0)
                     {
-                        var topLevel = TopLevel.GetTopLevel(this);
                         if (topLevel?.StorageProvider is { } storageProvider)
                         {
                             List<IStorageItem> resolvedItems = new();
@@ -295,13 +297,13 @@ public partial class MainView : UserControl
 
                             if (resolvedItems.Count > 0)
                             {
-                                await vm.HandleDroppedFilesAsync(resolvedItems).ConfigureAwait(false);
+                                await vm.HandleDroppedFilesAsync(resolvedItems).ConfigureAwait(true);
                                 return;
                             }
                         }
 
                         // Direct fallback to HandleDroppedFilesAsync with file paths
-                        await vm.HandleDroppedFilesAsync(pathArr).ConfigureAwait(false);
+                        await vm.HandleDroppedFilesAsync(pathArr).ConfigureAwait(true);
                         return;
                     }
                 }

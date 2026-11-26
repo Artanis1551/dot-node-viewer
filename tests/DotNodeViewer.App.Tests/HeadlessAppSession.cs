@@ -1,7 +1,9 @@
 using Avalonia;
 using Avalonia.Headless;
+using Avalonia.Media;
 
 [assembly: AvaloniaTestApplication(typeof(DotNodeViewer.App.Tests.TestAppBuilder))]
+[assembly: AvaloniaTestIsolation(AvaloniaTestIsolationLevel.PerAssembly)]
 
 namespace DotNodeViewer.App.Tests;
 
@@ -31,6 +33,33 @@ public static class HeadlessAppSession
     private static readonly object Gate = new();
 
     /// <summary>
+    /// Initializes the shared headless Avalonia application and <see cref="FontManager"/> once
+    /// before any parallel tests in this assembly run.
+    /// </summary>
+    [Before(Assembly)]
+    public static Task InitializeAssemblyAsync() =>
+        Dispatch(() =>
+        {
+            _ = FontManager.Current;
+        });
+
+    /// <summary>
+    /// Disposes the shared headless Avalonia unit test session after all tests in this assembly complete.
+    /// </summary>
+    [After(Assembly)]
+    public static void ShutdownAssembly()
+    {
+        HeadlessUnitTestSession? session;
+        lock (Gate)
+        {
+            session = _session;
+            _session = null;
+        }
+
+        session?.Dispose();
+    }
+
+    /// <summary>
     /// Ensures that the headless test session is initialized.
     /// </summary>
     public static void EnsureInitialized() => _ = Session;
@@ -56,8 +85,15 @@ public static class HeadlessAppSession
     public static Task Dispatch(Action action) => Session.Dispatch(action, CancellationToken.None);
 
     /// <summary>
-    /// Dispatches an asynchronous action to the headless UI thread.
+    /// Dispatches an asynchronous action to the headless UI thread and pumps the dispatcher frame until completion.
     /// </summary>
     /// <param name="action">The asynchronous action to execute.</param>
-    public static Task DispatchAsync(Func<Task> action) => Session.Dispatch(action, CancellationToken.None).Unwrap();
+    public static Task DispatchAsync(Func<Task> action) =>
+        Session.Dispatch(
+            async () =>
+            {
+                await action().ConfigureAwait(true);
+                return 0;
+            },
+            CancellationToken.None);
 }
