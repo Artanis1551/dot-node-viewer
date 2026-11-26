@@ -1,5 +1,6 @@
 using DotNodeViewer.Core.Formats.ExecuTorch;
 using DotNodeViewer.Core.Formats.Keras;
+using DotNodeViewer.Core.Formats.Mlir;
 using DotNodeViewer.Core.Formats.Onnx;
 using DotNodeViewer.Core.Formats.PyTorch;
 using DotNodeViewer.Core.Formats.PyTorchPt2;
@@ -193,6 +194,7 @@ public sealed class ModelFormatRegistry
         registry.Register(KerasFormatDetector.Instance, KerasFormatReader.Instance);
         registry.Register(PyTorchPt2FormatDetector.Instance, PyTorchPt2FormatReader.Instance);
         registry.Register(PyTorchFormatDetector.Instance, PyTorchFormatReader.Instance);
+        registry.Register(MlirFormatDetector.Instance, MlirFormatReader.Instance);
         registry.Register(OnnxFormatDetector.Instance, OnnxFormatReader.Instance);
         return registry;
     }

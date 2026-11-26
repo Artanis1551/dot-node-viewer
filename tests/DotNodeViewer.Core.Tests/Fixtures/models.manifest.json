@@ -253,6 +253,61 @@
       "sha256": "e28aaecfb687749d31a895548595f4a58f9fa230c9ad5dbb930d606f417de1f3",
       "byteLength": 11808,
       "expectedSnapshot": "Fixtures/keras/tiny_weights_only.expected.json"
+    },
+    {
+      "id": "mlir-tiny_stablehlo",
+      "format": "mlir",
+      "fileName": "tiny_stablehlo.mlir",
+      "tier": "committed",
+      "relativePath": "Fixtures/mlir/tiny_stablehlo.mlir",
+      "sourceUrl": null,
+      "sha256": "31a2cd0832f7a79049e1464a88e93402a679ac354f36752ff9386832e85ce156",
+      "byteLength": 951,
+      "expectedSnapshot": "Fixtures/mlir/tiny_stablehlo.expected.json"
+    },
+    {
+      "id": "mlir-tiny_tosa",
+      "format": "mlir",
+      "fileName": "tiny_tosa.mlir",
+      "tier": "committed",
+      "relativePath": "Fixtures/mlir/tiny_tosa.mlir",
+      "sourceUrl": null,
+      "sha256": "179820dfbe6b39f730686792ce93292b7fc95e63c6a78f93f27cef9003e1d608",
+      "byteLength": 1450,
+      "expectedSnapshot": "Fixtures/mlir/tiny_tosa.expected.json"
+    },
+    {
+      "id": "mlir-tiny_torch_quant",
+      "format": "mlir",
+      "fileName": "tiny_torch_quant.mlir",
+      "tier": "committed",
+      "relativePath": "Fixtures/mlir/tiny_torch_quant.mlir",
+      "sourceUrl": null,
+      "sha256": "50e70057cbbb22e016ccf31d2e837e09ad4354bf6dc1677d46c61fc1d79741e7",
+      "byteLength": 1126,
+      "expectedSnapshot": "Fixtures/mlir/tiny_torch_quant.expected.json"
+    },
+    {
+      "id": "mlir-tiny_triton_kernel",
+      "format": "mlir",
+      "fileName": "tiny_triton_kernel.mlir",
+      "tier": "committed",
+      "relativePath": "Fixtures/mlir/tiny_triton_kernel.mlir",
+      "sourceUrl": null,
+      "sha256": "05bda3d7d040d103f720ab0283546e80b39b99066baccbb39e19e8a0058e6c9a",
+      "byteLength": 823,
+      "expectedSnapshot": "Fixtures/mlir/tiny_triton_kernel.expected.json"
+    },
+    {
+      "id": "mlir-tiny_stablehlo_bytecode",
+      "format": "mlir",
+      "fileName": "tiny_stablehlo_bytecode.mlirbc",
+      "tier": "committed",
+      "relativePath": "Fixtures/mlir/tiny_stablehlo_bytecode.mlirbc",
+      "sourceUrl": null,
+      "sha256": "b23f15a0a5e0cdf4feb6349d2e5d9eabb3a7075ab9c5a97cba83b0103c0dd1b1",
+      "byteLength": 331,
+      "expectedSnapshot": "Fixtures/mlir/tiny_stablehlo_bytecode.expected.json"
     }
   ]
 }

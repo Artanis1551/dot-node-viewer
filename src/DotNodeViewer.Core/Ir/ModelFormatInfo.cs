@@ -43,6 +43,12 @@ public readonly record struct ModelFormatId(string Value)
     public static ModelFormatId Keras => new("keras");
 
     /// <summary>
+    /// Gets the format identifier for MLIR (<c>.mlir</c> and <c>.mlirbc</c>) intermediate representations.
+    /// </summary>
+    /// <value>The MLIR format identifier.</value>
+    public static ModelFormatId Mlir => new("mlir");
+
+    /// <summary>
     /// Returns the string representation of the format identifier.
     /// </summary>
     /// <returns>The underlying <see cref="Value"/>, or an empty string if uninitialized.</returns>

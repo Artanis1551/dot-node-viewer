@@ -332,7 +332,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ".pt",
         ".pt2",
         ".keras",
-        ".h5"
+        ".h5",
+        ".mlir",
+        ".mlirbc"
     ];
 
     /// <summary>
@@ -409,7 +411,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         IsDropTargetValid = isValid;
         DropTargetFeedbackMessage = feedbackMessage ?? (isValid
             ? "Release file to inspect neural network architecture"
-            : "Unsupported format. Supported: .onnx, .tflite, .pte, .pt, .pt2, .keras, .h5");
+            : "Unsupported format. Supported: .onnx, .tflite, .pte, .pt, .pt2, .keras, .h5, .mlir, .mlirbc");
     }
 
     /// <summary>
@@ -530,7 +532,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (primary is null)
         {
             HasError = true;
-            ErrorMessage = "Unsupported file format. Supported: .onnx, .tflite, .pte, .pt, .pt2, .keras, .h5";
+            ErrorMessage = "Unsupported file format. Supported: .onnx, .tflite, .pte, .pt, .pt2, .keras, .h5, .mlir, .mlirbc";
             StatusText = ErrorMessage;
             SetDropTargetState(isActive: true, isValid: false, feedbackMessage: ErrorMessage);
             ScheduleInvalidDropDismissal(cancellationToken);
@@ -629,7 +631,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (primary is null)
         {
             HasError = true;
-            ErrorMessage = "Unsupported file format. Supported: .onnx, .tflite, .pte, .pt, .pt2, .keras, .h5";
+            ErrorMessage = "Unsupported file format. Supported: .onnx, .tflite, .pte, .pt, .pt2, .keras, .h5, .mlir, .mlirbc";
             StatusText = ErrorMessage;
             SetDropTargetState(isActive: true, isValid: false, feedbackMessage: ErrorMessage);
             ScheduleInvalidDropDismissal(cancellationToken);

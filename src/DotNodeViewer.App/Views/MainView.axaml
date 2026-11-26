@@ -382,6 +382,9 @@
               <Border Classes="format-pill">
                 <TextBlock Text="Keras (.keras, .h5)" />
               </Border>
+              <Border Classes="format-pill">
+                <TextBlock Text="MLIR (.mlir, .mlirbc)" />
+              </Border>
             </WrapPanel>
           </StackPanel>
 
@@ -700,6 +703,9 @@
                   </Border>
                   <Border Classes="format-pill">
                     <TextBlock Text="Keras (.keras, .h5)" />
+                  </Border>
+                  <Border Classes="format-pill">
+                    <TextBlock Text="MLIR (.mlir, .mlirbc)" />
                   </Border>
                 </WrapPanel>
               </StackPanel>

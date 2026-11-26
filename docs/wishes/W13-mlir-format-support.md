@@ -1,6 +1,6 @@
 # Wish W13 — MLIR Format Support (Textual & Bytecode IR)
 
-**Status:** Proposed
+**Status:** Done
 **Depends on:** Stage **S01** (Unified Graph IR & Abstractions), Stage **S04** (Layout Engine), Stage **S11** (Subgraph Navigation & Tensor Inspector)
 **Suggested branch when promoted:** `feature/mlir-format-support`
 

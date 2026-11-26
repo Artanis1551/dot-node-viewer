@@ -311,6 +311,40 @@ public sealed class GraphCanvasTests
         });
     }
 
+    [Test]
+    public async Task GraphCanvas_Render_MlirTinyStableHlo_RendersToBitmapAndSelectsNode()
+    {
+        string path = ResolveFixturePath("mlir/tiny_stablehlo.mlir");
+        MainWindowViewModel vm = new();
+        await vm.LoadModelAsync(path);
+
+        await Assert.That(vm.HasModel).IsTrue();
+        await Assert.That(vm.FormatDisplayName).Contains("MLIR");
+        await Assert.That(vm.CurrentLayout).IsNotNull();
+
+        await HeadlessAppSession.DispatchAsync(async () =>
+        {
+            GraphCanvas canvas = new()
+            {
+                Layout = vm.CurrentLayout
+            };
+
+            canvas.Measure(new Size(900, 700));
+            canvas.Arrange(new Rect(0, 0, 900, 700));
+            canvas.ZoomToFit();
+
+            using RenderTargetBitmap bitmap = new(new PixelSize(900, 700));
+            bitmap.Render(canvas);
+
+            VisualNode dotNode = vm.CurrentLayout!.Nodes.First(n => n.Title.Contains("dot_general", StringComparison.OrdinalIgnoreCase));
+            canvas.SelectedNode = dotNode;
+            vm.SelectedNode = dotNode;
+
+            await Assert.That(vm.HasSelectedNode).IsTrue();
+            await Assert.That(vm.SelectedNodeTitle).IsEqualTo(dotNode.Title);
+        });
+    }
+
     private static string ResolveFixturePath(string relative)
     {
         string? dir = AppContext.BaseDirectory;
